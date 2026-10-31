@@ -62,7 +62,7 @@ jobs:
       - name: Linux system libraries for Tauri 2
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libdbus-1-dev pkg-config
       - name: Frontend build (Tauri embeds ../dist)
         run: npm ci && npm run build
       - name: rustfmt check

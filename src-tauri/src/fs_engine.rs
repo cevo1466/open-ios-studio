@@ -273,6 +273,24 @@ impl Workspace {
         result
     }
 
+    /// `None` when the file does not exist; errors for anything else (escape, directory, binary).
+    pub fn read_file_if_exists(&self, rel: &str) -> Result<Option<String>, FsError> {
+        let path = self.resolve(rel)?;
+        if fs::symlink_metadata(&path).is_err() {
+            return Ok(None);
+        }
+        self.read_file(rel).map(Some)
+    }
+
+    /// Write a file, creating missing parent directories inside the workspace first.
+    pub fn write_file_creating_dirs(&self, rel: &str, content: &str) -> Result<(), FsError> {
+        let target = self.resolve(rel)?;
+        if let Some(parent) = target.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        self.write_file(rel, content)
+    }
+
     pub fn create_file(&self, rel: &str) -> Result<(), FsError> {
         let target = self.resolve(rel)?;
         if fs::symlink_metadata(&target).is_ok() {
@@ -410,6 +428,49 @@ mod tests {
         assert_eq!(paths, vec!["Sources/App.swift"]);
         assert!(!scan.truncated);
         assert!(scan.skipped >= 1);
+    }
+
+    #[test]
+    fn write_creating_dirs_builds_parents_inside_the_workspace() {
+        let (_d, ws) = ws();
+        ws.write_file_creating_dirs("Sources/App/Views/Home.swift", "struct Home {}\n")
+            .expect("write");
+        assert_eq!(
+            ws.read_file("Sources/App/Views/Home.swift").expect("read"),
+            "struct Home {}\n"
+        );
+        assert!(matches!(
+            ws.write_file_creating_dirs("../outside/x.swift", "x"),
+            Err(FsError::Escape(_))
+        ));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn write_creating_dirs_refuses_symlink_escape() {
+        let (_d, ws) = ws();
+        let outside = tempfile::tempdir().expect("outside");
+        std::os::unix::fs::symlink(outside.path(), ws.root().join("link")).expect("symlink");
+        assert!(matches!(
+            ws.write_file_creating_dirs("link/new/dir/x.swift", "x"),
+            Err(FsError::Escape(_))
+        ));
+        assert!(!outside.path().join("new").exists());
+    }
+
+    #[test]
+    fn read_if_exists_distinguishes_missing_from_present() {
+        let (_d, ws) = ws();
+        assert_eq!(ws.read_file_if_exists("nope.swift").expect("missing"), None);
+        ws.create_file("a.swift").expect("create");
+        ws.write_file("a.swift", "x").expect("write");
+        assert_eq!(
+            ws.read_file_if_exists("a.swift")
+                .expect("present")
+                .as_deref(),
+            Some("x")
+        );
+        assert!(ws.read_file_if_exists("../x").is_err());
     }
 
     #[test]

@@ -51,3 +51,12 @@ describe('editor reducer', () => {
     expect(reducer(s, { type: 'activate', path: 'zzz' })).toBe(s);
   });
 });
+
+describe('reloaded', () => {
+  it('replaces content and saved snapshot of an open tab only', () => {
+    let s = reducer(initialState, { type: 'open', path: 'a', content: 'x' });
+    s = reducer(s, { type: 'reloaded', path: 'a', content: 'from-disk' });
+    expect(s.tabs[0]).toEqual({ path: 'a', content: 'from-disk', saved: 'from-disk' });
+    expect(reducer(s, { type: 'reloaded', path: 'zzz', content: 'q' })).toEqual(s);
+  });
+});

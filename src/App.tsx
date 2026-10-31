@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import { CommandPalette, type Command } from './components/CommandPalette';
 import { EditorPane } from './components/EditorPane';
 import { Explorer } from './components/Explorer';
+import { useAi } from './ai/useAi';
 import { BuildPanel } from './components/BuildPanel';
+import { ChatPanel } from './components/ChatPanel';
 import { AppStoreReadiness, SecurityCenter } from './components/PolicyPanels';
 import { SettingsDialog } from './components/SettingsDialog';
 import { inDesktopApp, ipc } from './ipc';
@@ -17,7 +19,6 @@ import type { RunEvent, XtoolInfo, XtoolOp, XtoolRunArgs } from './xtool/types';
 const PLANNED: { label: string; milestone: string }[] = [
   { label: 'Search', milestone: 'planned' },
   { label: 'Source Control', milestone: 'planned' },
-  { label: 'AI Chat', milestone: 'M3' },
   { label: 'Devices', milestone: 'M4' },
 ];
 
@@ -155,6 +156,33 @@ export function App() {
     return `${o.status.replace('_', ' ')} · ${o.errorCount} error(s), ${o.warningCount} warning(s)`;
   }, [build.outcome, diagnostics]);
 
+  const [chatOpen, setChatOpen] = useState(false);
+  const buildFailed = build.outcome !== null && build.outcome.code !== 0;
+  const dirtyPaths = useMemo(() => state.tabs.filter(isDirty).map((t) => t.path), [state.tabs]);
+  const openPaths = useMemo(() => state.tabs.map((t) => t.path), [state.tabs]);
+
+  const onApplied = useCallback(async (paths: string[]) => {
+    setRefreshKey((k) => k + 1);
+    for (const path of paths) {
+      try {
+        const content = await ipc.readFile(path);
+        dispatch({ type: 'reloaded', path, content });
+      } catch {
+        /* file not open or unreadable: the explorer refresh is enough */
+      }
+    }
+  }, []);
+
+  const ai = useAi({
+    workspace: state.workspace,
+    openPaths,
+    activePath: state.active,
+    dirtyPaths,
+    diagnostics,
+    buildFailed,
+    onApplied: (paths) => void onApplied(paths),
+  });
+
   const saveRef = useRef(save);
   useEffect(() => {
     saveRef.current = save;
@@ -239,6 +267,10 @@ export function App() {
             Build (xtool)
             <small>M2</small>
           </button>
+          <button type="button" className="act" onClick={() => setChatOpen(true)} disabled={!desktop} title={desktop ? 'AI assistant' : 'Desktop app only'}>
+            AI Chat
+            <small>M3</small>
+          </button>
           <button type="button" className="act" onClick={() => setPanel('asr')}>
             App Store Readiness
             <small>static checks</small>
@@ -314,6 +346,14 @@ export function App() {
             onChange={(path, content) => dispatch({ type: 'edit', path, content })}
             onSave={() => void saveRef.current()}
           />
+          {buildOpen && ai.repairAvailable && (
+            <div className="notice" role="status">
+              The build failed. The AI can propose a minimal fix; you review it before anything is written.
+              <button type="button" onClick={ai.repair}>
+                Ask AI to fix ({ai.repairAttempt + 1}/3)
+              </button>
+            </div>
+          )}
           {buildOpen && (
             <div className="bp-dock">
               <BuildPanel
@@ -335,6 +375,34 @@ export function App() {
             </div>
           )}
         </main>
+        {chatOpen && (
+          <aside className="ai-dock" aria-label="AI assistant">
+            <ChatPanel
+              state={ai.chat}
+              settings={ai.settings}
+              keyStored={ai.keyStored}
+              models={ai.models}
+              modelsLoading={ai.modelsLoading}
+              modelsError={ai.modelsError}
+              contextSummary={ai.contextSummary}
+              hasWorkspace={hasWorkspace}
+              theme={theme}
+              onSettings={ai.setSettings}
+              onSetKey={ai.setKey}
+              onDeleteKey={ai.deleteKey}
+              onRefreshModels={ai.refreshModels}
+              onSend={ai.send}
+              onStop={ai.stop}
+              onDecide={ai.decide}
+              onDecideAll={ai.decideAll}
+              onApply={ai.apply}
+              applying={ai.applying}
+              applyBlockedReason={ai.applyBlockedReason}
+              keyringError={ai.keyringError}
+              onClose={() => setChatOpen(false)}
+            />
+          </aside>
+        )}
       </div>
       <footer className="status">
         <span>{state.workspace ?? 'No folder open'}</span>
