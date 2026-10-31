@@ -48,3 +48,4 @@ input, select { background: var(--bg); border: 1px solid var(--border); border-r
 .palette ul { list-style: none; margin: 0; padding: 0; max-height: 280px; overflow: auto; }
 .palette li button { width: 100%; text-align: left; border: 0; background: transparent; display: flex; justify-content: space-between; }
 .hint { color: var(--muted); }
+.bp-dock { height: 320px; min-height: 160px; border-top: 1px solid var(--border); }

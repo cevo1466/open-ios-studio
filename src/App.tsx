@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import { CommandPalette, type Command } from './components/CommandPalette';
 import { EditorPane } from './components/EditorPane';
 import { Explorer } from './components/Explorer';
+import { BuildPanel } from './components/BuildPanel';
 import { AppStoreReadiness, SecurityCenter } from './components/PolicyPanels';
 import { SettingsDialog } from './components/SettingsDialog';
 import { inDesktopApp, ipc } from './ipc';
@@ -9,12 +10,14 @@ import { effectiveTheme, loadSettings, saveSettings, type Settings } from './set
 import { analyzeProject } from './policy';
 import type { EvaluationReport } from './policy/types';
 import { initialState, isDirty, reducer } from './state/store';
+import { buildReducer, initialBuildState } from './xtool/buildState';
+import { buildOutcome, compatibility, parseDiagnostics, parseSwiftVersion, parseXtoolVersion, redactLine } from './xtool/parse';
+import type { RunEvent, XtoolInfo, XtoolOp, XtoolRunArgs } from './xtool/types';
 
 const PLANNED: { label: string; milestone: string }[] = [
   { label: 'Search', milestone: 'planned' },
   { label: 'Source Control', milestone: 'planned' },
   { label: 'AI Chat', milestone: 'M3' },
-  { label: 'Build (xtool)', milestone: 'M2' },
   { label: 'Devices', milestone: 'M4' },
 ];
 
@@ -31,6 +34,10 @@ export function App() {
   const [report, setReport] = useState<EvaluationReport | null>(null);
   const [analysing, setAnalysing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [buildOpen, setBuildOpen] = useState(false);
+  const [build, buildDispatch] = useReducer(buildReducer, initialBuildState);
+  const [xtoolInfo, setXtoolInfo] = useState<XtoolInfo | null>(null);
+  const [xtoolLoading, setXtoolLoading] = useState(false);
   const desktop = inDesktopApp();
 
   const theme = effectiveTheme(settings.theme, prefersDark);
@@ -107,6 +114,46 @@ export function App() {
       setAnalysing(false);
     }
   }, [state.workspace]);
+
+  const detectXtool = useCallback(async () => {
+    setXtoolLoading(true);
+    try {
+      setXtoolInfo(await ipc.xtoolDetect());
+    } catch (e) {
+      setXtoolInfo({ found: false, path: null, versionOutput: null, swiftVersionOutput: null, error: String(e) });
+    } finally {
+      setXtoolLoading(false);
+    }
+  }, []);
+
+  const runXtool = useCallback(
+    async (op: XtoolOp, args: XtoolRunArgs) => {
+      buildDispatch({ type: 'start', op });
+      const onEvent = (event: RunEvent) =>
+        buildDispatch({ type: 'event', event: event.kind === 'line' ? { ...event, text: redactLine(event.text) } : event });
+      try {
+        await ipc.xtoolRun(op, args, onEvent);
+        if (op === 'new') setRefreshKey((k) => k + 1);
+      } catch (e) {
+        onEvent({ kind: 'line', stream: 'stderr', text: String(e) });
+        onEvent({ kind: 'exit', code: null, cancelled: false, timedOut: false, droppedLines: 0 });
+      }
+    },
+    [],
+  );
+
+  const openBuild = useCallback(() => {
+    setBuildOpen(true);
+    if (xtoolInfo === null) void detectXtool();
+  }, [xtoolInfo, detectXtool]);
+
+  const diagnostics = useMemo(() => parseDiagnostics(build.lines.map((l) => l.text)), [build.lines]);
+  const parsedVersion = parseXtoolVersion(xtoolInfo?.versionOutput ?? '');
+  const outcomeLabel = useMemo(() => {
+    if (!build.outcome) return null;
+    const o = buildOutcome(build.outcome, diagnostics);
+    return `${o.status.replace('_', ' ')} · ${o.errorCount} error(s), ${o.warningCount} warning(s)`;
+  }, [build.outcome, diagnostics]);
 
   const saveRef = useRef(save);
   useEffect(() => {
@@ -188,6 +235,10 @@ export function App() {
               <small>{p.milestone}</small>
             </button>
           ))}
+          <button type="button" className="act" onClick={openBuild} disabled={!desktop} title={desktop ? 'Build with xtool' : 'Desktop app only'}>
+            Build (xtool)
+            <small>M2</small>
+          </button>
           <button type="button" className="act" onClick={() => setPanel('asr')}>
             App Store Readiness
             <small>static checks</small>
@@ -263,6 +314,26 @@ export function App() {
             onChange={(path, content) => dispatch({ type: 'edit', path, content })}
             onSave={() => void saveRef.current()}
           />
+          {buildOpen && (
+            <div className="bp-dock">
+              <BuildPanel
+                info={xtoolInfo}
+                infoLoading={xtoolLoading}
+                compatibility={compatibility(parsedVersion)}
+                versionLabel={parsedVersion.value ?? (xtoolInfo?.versionOutput ?? null)}
+                swiftLabel={parseSwiftVersion(xtoolInfo?.swiftVersionOutput ?? '')}
+                hasWorkspace={hasWorkspace}
+                state={build}
+                diagnostics={diagnostics}
+                outcomeLabel={outcomeLabel}
+                onRedetect={() => void detectXtool()}
+                onRun={(op, args) => void runXtool(op, args)}
+                onCancel={() => void ipc.xtoolCancel()}
+                onClose={() => setBuildOpen(false)}
+                onOpenFile={(path) => void openFile(path)}
+              />
+            </div>
+          )}
         </main>
       </div>
       <footer className="status">

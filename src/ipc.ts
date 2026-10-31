@@ -1,4 +1,5 @@
-import { invoke } from '@tauri-apps/api/core';
+import { Channel, invoke } from '@tauri-apps/api/core';
+import type { RunEvent, XtoolInfo, XtoolOp, XtoolRunArgs } from './xtool/types';
 
 export interface Entry {
   name: string;
@@ -21,5 +22,12 @@ export const ipc = {
   readFile: (path: string) => invoke<string>('read_file', { path }),
   writeFile: (path: string, content: string) => invoke<void>('write_file', { path, content }),
   scanWorkspace: () => invoke<ScanResult>('scan_workspace'),
+  xtoolDetect: () => invoke<XtoolInfo>('xtool_detect'),
+  xtoolRun: (op: XtoolOp, args: XtoolRunArgs, onEvent: (event: RunEvent) => void) => {
+    const channel = new Channel<RunEvent>();
+    channel.onmessage = onEvent;
+    return invoke<void>('xtool_run', { op, args, onEvent: channel });
+  },
+  xtoolCancel: () => invoke<void>('xtool_cancel'),
   createFile: (path: string) => invoke<void>('create_file', { path }),
 };
