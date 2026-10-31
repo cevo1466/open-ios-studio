@@ -86,8 +86,7 @@ impl Workspace {
                 return Err(FsError::Invalid(rel.to_owned()));
             }
         }
-        let mut real =
-            fs::canonicalize(&base).map_err(|_| FsError::Invalid(rel.to_owned()))?;
+        let mut real = fs::canonicalize(&base).map_err(|_| FsError::Invalid(rel.to_owned()))?;
         if !real.starts_with(&self.root) {
             return Err(FsError::Escape(rel.to_owned()));
         }

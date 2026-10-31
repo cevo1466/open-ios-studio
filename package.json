@@ -15,7 +15,7 @@
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
     "@tauri-apps/api": "^2.12.4",
-    "monaco-editor": "^0.57.0",
+    "monaco-editor": "^0.56.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
@@ -32,5 +32,8 @@
     "typescript-eslint": "^8.72.1",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"
+  },
+  "overrides": {
+    "dompurify": "^3.4.17"
   }
 }
