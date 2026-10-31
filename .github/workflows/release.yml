@@ -1,0 +1,188 @@
+name: Release
+
+# Tag pushes (v*) are the ONLY automatic trigger. This workflow never runs on
+# pull_request. A manual run (workflow_dispatch) requires an existing tag.
+# Every release is published as a pre-release until a human has verified the
+# desktop launch on a real Linux desktop (see docs/RELEASING.md).
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to release, for example v0.1.0'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Linux system libraries for Tauri 2
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libdbus-1-dev pkg-config
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - name: Policy catalog schema and honesty checks
+        run: node scripts/validate-policies.mjs
+      - name: Frontend build (Tauri embeds ../dist)
+        run: npm run build
+      - run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
+      - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+      - run: cargo test --manifest-path src-tauri/Cargo.toml
+
+  bundle:
+    needs: verify
+    runs-on: ubuntu-22.04
+    env:
+      APPIMAGE_EXTRACT_AND_RUN: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Linux system libraries for Tauri 2
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libdbus-1-dev pkg-config patchelf
+      - run: npm ci
+      - name: Check tag against configured version
+        run: |
+          set -eu
+          case "$TAG" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "Tag '$TAG' is not of the form vX.Y.Z"; exit 1 ;;
+          esac
+          TAG_VERSION="${TAG#v}"
+          CONF_VERSION="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          if [ "$TAG_VERSION" != "$CONF_VERSION" ]; then
+            echo "Tag version $TAG_VERSION differs from src-tauri/tauri.conf.json version $CONF_VERSION"
+            exit 1
+          fi
+          echo "VERSION=$TAG_VERSION" >> "$GITHUB_ENV"
+      - name: Build DEB and AppImage
+        run: npx tauri build --bundles deb,appimage
+      - name: Collect artifacts under space-free names
+        run: |
+          set -eu
+          B=src-tauri/target/release/bundle
+          mkdir -p dist-release
+          set -- "$B"/deb/*.deb
+          [ "$#" -eq 1 ] && [ -f "$1" ] || { echo "expected exactly one .deb"; exit 1; }
+          cp "$1" "dist-release/Open-iOS-Studio_${VERSION}_amd64.deb"
+          set -- "$B"/appimage/*.AppImage
+          [ "$#" -eq 1 ] && [ -f "$1" ] || { echo "expected exactly one .AppImage"; exit 1; }
+          cp "$1" "dist-release/Open-iOS-Studio_${VERSION}_amd64.AppImage"
+          cd dist-release
+          sha256sum "Open-iOS-Studio_${VERSION}_amd64.deb" "Open-iOS-Studio_${VERSION}_amd64.AppImage" > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+          ls -l
+      - name: Inspect packages
+        working-directory: dist-release
+        run: |
+          set -eu
+          DEB="Open-iOS-Studio_${VERSION}_amd64.deb"
+          APPIMAGE="Open-iOS-Studio_${VERSION}_amd64.AppImage"
+          ar t "$DEB"
+          mkdir -p ../deb-inspect
+          ar p "$DEB" data.tar.gz > ../deb-inspect/data.tar.gz 2>/dev/null || ar p "$DEB" data.tar.xz > ../deb-inspect/data.tar.xz
+          tar -tf ../deb-inspect/data.tar.* > ../deb-inspect/listing.txt
+          head -40 ../deb-inspect/listing.txt
+          grep -Eq '(^|/)usr/bin/open-ios-studio$' ../deb-inspect/listing.txt || { echo "usr/bin/open-ios-studio missing from deb"; exit 1; }
+          MAGIC="$(head -c 4 "$APPIMAGE" | od -An -tx1 | tr -d ' \n')"
+          [ "$MAGIC" = "7f454c46" ] || { echo "AppImage does not start with ELF magic (got $MAGIC)"; exit 1; }
+          echo "AppImage ELF magic OK. Desktop launch is NOT verified by this workflow."
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-linux-x86_64
+          path: dist-release/*
+          if-no-files-found: error
+
+  publish:
+    needs: bundle
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-linux-x86_64
+          path: dist-release
+      - name: Re-verify checksums
+        working-directory: dist-release
+        run: sha256sum -c SHA256SUMS.txt
+      - name: Generate RELEASE_NOTES.md
+        run: |
+          set -eu
+          VERSION="${TAG#v}"
+          awk -v v="$VERSION" '
+            /^## \[/ { if (on) exit; if (index($0, "## [" v "]") == 1) { on = 1; next } }
+            on { print }
+          ' CHANGELOG.md > changelog-section.md
+          if ! grep -q '[^[:space:]]' changelog-section.md; then
+            echo "No CHANGELOG.md section found for $VERSION"; exit 1
+          fi
+          {
+            echo "## Open iOS Studio $TAG"
+            echo
+            cat changelog-section.md
+            echo
+            cat <<'HONESTY'
+          ### Read before installing
+          - This is a pre-release.
+          - Desktop launch on a real Linux desktop is NOT verified in CI. The packages were built and inspected (checksums, DEB contents, AppImage ELF header) but never started on a desktop by this workflow.
+          - No Apple SDK is included or redistributed.
+          - Building iOS apps requires xtool, a Swift toolchain and an Apple account on your side.
+          - AI features need your own API key or a local Ollama instance.
+
+          Verify downloads with: `sha256sum -c SHA256SUMS.txt`
+          HONESTY
+          } > RELEASE_NOTES.md
+          cat RELEASE_NOTES.md
+      - name: Create pre-release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$TAG" dist-release/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "Open iOS Studio $TAG" \
+            --notes-file RELEASE_NOTES.md \
+            --prerelease

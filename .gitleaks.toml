@@ -1,0 +1,15 @@
+title = "Open iOS Studio gitleaks config"
+
+[extend]
+useDefault = true
+
+# Test suites and CLI fixtures contain deliberately synthetic secrets (they test the detectors
+# and the redaction). Real source files are still scanned.
+[allowlist]
+description = "synthetic secrets in tests and captured fixtures"
+paths = [
+  '''src/.*\.test\.ts''',
+  '''fixtures/.*''',
+  '''e2e/.*''',
+  '''docs/.*''',
+]

@@ -2,12 +2,15 @@ export interface Tab {
   path: string;
   content: string;
   saved: string;
+  /** Changes when the content was replaced from outside the editor (open, reload from disk). */
+  rev: number;
 }
 
 export interface EditorState {
   workspace: string | null;
   tabs: Tab[];
   active: string | null;
+  revCounter: number;
 }
 
 export type Action =
@@ -19,20 +22,20 @@ export type Action =
   | { type: 'reloaded'; path: string; content: string }
   | { type: 'activate'; path: string };
 
-export const initialState: EditorState = { workspace: null, tabs: [], active: null };
+export const initialState: EditorState = { workspace: null, tabs: [], active: null, revCounter: 0 };
 
 export const isDirty = (tab: Tab): boolean => tab.content !== tab.saved;
 
 export function reducer(state: EditorState, action: Action): EditorState {
   switch (action.type) {
     case 'workspace':
-      return { workspace: action.root, tabs: [], active: null };
+      return { workspace: action.root, tabs: [], active: null, revCounter: state.revCounter };
     case 'open': {
       if (state.tabs.some((t) => t.path === action.path)) {
         return { ...state, active: action.path };
       }
-      const tab: Tab = { path: action.path, content: action.content, saved: action.content };
-      return { ...state, tabs: [...state.tabs, tab], active: action.path };
+      const tab: Tab = { path: action.path, content: action.content, saved: action.content, rev: state.revCounter + 1 };
+      return { ...state, tabs: [...state.tabs, tab], active: action.path, revCounter: state.revCounter + 1 };
     }
     case 'edit':
       return {
@@ -55,9 +58,13 @@ export function reducer(state: EditorState, action: Action): EditorState {
     }
     case 'reloaded':
       // The file was rewritten on disk (approved AI change): editor and saved snapshot both follow it.
+      if (!state.tabs.some((t) => t.path === action.path)) return state;
       return {
         ...state,
-        tabs: state.tabs.map((t) => (t.path === action.path ? { ...t, content: action.content, saved: action.content } : t)),
+        revCounter: state.revCounter + 1,
+        tabs: state.tabs.map((t) =>
+          t.path === action.path ? { ...t, content: action.content, saved: action.content, rev: state.revCounter + 1 } : t,
+        ),
       };
     case 'activate':
       return state.tabs.some((t) => t.path === action.path) ? { ...state, active: action.path } : state;
