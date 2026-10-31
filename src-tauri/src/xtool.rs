@@ -97,7 +97,11 @@ fn probe(program: &Path, args: &[&str], cwd: &Path) -> Result<String, String> {
         return Err("timed out".to_owned());
     }
     if info.code != Some(0) {
-        return Err(format!("exited with {:?}: {}", info.code, lines.join(" | ")));
+        return Err(format!(
+            "exited with {:?}: {}",
+            info.code,
+            lines.join(" | ")
+        ));
     }
     Ok(lines.join("\n").trim().to_owned())
 }
@@ -190,7 +194,10 @@ mod tests {
         assert!(validate_project_name("My-App_2").is_ok());
         assert!(validate_project_name("_x").is_ok());
         for bad in ["", "2app", "-x", "a b", "a/b", "ünï", "a.b"] {
-            assert!(validate_project_name(bad).is_err(), "{bad:?} should be rejected");
+            assert!(
+                validate_project_name(bad).is_err(),
+                "{bad:?} should be rejected"
+            );
         }
     }
 
@@ -239,7 +246,10 @@ mod tests {
     #[test]
     fn new_builds_a_fixed_argument_vector() {
         let (_d, ws) = ws();
-        let args = RunArgs { name: Some("Demo".into()), ..RunArgs::default() };
+        let args = RunArgs {
+            name: Some("Demo".into()),
+            ..RunArgs::default()
+        };
         let spec = build_spec("new", &args, Path::new("/usr/bin/xtool"), &ws).expect("spec");
         assert_eq!(spec.args, ["new", "--skip-setup", "Demo"]);
         assert_eq!(spec.cwd, ws.root());
@@ -250,11 +260,17 @@ mod tests {
         let (_d, ws) = ws();
         let xtool = Path::new("/usr/bin/xtool");
         for bad in ["--help", "a b", "x;rm"] {
-            let args = RunArgs { name: Some(bad.into()), ..RunArgs::default() };
+            let args = RunArgs {
+                name: Some(bad.into()),
+                ..RunArgs::default()
+            };
             assert!(build_spec("new", &args, xtool, &ws).is_err(), "{bad}");
         }
         fs::create_dir(ws.root().join("Taken")).expect("mkdir");
-        let args = RunArgs { name: Some("Taken".into()), ..RunArgs::default() };
+        let args = RunArgs {
+            name: Some("Taken".into()),
+            ..RunArgs::default()
+        };
         assert!(build_spec("new", &args, xtool, &ws).is_err());
     }
 
@@ -266,9 +282,15 @@ mod tests {
         fs::write(ws.root().join("Package.swift"), "").expect("write");
         let spec = build_spec("build", &RunArgs::default(), xtool, &ws).expect("spec");
         assert_eq!(spec.args, ["dev", "build", "--configuration", "debug"]);
-        let bad = RunArgs { configuration: Some("--evil".into()), ..RunArgs::default() };
+        let bad = RunArgs {
+            configuration: Some("--evil".into()),
+            ..RunArgs::default()
+        };
         assert!(build_spec("build", &bad, xtool, &ws).is_err());
-        let escape = RunArgs { project: Some("../outside".into()), ..RunArgs::default() };
+        let escape = RunArgs {
+            project: Some("../outside".into()),
+            ..RunArgs::default()
+        };
         assert!(build_spec("build", &escape, xtool, &ws).is_err());
     }
 
@@ -277,7 +299,10 @@ mod tests {
         let (_d, ws) = ws();
         let xtool = Path::new("/usr/bin/xtool");
         for op in ["auth", "auth-login", "sdk-install", "rm"] {
-            assert!(build_spec(op, &RunArgs::default(), xtool, &ws).is_err(), "{op}");
+            assert!(
+                build_spec(op, &RunArgs::default(), xtool, &ws).is_err(),
+                "{op}"
+            );
         }
     }
 }

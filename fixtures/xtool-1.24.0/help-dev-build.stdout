@@ -1,0 +1,17 @@
+OVERVIEW: Build app with SwiftPM
+
+This command builds the SwiftPM-based iOS app in the current directory
+
+USAGE: xtool dev build [--configuration <configuration>] [--sign] [--ipa] [--triple <triple>]
+
+OPTIONS:
+  -c, --configuration <configuration>
+                          Build with configuration (values: debug, release;
+                          default: debug)
+  -s, --sign              Codesign the built app
+  -i, --ipa               Output a .ipa file instead of a .app
+  --triple <triple>       Custom target triple to build for
+        Defaults to 'arm64-apple-ios'
+  --version               Show the version.
+  -h, --help              Show help information.
+

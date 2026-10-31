@@ -44,7 +44,7 @@ export function parseSwiftVersion(output: string): string | null {
 }
 
 const DIAG_FILE = /^(.+?):(\d+):(\d+):\s*(error|warning|note):\s*(.*)$/;
-const DIAG_PLAIN = /^(error|warning|note):\s*(.*)$/;
+const DIAG_PLAIN = /^(error|warning|note):\s*(.*)$/i;
 
 export function parseDiagnostics(lines: string[]): Diagnostic[] {
   const out: Diagnostic[] = [];
@@ -68,7 +68,7 @@ export function parseDiagnostics(lines: string[]): Diagnostic[] {
         file: null,
         line: null,
         column: null,
-        severity: p[1] as Diagnostic['severity'],
+        severity: p[1].toLowerCase() as Diagnostic['severity'],
         message: (p[2] ?? '').trim(),
         raw,
       });

@@ -18,7 +18,11 @@ struct AppState {
 }
 
 #[derive(Debug, Serialize)]
-#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 enum RunEvent {
     Line {
         stream: runner::Stream,
@@ -93,7 +97,8 @@ fn scan_workspace(state: State<'_, AppState>) -> Result<ScanResult, String> {
 
 #[tauri::command]
 async fn xtool_detect(state: State<'_, AppState>) -> Result<xtool::XtoolInfo, String> {
-    let cwd = with_workspace(&state, |ws| Ok(ws.root().to_path_buf())).unwrap_or_else(|_| std::env::temp_dir());
+    let cwd = with_workspace(&state, |ws| Ok(ws.root().to_path_buf()))
+        .unwrap_or_else(|_| std::env::temp_dir());
     tauri::async_runtime::spawn_blocking(move || {
         let path = std::env::var_os("PATH").unwrap_or_default();
         xtool::detect(&path, &cwd)

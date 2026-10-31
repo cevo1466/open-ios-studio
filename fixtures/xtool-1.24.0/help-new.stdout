@@ -1,0 +1,15 @@
+OVERVIEW: Create a new xtool SwiftPM project
+
+USAGE: xtool new [<name>] [--skip-setup]
+
+ARGUMENTS:
+  <name>
+
+OPTIONS:
+  --skip-setup            Skip setup steps. (default: false)
+        By default, this command first invokes `xtool setup` to complete any
+        missing setup steps, like authenticating and installing the SDK. Use
+        this flag to always skip setup.
+  --version               Show the version.
+  -h, --help              Show help information.
+

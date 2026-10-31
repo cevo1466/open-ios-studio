@@ -1,0 +1,11 @@
+OVERVIEW: List devices
+
+USAGE: xtool devices [--usb] [--network] [--all] [--wait] [--no-wait]
+
+OPTIONS:
+  --usb/--network/--all   Which devices to search for (default: --all)
+  --wait/--no-wait        If no devices are found at first, wait until at least
+                          one is connected. (default: --wait)
+  --version               Show the version.
+  -h, --help              Show help information.
+

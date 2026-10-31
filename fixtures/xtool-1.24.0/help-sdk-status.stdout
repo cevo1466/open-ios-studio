@@ -1,0 +1,8 @@
+OVERVIEW: Get the status of the Darwin Swift SDK
+
+USAGE: xtool sdk status
+
+OPTIONS:
+  --version               Show the version.
+  -h, --help              Show help information.
+

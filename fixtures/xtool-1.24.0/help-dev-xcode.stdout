@@ -1,0 +1,8 @@
+OVERVIEW: Generate Xcode project
+
+USAGE: xtool dev generate-xcode-project
+
+OPTIONS:
+  --version               Show the version.
+  -h, --help              Show help information.
+

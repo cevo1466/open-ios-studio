@@ -153,3 +153,10 @@ describe('buildOutcome', () => {
     expect(buildOutcome({ code: 2, cancelled: false, timedOut: false }, []).status).toBe('failed');
   });
 });
+
+describe('xtool-style capitalised errors', () => {
+  it('parses "Error: ..." lines written by xtool itself', () => {
+    const [d] = parseDiagnostics(['Error: Could not find Package.swift in this directory.']);
+    expect(d).toMatchObject({ severity: 'error', file: null, message: 'Could not find Package.swift in this directory.' });
+  });
+});

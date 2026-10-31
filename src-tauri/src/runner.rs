@@ -284,7 +284,10 @@ mod tests {
     fn streams_both_pipes_and_reports_exit_code() {
         let dir = tempfile::tempdir().expect("tempdir");
         let tool = script(dir.path(), "echo out1\necho err1 >&2\necho out2\nexit 3");
-        let (info, lines) = collect(&spec(tool, dir.path(), Duration::from_secs(10)), &CancelToken::new());
+        let (info, lines) = collect(
+            &spec(tool, dir.path(), Duration::from_secs(10)),
+            &CancelToken::new(),
+        );
         assert_eq!(info.code, Some(3));
         assert!(!info.cancelled && !info.timed_out);
         assert!(lines.contains(&(Stream::Stdout, "out1".into())));
@@ -311,7 +314,10 @@ mod tests {
     fn stdin_is_closed() {
         let dir = tempfile::tempdir().expect("tempdir");
         let tool = script(dir.path(), "cat\necho done");
-        let (info, lines) = collect(&spec(tool, dir.path(), Duration::from_secs(10)), &CancelToken::new());
+        let (info, lines) = collect(
+            &spec(tool, dir.path(), Duration::from_secs(10)),
+            &CancelToken::new(),
+        );
         assert_eq!(info.code, Some(0));
         assert!(lines.contains(&(Stream::Stdout, "done".into())));
     }
@@ -321,7 +327,10 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         let tool = script(dir.path(), "sleep 30");
         let started = Instant::now();
-        let (info, _) = collect(&spec(tool, dir.path(), Duration::from_millis(300)), &CancelToken::new());
+        let (info, _) = collect(
+            &spec(tool, dir.path(), Duration::from_millis(300)),
+            &CancelToken::new(),
+        );
         assert!(info.timed_out);
         assert!(!info.cancelled);
         assert!(started.elapsed() < Duration::from_secs(10));
@@ -354,7 +363,10 @@ mod tests {
             dir.path(),
             "head -c 30000 /dev/zero | tr '\\0' a\necho\necho after",
         );
-        let (_, lines) = collect(&spec(tool, dir.path(), Duration::from_secs(10)), &CancelToken::new());
+        let (_, lines) = collect(
+            &spec(tool, dir.path(), Duration::from_secs(10)),
+            &CancelToken::new(),
+        );
         assert!(lines.iter().all(|(_, t)| t.len() <= MAX_LINE_BYTES));
         assert!(lines.contains(&(Stream::Stdout, "after".into())));
     }
@@ -363,7 +375,10 @@ mod tests {
     fn excess_lines_are_dropped_and_counted() {
         let dir = tempfile::tempdir().expect("tempdir");
         let tool = script(dir.path(), "yes line | head -n 25000");
-        let (info, lines) = collect(&spec(tool, dir.path(), Duration::from_secs(30)), &CancelToken::new());
+        let (info, lines) = collect(
+            &spec(tool, dir.path(), Duration::from_secs(30)),
+            &CancelToken::new(),
+        );
         assert_eq!(lines.len() as u64, MAX_FORWARDED_LINES);
         assert_eq!(info.dropped_lines, 25_000 - MAX_FORWARDED_LINES);
     }
@@ -371,7 +386,11 @@ mod tests {
     #[test]
     fn missing_program_is_an_error() {
         let dir = tempfile::tempdir().expect("tempdir");
-        let s = spec(dir.path().join("does-not-exist"), dir.path(), Duration::from_secs(5));
+        let s = spec(
+            dir.path().join("does-not-exist"),
+            dir.path(),
+            Duration::from_secs(5),
+        );
         assert!(run(&s, &CancelToken::new(), |_, _| {}).is_err());
     }
 }

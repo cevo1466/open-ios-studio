@@ -1,0 +1,25 @@
+OVERVIEW: Cross-platform Xcode replacement
+
+USAGE: xtool <subcommand>
+
+OPTIONS:
+  --version               Show the version.
+  -h, --help              Show help information.
+
+CONFIGURATION SUBCOMMANDS:
+  setup                   Set up xtool for iOS development
+  auth                    Manage Apple Developer Services authentication
+  sdk                     Manage the Darwin Swift SDK
+
+DEVELOPMENT SUBCOMMANDS:
+  new                     Create a new xtool SwiftPM project
+  dev                     Build and run an xtool SwiftPM project
+  ds                      Interact with Apple Developer Services
+
+DEVICE SUBCOMMANDS:
+  devices                 List devices
+  install                 Install an ipa file to your device
+  uninstall               Uninstall an installed app
+  launch                  Launch an installed app
+
+  See 'xtool help <subcommand>' for detailed help.

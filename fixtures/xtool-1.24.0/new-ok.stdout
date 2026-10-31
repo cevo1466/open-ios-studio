@@ -1,0 +1,10 @@
+Creating package: Demo-App
+Creating Package.swift
+Creating xtool.yml
+Creating .gitignore
+Creating Sources/Demo_App/Demo_AppApp.swift
+Creating Sources/Demo_App/ContentView.swift
+
+Finished generating project Demo-App. Next steps:
+- Enter the directory with `cd Demo-App`
+- Build and run with `xtool dev`

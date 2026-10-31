@@ -1,6 +1,6 @@
 # xtool CLI Contracts
 
-Source: `xtool-org/xtool@bec5aa1` (release 1.24.0), `Sources/XToolSupport/*.swift`. Status for every row: **SUPPORTED_BY_SOURCE** (flags read from ArgumentParser declarations). Exact `--help` text is **BLOCKED** (no Swift/xtool on the dev host); it is captured later in CI (issue: M2 fixtures).
+Source: `xtool-org/xtool@bec5aa1` (release 1.24.0), `Sources/XToolSupport/*.swift`. Flags were first read from the ArgumentParser declarations, then confirmed against real `--help` output of xtool 1.24.0 captured in CI (`fixtures/xtool-1.24.0/`). Behaviour rows below marked observed come from the same capture.
 
 ## Global
 
@@ -36,7 +36,7 @@ Keys: `version` (must be `1`), `orgID`, `bundleID`, `product`, `infoPath`, `enti
 
 ## Generated project (`xtool new`) — SUPPORTED_BY_SOURCE
 
-Files: `Package.swift` (tools-version 6.0, platforms iOS 17 / macOS 14, **exactly one library product** = app), `xtool.yml` (`version: 1`, `bundleID: com.example.<name>`), `.gitignore`, `Sources/<Module>/<Module>App.swift`, `Sources/<Module>/ContentView.swift`. The Studio project generator must match this layout; no `.xcodeproj` is created.
+Files (observed): `.bsp/xtool.json`, `.gitignore`, `Package.swift` (tools-version 6.0, platforms iOS 17 / macOS 14, **exactly one library product** = app), `xtool.yml` (`version: 1`, `bundleID: com.example.<name>`), `.gitignore`, `Sources/<Module>/<Module>App.swift`, `Sources/<Module>/ContentView.swift`. The Studio project generator must match this layout; no `.xcodeproj` is created.
 
 ## Version compatibility policy
 
@@ -44,3 +44,15 @@ Files: `Package.swift` (tools-version 6.0, platforms iOS 17 / macOS 14, **exactl
 2. Inside the range: all adapter features on. Outside: features still allowed but banner "untested xtool version".
 3. A flag is used only if it appears in this document for the detected range; unknown versions fall back to `--version`/`--help` probing.
 4. Fixtures (captured CI stdout/stderr per version) back parser unit tests.
+
+## Observed behaviour (CI, xtool 1.24.0)
+| Case | Result |
+|---|---|
+| `xtool --version` | stdout `xtool 1.24.0`, exit 0 |
+| `xtool devices --no-wait` (no device) | empty output, exit 0 |
+| `xtool sdk status` (no SDK) | `Not installed`, exit 0 |
+| `xtool auth status` (logged out) | `Logged out`, exit 0 |
+| `xtool new --skip-setup Demo-App` | creates `.bsp/xtool.json`, `.gitignore`, `Package.swift`, `Sources/Demo_App/{ContentView,Demo_AppApp}.swift`, `xtool.yml`; exit 0 (module name replaces `-` with `_`) |
+| `xtool new --skip-setup 2bad` | stderr `Error: Package name '2bad' is invalid. …`, exit 1 |
+| `xtool new` into an existing path | stderr `Error: Cannot create Demo-App: a file already exists at that path.`, exit 1 |
+| `xtool dev build` without Package.swift | stderr `Error: Could not find Package.swift in this directory.`, exit 1 |

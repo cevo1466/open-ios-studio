@@ -1,0 +1,8 @@
+OVERVIEW: Get Apple Developer Services auth status
+
+USAGE: xtool auth status
+
+OPTIONS:
+  --version               Show the version.
+  -h, --help              Show help information.
+
