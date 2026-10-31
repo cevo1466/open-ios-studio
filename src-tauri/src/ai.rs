@@ -132,10 +132,7 @@ pub fn validate_ollama_base(url: &str) -> Result<(), String> {
         .strip_prefix("http://")
         .or_else(|| url.strip_prefix("https://"))
         .ok_or("Ollama URL must start with http:// or https://")?;
-    let authority = rest
-        .split(['/', '?', '#'])
-        .next()
-        .unwrap_or("");
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or("");
     if authority.contains('@') {
         return Err("Ollama URL must not contain credentials".to_string());
     }
