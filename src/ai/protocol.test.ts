@@ -105,6 +105,7 @@ describe('parseProposedChanges', () => {
     const body = 'let x = 1 // ' + 'a'.repeat(80) + '\n';
     const content = body.repeat(Math.floor(190_000 / body.length));
     const t = [1, 2, 3].map((i) => blk(`F${i}.swift`, content)).join('\n') + '\n' + 'noise\n'.repeat(10_000);
+    parseProposedChanges(t); // warm up JIT
     const s = performance.now();
     const r = parseProposedChanges(t);
     expect(performance.now() - s).toBeLessThan(200);

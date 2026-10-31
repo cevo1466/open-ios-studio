@@ -465,7 +465,9 @@ mod tests {
         ws.create_file("a.swift").expect("create");
         ws.write_file("a.swift", "x").expect("write");
         assert_eq!(
-            ws.read_file_if_exists("a.swift").expect("present").as_deref(),
+            ws.read_file_if_exists("a.swift")
+                .expect("present")
+                .as_deref(),
             Some("x")
         );
         assert!(ws.read_file_if_exists("../x").is_err());

@@ -6,8 +6,8 @@ mod xtool;
 
 use std::sync::Mutex;
 
-use secrets::SecretStore;
 use fs_engine::{Entry, FsError, ScanResult, Workspace};
+use secrets::SecretStore;
 use serde::Serialize;
 use tauri::ipc::Channel;
 use tauri::{Manager, State};
@@ -96,10 +96,7 @@ fn create_file(state: State<'_, AppState>, path: String) -> Result<(), String> {
 
 /// `None` when the file does not exist (used to tell new files from edits in the review).
 #[tauri::command]
-fn read_file_if_exists(
-    state: State<'_, AppState>,
-    path: String,
-) -> Result<Option<String>, String> {
+fn read_file_if_exists(state: State<'_, AppState>, path: String) -> Result<Option<String>, String> {
     with_workspace(&state, |ws| ws.read_file_if_exists(&path))
 }
 

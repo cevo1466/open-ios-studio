@@ -60,7 +60,11 @@ pub struct ChatRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum AiEvent {
     Delta {
         text: String,
@@ -245,7 +249,10 @@ pub fn build_request(
                 url: join_url(&endpoints.anthropic, "/v1/messages"),
                 headers: vec![
                     ("x-api-key".to_string(), key),
-                    ("anthropic-version".to_string(), ANTHROPIC_VERSION.to_string()),
+                    (
+                        "anthropic-version".to_string(),
+                        ANTHROPIC_VERSION.to_string(),
+                    ),
                     content_type,
                 ],
                 body,
