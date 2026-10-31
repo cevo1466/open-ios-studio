@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/cevo1466/open-ios-studio/policies/schema/rule.schema.json",
+  "title": "Policy rule catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["catalog", "policyVersion", "rules"],
+  "properties": {
+    "catalog": { "enum": ["app-store", "mobile-security"] },
+    "policyVersion": { "type": "string", "minLength": 1 },
+    "rules": { "type": "array", "items": { "$ref": "#/$defs/rule" } }
+  },
+  "$defs": {
+    "capabilityKey": {
+      "enum": [
+        "targetsAppStore", "hasUserAccounts", "hasSocialLogin", "hasSignInWithApple",
+        "hasSubscriptions", "hasInAppPurchases", "usesFirebase", "hasBackend",
+        "usesExternalApis", "processesPersonalData", "usesCamera", "usesMicrophone",
+        "usesLocation", "usesPhotos", "usesTracking", "usesWebView", "usesAI",
+        "hasAuthTokens", "hasDeepLinks", "hasExternalPaymentLinks", "hasOtpFlow",
+        "hasPasswordReset", "hasAdminRoles", "hasUserControlledUrlFetch", "hasCiWorkflows"
+      ]
+    },
+    "capabilityList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/capabilityKey" },
+      "uniqueItems": true
+    },
+    "applicability": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["always"],
+          "properties": { "always": { "const": true } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "all": { "$ref": "#/$defs/capabilityList" },
+            "any": { "$ref": "#/$defs/capabilityList" },
+            "none": { "$ref": "#/$defs/capabilityList" }
+          }
+        }
+      ]
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "name", "category", "platform", "applicability", "notApplicableReason",
+        "severity", "officialReference", "detectionMethod", "remediation", "autoFix",
+        "requiresApproval", "verification", "evidence", "implementation", "detectorId",
+        "lastVerified", "policyVersion"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^(ASR|MSEC)-\\d{3}$" },
+        "name": { "type": "string", "minLength": 1 },
+        "category": { "type": "string", "minLength": 1 },
+        "platform": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["ios", "android", "backend", "repo", "ai-agent"] }
+        },
+        "applicability": { "$ref": "#/$defs/applicability" },
+        "notApplicableReason": { "type": "string" },
+        "severity": { "enum": ["critical", "high", "medium", "low", "info"] },
+        "officialReference": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["title", "url"],
+          "properties": {
+            "title": { "type": "string", "minLength": 1 },
+            "url": { "type": "string", "minLength": 1 }
+          }
+        },
+        "detectionMethod": { "type": "string" },
+        "remediation": { "type": "string" },
+        "autoFix": { "enum": ["none", "safe", "needs-approval"] },
+        "requiresApproval": { "type": "boolean" },
+        "verification": { "type": "string" },
+        "evidence": { "type": "string" },
+        "implementation": { "enum": ["ENFORCED", "PARTIAL", "MANUAL_ONLY", "NOT_IMPLEMENTED"] },
+        "detectorId": { "type": ["string", "null"] },
+        "lastVerified": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+          ]
+        },
+        "policyVersion": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "implementation": { "enum": ["MANUAL_ONLY", "NOT_IMPLEMENTED"] } } },
+          "then": { "properties": { "detectorId": { "type": "null" } } },
+          "else": { "properties": { "detectorId": { "type": "string" } } }
+        }
+      ]
+    }
+  }
+}
