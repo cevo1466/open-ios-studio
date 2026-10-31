@@ -1,0 +1,28 @@
+[package]
+name = "open-ios-studio"
+version = "0.1.0"
+description = "AI-assisted iOS development environment built on xtool"
+license = "MIT"
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "open_ios_studio_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

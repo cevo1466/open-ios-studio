@@ -3,26 +3,27 @@
 Last updated: 2026-10-31
 
 ## Current stage
-Milestone 0 — research and architecture documents (PR from `research/m0-xtool-architecture`).
+Milestone 1 — desktop foundation (PR #13). M0 merged (PR #1).
 
 ## Done
-- Repo audited: `cevo1466/open-ios-studio` was empty (LICENSE MIT + README).
-- xtool analyzed from source: 1.24.0 / `bec5aa106ac31ce9ae49aaef93dfeabf0a097e35`.
-- Reverse-engineering skill `reverse-engineer-and-rebuild` confirmed installed on the dev host (not needed for source-level analysis).
-- Research docs, architecture, roadmap, risks, ADRs, CLAUDE.md written.
+- Tauri 2 + React + Vite + Monaco (Swift highlighting) app: open folder (native picker in Rust), explorer, tabs, create/edit/save (atomic), dirty tracking, settings (theme, font size), command palette, light/dark.
+- `fs_engine` (Rust): workspace root canonicalization, traversal and symlink-escape rejection, size cap, UTF-8 only, atomic write.
+- Not-yet-built features are visible but disabled and labelled with their milestone.
+- CI: `ci.yml` (typecheck, eslint, vitest, build, npm audit, cargo fmt/clippy/test, advisory cargo-audit) and `build-linux.yml` (DEB + AppImage + SHA256).
+- Found and fixed in CI: rustfmt diff; critical `dompurify` advisory pulled in by monaco-editor (pinned `monaco-editor@0.56.0`, `overrides: dompurify ^3.4.17`).
 
 ## Test status
-No code yet. Dynamic xtool analysis: **BLOCKED** (dev host has no Swift/xtool/device/Apple ID).
+- Vitest: 9 passed (reducer, settings). ESLint, tsc, vite build: pass locally and in CI.
+- Rust: fmt, clippy `-D warnings`, `cargo test` (fs_engine incl. symlink escape): pass in CI.
+- Artifact inspection: SHA256 verified; DEB structure and contents listed (binary `usr/bin/open-ios-studio`, desktop entry, icons); AppImage is an ELF, 80 MB.
+- **NOT VERIFIED:** the app window launching on a real Linux desktop (no display on dev host). Owner must run the DEB/AppImage on Linux Mint.
+- **Not delivered yet:** Playwright smoke test, Rust-side IPC integration test, window-close warning for unsaved changes, secret scanning job.
 
-## Open PRs
-See repository PR list (M0 docs PR).
+## Known issues
+- Bundle ships Monaco language workers (ts/css/html/json) that are not wired; ~14 MB frontend. Can be trimmed later.
+- GitHub Actions pinned by major tag, not SHA (hardening TODO).
+- Placeholder generated icon.
 
 ## Next
-1. Owner reviews M0 PR.
-2. M1 skeleton on `feature/m1-desktop-foundation`, verified only through GitHub Actions.
-3. Policy Engine core PR afterwards.
-
-## Needs owner decision / external
-- Apple ID, iPhone, Xcode.xip for real xtool tests (M2/M4).
-- Release tags / public release: explicit approval required.
-- Confirm DEB/AppImage launch on Linux Mint after M1 artifacts exist.
+1. Policy Engine core PR (`feature/policy-engine-core`).
+2. M2 xtool adapter.
