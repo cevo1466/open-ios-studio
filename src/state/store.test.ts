@@ -43,7 +43,7 @@ describe('editor reducer', () => {
 
   it('resets tabs when another workspace opens', () => {
     const s = reducer(open(initialState, 'a'), { type: 'workspace', root: '/w' });
-    expect(s).toEqual({ workspace: '/w', tabs: [], active: null });
+    expect(s).toMatchObject({ workspace: '/w', tabs: [], active: null });
   });
 
   it('ignores activation of unknown tabs', () => {
@@ -56,7 +56,8 @@ describe('reloaded', () => {
   it('replaces content and saved snapshot of an open tab only', () => {
     let s = reducer(initialState, { type: 'open', path: 'a', content: 'x' });
     s = reducer(s, { type: 'reloaded', path: 'a', content: 'from-disk' });
-    expect(s.tabs[0]).toEqual({ path: 'a', content: 'from-disk', saved: 'from-disk' });
+    expect(s.tabs[0]).toMatchObject({ path: 'a', content: 'from-disk', saved: 'from-disk' });
+    expect(s.tabs[0].rev).toBeGreaterThan(1);
     expect(reducer(s, { type: 'reloaded', path: 'zzz', content: 'q' })).toEqual(s);
   });
 });

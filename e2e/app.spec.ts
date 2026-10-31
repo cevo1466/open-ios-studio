@@ -44,7 +44,9 @@ test.describe('with fake desktop backend', () => {
     await expect(editor).toBeVisible();
     await editor.click();
     await page.keyboard.press('Control+End');
-    await page.keyboard.type('// edited');
+    await page.keyboard.type('let edited = 1');
+    // Wait until Monaco has rendered the whole input; pressing Ctrl+S earlier would save a stale snapshot.
+    await expect(page.locator('.view-lines').first()).toContainText(/let\s+edited\s*=\s*1/);
 
     const dirty = page.getByRole('tab', { name: /ContentView\.swift/ }).getByTitle('Unsaved changes');
     await expect(dirty).toBeVisible();
@@ -52,7 +54,7 @@ test.describe('with fake desktop backend', () => {
     await page.keyboard.press('Control+S');
     await expect(page.getByTitle('Unsaved changes')).toHaveCount(0);
     await expect
-      .poll(async () => (await fsWrites(page)).some((w) => w.path === 'Sources/Demo/ContentView.swift' && w.content.includes('// edited')))
+      .poll(async () => (await fsWrites(page)).some((w) => w.path === 'Sources/Demo/ContentView.swift' && w.content.includes('let edited = 1')))
       .toBe(true);
   });
 

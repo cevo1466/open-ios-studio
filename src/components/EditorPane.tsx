@@ -1,4 +1,5 @@
-import Editor from '@monaco-editor/react';
+import { useEffect, useRef } from 'react';
+import Editor, { type OnMount } from '@monaco-editor/react';
 import type { Tab } from '../state/store';
 import { isDirty } from '../state/store';
 
@@ -31,6 +32,25 @@ interface Props {
 
 export function EditorPane({ tabs, active, theme, fontSize, onActivate, onClose, onChange, onSave }: Props) {
   const current = tabs.find((t) => t.path === active);
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+  const appliedRev = useRef(new Map<string, number>());
+  const path = current?.path;
+  const rev = current?.rev;
+  const content = current?.content;
+
+  // The editor is uncontrolled while the user types: feeding every keystroke back through React
+  // state raced with fast input and scrambled characters. Only content replaced from outside the
+  // editor (a new tab, a reload after an approved AI change) is pushed in, tracked by `rev`.
+  useEffect(() => {
+    if (path === undefined || rev === undefined) return;
+    const seen = appliedRev.current.get(path);
+    appliedRev.current.set(path, rev);
+    if (seen === rev) return;
+    const model = editorRef.current?.getModel();
+    if (model && content !== undefined && model.getValue() !== content) model.setValue(content);
+    // `content` is intentionally not a dependency: it changes on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [path, rev]);
   return (
     <section className="editor-pane" aria-label="Editor">
       <div className="tabs" role="tablist">
@@ -50,11 +70,12 @@ export function EditorPane({ tabs, active, theme, fontSize, onActivate, onClose,
         <Editor
           path={current.path}
           language={languageFor(current.path)}
-          value={current.content}
+          defaultValue={current.content}
           theme={theme === 'dark' ? 'vs-dark' : 'vs'}
           options={{ fontSize, minimap: { enabled: false }, automaticLayout: true, scrollBeyondLastLine: false }}
           onChange={(value) => onChange(current.path, value ?? '')}
           onMount={(editor, monaco) => {
+            editorRef.current = editor;
             editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, onSave);
           }}
         />

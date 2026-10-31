@@ -11,6 +11,10 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:1420',
     trace: 'on-first-retry',
+    // Optional: use a system Chromium (for example on musl hosts where Playwright's build cannot run).
+    launchOptions: process.env.CHROMIUM_PATH
+      ? { executablePath: process.env.CHROMIUM_PATH, args: ['--no-sandbox', '--disable-dev-shm-usage'] }
+      : {},
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {

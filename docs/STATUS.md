@@ -5,6 +5,7 @@ Last updated: 2026-10-31
 ## M4 + M5 (this PR)
 - Devices panel: `xtool devices --no-wait`, `auth status`, run on device (`dev run`), launch by bundle id; UDID/bundle id validated in Rust. Device output format is from xtool source (no device in CI): NOT VERIFIED on hardware. Device-dependent tests are BLOCKED.
 - Not delivered: test-result view (no iOS test runner is available through xtool on Linux), signing flow UI beyond showing `auth status` (login stays in the user's terminal by design).
+- Bug found by the E2E suite and fixed: the Monaco editor was controlled by React state, so fast typing raced with re-renders and scrambled characters (`let edited` became `ltedie`). The editor is now uncontrolled while typing; only external changes (new tab, reload after an approved AI change) are pushed in via a per-tab `rev`.
 - E2E: Playwright against a mocked Tauri IPC (CI job `e2e`), gitleaks secret scan (CI job `secret-scan`).
 - Release: `release.yml` (tag-triggered pre-release with checksums), SECURITY/CONTRIBUTING/CODE_OF_CONDUCT/CHANGELOG/RELEASING docs.
 
