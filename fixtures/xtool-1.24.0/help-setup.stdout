@@ -1,0 +1,12 @@
+OVERVIEW: Set up xtool for iOS development
+
+Authenticates with Apple if needed, then adds the iOS SDK to SwiftPM.
+
+Equivalent to running `xtool auth && xtool sdk`
+
+USAGE: xtool setup
+
+OPTIONS:
+  --version               Show the version.
+  -h, --help              Show help information.
+

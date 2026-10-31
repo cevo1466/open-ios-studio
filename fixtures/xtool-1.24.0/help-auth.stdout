@@ -1,0 +1,14 @@
+OVERVIEW: Manage Apple Developer Services authentication
+
+USAGE: xtool auth <subcommand>
+
+OPTIONS:
+  --version               Show the version.
+  -h, --help              Show help information.
+
+SUBCOMMANDS:
+  login (default)         Log in to Apple Developer Services
+  logout                  Log out of Apple Developer Services
+  status                  Get Apple Developer Services auth status
+
+  See 'xtool help auth <subcommand>' for detailed help.

@@ -1,0 +1,1 @@
+Error: Package name '2bad' is invalid. The package name must start with one of [a-z, A-Z, _]. Found '2'.

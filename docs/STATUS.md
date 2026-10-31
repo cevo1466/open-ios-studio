@@ -2,6 +2,11 @@
 
 Last updated: 2026-10-31
 
+## M2 (PR #15, in progress)
+- Shell-free runner, xtool adapter (version, sdk status, new, build), Build panel, real xtool 1.24.0 CLI fixtures captured in CI and used in tests.
+- BLOCKED: real build, signing, device (need Darwin SDK/Apple ID/iPhone).
+- rustfmt patch artifact step added to CI (uploads a patch when formatting fails).
+
 ## Current stage
 Policy Engine core (branch `feature/policy-engine-core`). M0 (#1) and M1 (#13) are merged.
 

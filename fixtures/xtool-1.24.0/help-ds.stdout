@@ -1,0 +1,17 @@
+OVERVIEW: Interact with Apple Developer Services
+
+USAGE: xtool ds <subcommand>
+
+OPTIONS:
+  --version               Show the version.
+  -h, --help              Show help information.
+
+SUBCOMMANDS:
+  teams                   Interact with development teams
+  certificates            Interact with certificates
+  identifiers             Interact with bundle identifiers
+  devices                 Interact with devices
+  profiles                Interact with profiles
+  anisette                Test out Anisette data
+
+  See 'xtool help ds <subcommand>' for detailed help.

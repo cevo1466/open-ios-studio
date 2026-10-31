@@ -1,0 +1,15 @@
+OVERVIEW: Build and run an xtool SwiftPM project
+
+USAGE: xtool dev <subcommand>
+
+OPTIONS:
+  --version               Show the version.
+  -h, --help              Show help information.
+
+SUBCOMMANDS:
+  generate-xcode-project  Generate Xcode project
+  build                   Build app with SwiftPM
+  run (default)           Build and run app with SwiftPM
+  build-server            Run build server
+
+  See 'xtool help dev <subcommand>' for detailed help.

@@ -1,0 +1,14 @@
+OVERVIEW: Launch an installed app
+
+USAGE: xtool launch [--udid <udid>] [--usb] [--network] [--all] <bundle-id> [<arg> ...]
+
+ARGUMENTS:
+  <bundle-id>             The app to launch
+  <arg>                   Launch arguments to pass to the app
+
+OPTIONS:
+  -u, --udid <udid>
+  --usb/--network/--all   (default: --all)
+  --version               Show the version.
+  -h, --help              Show help information.
+

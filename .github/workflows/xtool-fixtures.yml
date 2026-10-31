@@ -1,0 +1,42 @@
+name: Capture xtool CLI fixtures
+
+# Observes the real xtool CLI (pinned release, checksum-verified) without credentials, SDK or device.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/xtool-fixtures.yml
+      - scripts/capture-xtool.sh
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-22.04
+    env:
+      XTOOL_VERSION: "1.24.0"
+      # sha256 published by GitHub for xtool-x86_64.AppImage of release 1.24.0
+      XTOOL_SHA256: dbfd9d7216f077c84c171b688c4173c37c23ca76bf7fd185d1a9ae8a53dab59f
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download pinned xtool and verify checksum
+        run: |
+          curl -fL "https://github.com/xtool-org/xtool/releases/download/${XTOOL_VERSION}/xtool-x86_64.AppImage" -o xtool
+          echo "${XTOOL_SHA256}  xtool" | sha256sum -c -
+          chmod +x xtool
+      - name: Capture CLI behaviour
+        run: scripts/capture-xtool.sh "$PWD/xtool" "$PWD/captured/xtool-${XTOOL_VERSION}"
+      - name: Show captured exit codes
+        run: |
+          for f in captured/xtool-*/*.exit; do printf '%s %s\n' "$(cat "$f")" "$(basename "$f" .exit)"; done
+      - name: REA process-capture help (reverse-engineer-and-rebuild skill tooling, best effort)
+        continue-on-error: true
+        run: |
+          mkdir -p captured/rea
+          npx -y rea-agents@6.8.0 capture-process --help > captured/rea/capture-process-help.txt 2>&1 || true
+          head -40 captured/rea/capture-process-help.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xtool-cli-fixtures
+          path: captured

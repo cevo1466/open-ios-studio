@@ -1,0 +1,12 @@
+OVERVIEW: Interact with development teams
+
+USAGE: xtool ds teams <subcommand>
+
+OPTIONS:
+  --version               Show the version.
+  -h, --help              Show help information.
+
+SUBCOMMANDS:
+  list (default)          List teams
+
+  See 'xtool help ds teams <subcommand>' for detailed help.

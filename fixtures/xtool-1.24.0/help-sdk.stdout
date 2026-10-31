@@ -1,0 +1,16 @@
+OVERVIEW: Manage the Darwin Swift SDK
+
+USAGE: xtool sdk <subcommand>
+
+OPTIONS:
+  --version               Show the version.
+  -h, --help              Show help information.
+
+SUBCOMMANDS:
+  install (default)       Install the Darwin Swift SDK
+  update                  Update the installed Darwin Swift SDK
+  remove                  Remove the Darwin Swift SDK
+  build                   Build the Darwin SDK from Xcode.xip
+  status                  Get the status of the Darwin Swift SDK
+
+  See 'xtool help sdk <subcommand>' for detailed help.

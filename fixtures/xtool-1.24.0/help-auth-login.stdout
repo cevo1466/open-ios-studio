@@ -1,0 +1,12 @@
+OVERVIEW: Log in to Apple Developer Services
+
+USAGE: xtool auth login [--username <username>] [--password <password>] [--mode <mode>]
+
+OPTIONS:
+  -u, --username <username>
+                          Apple ID
+  -p, --password <password>
+  -m, --mode <mode>       (values: key, password)
+  --version               Show the version.
+  -h, --help              Show help information.
+

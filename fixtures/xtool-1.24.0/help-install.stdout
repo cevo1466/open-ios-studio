@@ -1,0 +1,13 @@
+OVERVIEW: Install an ipa file to your device
+
+USAGE: xtool install [--udid <udid>] [--usb] [--network] [--all] <path>
+
+ARGUMENTS:
+  <path>                  The path to a custom app/ipa to install
+
+OPTIONS:
+  -u, --udid <udid>
+  --usb/--network/--all   (default: --all)
+  --version               Show the version.
+  -h, --help              Show help information.
+

@@ -1,0 +1,13 @@
+OVERVIEW: Uninstall an installed app
+
+USAGE: xtool uninstall [--udid <udid>] [--usb] [--network] [--all] <bundle-id>
+
+ARGUMENTS:
+  <bundle-id>             The app to uninstall
+
+OPTIONS:
+  -u, --udid <udid>
+  --usb/--network/--all   (default: --all)
+  --version               Show the version.
+  -h, --help              Show help information.
+
