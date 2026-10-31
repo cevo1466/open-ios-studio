@@ -40,6 +40,35 @@ pub struct Entry {
     pub is_dir: bool,
 }
 
+#[derive(Debug, Serialize, PartialEq, Eq)]
+pub struct ScannedFile {
+    pub path: String,
+    pub content: String,
+}
+
+#[derive(Debug, Default, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanResult {
+    pub files: Vec<ScannedFile>,
+    /// True when a file-count or total-size limit stopped the scan early.
+    pub truncated: bool,
+    /// Symlinks, binary, oversized or unreadable files that were not read.
+    pub skipped: usize,
+}
+
+pub const SCAN_MAX_FILES: usize = 3000;
+pub const SCAN_MAX_FILE_BYTES: u64 = 1024 * 1024;
+pub const SCAN_MAX_TOTAL_BYTES: u64 = 32 * 1024 * 1024;
+const SCAN_SKIP_DIRS: [&str; 7] = [
+    ".git",
+    "node_modules",
+    ".build",
+    "Pods",
+    "target",
+    "dist",
+    "DerivedData",
+];
+
 #[derive(Debug)]
 pub struct Workspace {
     root: PathBuf,
@@ -189,6 +218,61 @@ impl Workspace {
         result
     }
 
+    /// Read every small UTF-8 text file under the root for static policy analysis.
+    /// Symlinks are never followed; build and dependency directories are skipped.
+    pub fn scan_text_files(&self) -> ScanResult {
+        let mut result = ScanResult::default();
+        let mut total: u64 = 0;
+        let mut stack = vec![self.root.clone()];
+        'outer: while let Some(dir) = stack.pop() {
+            let Ok(read) = fs::read_dir(&dir) else {
+                result.skipped += 1;
+                continue;
+            };
+            for item in read.flatten() {
+                let Ok(kind) = item.file_type() else {
+                    result.skipped += 1;
+                    continue;
+                };
+                if kind.is_symlink() {
+                    result.skipped += 1;
+                } else if kind.is_dir() {
+                    let name = item.file_name();
+                    if !SCAN_SKIP_DIRS.iter().any(|skip| name == *skip) {
+                        stack.push(item.path());
+                    }
+                } else if kind.is_file() {
+                    if result.files.len() >= SCAN_MAX_FILES || total >= SCAN_MAX_TOTAL_BYTES {
+                        result.truncated = true;
+                        break 'outer;
+                    }
+                    let path = item.path();
+                    let text = item
+                        .metadata()
+                        .ok()
+                        .filter(|meta| meta.len() <= SCAN_MAX_FILE_BYTES)
+                        .and_then(|meta| {
+                            let bytes = fs::read(&path).ok()?;
+                            let text = String::from_utf8(bytes).ok()?;
+                            Some((meta.len(), text))
+                        });
+                    match text {
+                        Some((len, content)) => {
+                            total += len;
+                            result.files.push(ScannedFile {
+                                path: self.rel_of(&path),
+                                content,
+                            });
+                        }
+                        None => result.skipped += 1,
+                    }
+                }
+            }
+        }
+        result.files.sort_by(|a, b| a.path.cmp(&b.path));
+        result
+    }
+
     pub fn create_file(&self, rel: &str) -> Result<(), FsError> {
         let target = self.resolve(rel)?;
         if fs::symlink_metadata(&target).is_ok() {
@@ -306,6 +390,26 @@ mod tests {
             ws.write_file("big2.txt", &"a".repeat((MAX_FILE_BYTES + 1) as usize)),
             Err(FsError::TooLarge(_))
         ));
+    }
+
+    #[test]
+    fn scan_reads_text_and_skips_build_dirs_binaries_and_symlinks() {
+        let (_d, ws) = ws();
+        fs::create_dir_all(ws.root().join("Sources")).expect("mkdir");
+        fs::create_dir_all(ws.root().join("node_modules/pkg")).expect("mkdir");
+        fs::create_dir_all(ws.root().join(".git")).expect("mkdir");
+        fs::write(ws.root().join("Sources/App.swift"), "import SwiftUI").expect("write");
+        fs::write(ws.root().join("node_modules/pkg/i.js"), "x").expect("write");
+        fs::write(ws.root().join(".git/config"), "x").expect("write");
+        fs::write(ws.root().join("image.bin"), [0xff, 0xfe, 0x00]).expect("write");
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(ws.root().join("Sources"), ws.root().join("link"))
+            .expect("symlink");
+        let scan = ws.scan_text_files();
+        let paths: Vec<_> = scan.files.iter().map(|f| f.path.as_str()).collect();
+        assert_eq!(paths, vec!["Sources/App.swift"]);
+        assert!(!scan.truncated);
+        assert!(scan.skipped >= 1);
     }
 
     #[test]

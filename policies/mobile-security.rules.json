@@ -1,0 +1,763 @@
+{
+  "catalog": "mobile-security",
+  "policyVersion": "2026.10.0",
+  "rules": [
+    {
+      "id": "MSEC-001",
+      "name": "Object Level Authorization (BOLA/IDOR)",
+      "category": "Authorization",
+      "platform": [
+        "backend"
+      ],
+      "applicability": {
+        "all": [
+          "hasBackend"
+        ]
+      },
+      "notApplicableReason": "The project has no backend, so there are no server-side object endpoints to protect.",
+      "severity": "high",
+      "officialReference": {
+        "title": "OWASP ASVS V4 Access Control",
+        "url": "https://owasp.org/www-project-application-security-verification-standard/"
+      },
+      "detectionMethod": "Server-side behaviour test: authenticated user A requests objects owned by user B and must be denied.",
+      "remediation": "Enforce per-object ownership checks on the server for every object identifier.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Authorization test suite against the running backend with two distinct accounts.",
+      "evidence": "Test request/response pairs showing denial of cross-account access.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-002",
+      "name": "Mass Assignment Protection",
+      "category": "Authorization",
+      "platform": [
+        "backend"
+      ],
+      "applicability": {
+        "all": [
+          "hasBackend"
+        ]
+      },
+      "notApplicableReason": "The project has no backend that binds client input to server-side models.",
+      "severity": "high",
+      "officialReference": {
+        "title": "OWASP ASVS V5 Validation and V13 API",
+        "url": "https://owasp.org/www-project-application-security-verification-standard/"
+      },
+      "detectionMethod": "Server-side test: send extra privileged fields (role, isAdmin, ownerId) and verify they are ignored or rejected.",
+      "remediation": "Use explicit allow-lists of bindable fields; never bind request bodies directly to persistence models.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "API test submitting unexpected fields to create/update endpoints.",
+      "evidence": "Test output showing privileged fields were not persisted.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-003",
+      "name": "Token Lifetime (MASVS-AUTH)",
+      "category": "Authentication",
+      "platform": [
+        "ios",
+        "android",
+        "backend"
+      ],
+      "applicability": {
+        "all": [
+          "hasAuthTokens"
+        ]
+      },
+      "notApplicableReason": "The project does not issue or store authentication tokens.",
+      "severity": "high",
+      "officialReference": {
+        "title": "OWASP MASVS-AUTH",
+        "url": "https://mas.owasp.org/MASVS/"
+      },
+      "detectionMethod": "Inspect token issuance configuration and run server tests for expiry of access and refresh tokens.",
+      "remediation": "Use short-lived access tokens, bounded refresh token lifetime and rotation.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Backend token configuration review plus expiry tests.",
+      "evidence": "Token issuer configuration and expiry test results.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-004",
+      "name": "Logout Revocation (MASVS-AUTH)",
+      "category": "Authentication",
+      "platform": [
+        "ios",
+        "android",
+        "backend"
+      ],
+      "applicability": {
+        "all": [
+          "hasAuthTokens"
+        ]
+      },
+      "notApplicableReason": "The project does not issue or store authentication tokens, so there is nothing to revoke on logout.",
+      "severity": "high",
+      "officialReference": {
+        "title": "OWASP MASVS-AUTH",
+        "url": "https://mas.owasp.org/MASVS/"
+      },
+      "detectionMethod": "Server behaviour test: after logout the previous refresh and access tokens must be rejected.",
+      "remediation": "Revoke refresh tokens server-side on logout and clear local credentials.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Runtime test that replays tokens after logout.",
+      "evidence": "Replay request results showing rejection.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-005",
+      "name": "Administrative MFA (MASVS-AUTH)",
+      "category": "Authentication",
+      "platform": [
+        "backend"
+      ],
+      "applicability": {
+        "all": [
+          "hasAdminRoles"
+        ]
+      },
+      "notApplicableReason": "The project has no administrative roles, so administrative MFA does not apply.",
+      "severity": "high",
+      "officialReference": {
+        "title": "OWASP MASVS-AUTH",
+        "url": "https://mas.owasp.org/MASVS/"
+      },
+      "detectionMethod": "Review of identity-provider and admin-login configuration; requires access to the live system.",
+      "remediation": "Require multi-factor authentication for every administrative account and action.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Manual review of admin authentication configuration.",
+      "evidence": "Screenshot or export of MFA enforcement settings.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-006",
+      "name": "OTP Rate Limiting",
+      "category": "Authentication",
+      "platform": [
+        "backend"
+      ],
+      "applicability": {
+        "all": [
+          "hasOtpFlow"
+        ]
+      },
+      "notApplicableReason": "The project has no one-time-password flow.",
+      "severity": "high",
+      "officialReference": {
+        "title": "OWASP ASVS V2 Authentication",
+        "url": "https://owasp.org/www-project-application-security-verification-standard/"
+      },
+      "detectionMethod": "Server behaviour test: repeated OTP requests and verification attempts must be throttled and locked out.",
+      "remediation": "Limit OTP generation and verification attempts per account, device and IP; expire codes quickly.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Load/abuse test against OTP endpoints.",
+      "evidence": "Rate limit responses (HTTP 429) observed in tests.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-007",
+      "name": "Geographic Access Controls (product-dependent)",
+      "category": "Access Control",
+      "platform": [
+        "backend"
+      ],
+      "applicability": {
+        "all": [
+          "hasBackend"
+        ]
+      },
+      "notApplicableReason": "The project has no backend on which geographic restrictions could be enforced.",
+      "severity": "info",
+      "officialReference": {
+        "title": "OWASP ASVS V4 Access Control",
+        "url": "https://owasp.org/www-project-application-security-verification-standard/"
+      },
+      "detectionMethod": "Cannot be determined automatically: whether geographic restriction is required is a product, legal and threat-model decision.",
+      "remediation": "Apply geographic restrictions only when the product or legal requirements call for them. This rule is never mandatory.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Human review of product and legal requirements.",
+      "evidence": "Recorded decision on whether geographic controls are required.",
+      "implementation": "MANUAL_ONLY",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-008",
+      "name": "Account Enumeration Protection",
+      "category": "Authentication",
+      "platform": [
+        "backend"
+      ],
+      "applicability": {
+        "all": [
+          "hasUserAccounts",
+          "hasBackend"
+        ]
+      },
+      "notApplicableReason": "The project has no user accounts or no backend, so account enumeration is not a concern.",
+      "severity": "medium",
+      "officialReference": {
+        "title": "OWASP ASVS V2 Authentication",
+        "url": "https://owasp.org/www-project-application-security-verification-standard/"
+      },
+      "detectionMethod": "Server behaviour test: login, registration and reset responses must not reveal whether an account exists.",
+      "remediation": "Return uniform responses and timing for existing and non-existing accounts.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Compare responses for known and unknown identifiers.",
+      "evidence": "Response comparison for existing vs non-existing accounts.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-009",
+      "name": "Password Reset Security",
+      "category": "Authentication",
+      "platform": [
+        "backend"
+      ],
+      "applicability": {
+        "all": [
+          "hasPasswordReset"
+        ]
+      },
+      "notApplicableReason": "The project has no password reset flow.",
+      "severity": "high",
+      "officialReference": {
+        "title": "OWASP ASVS V2 Authentication (credential recovery)",
+        "url": "https://owasp.org/www-project-application-security-verification-standard/"
+      },
+      "detectionMethod": "Server behaviour test: reset tokens must be single-use, short-lived, unguessable and not leak account existence.",
+      "remediation": "Use random single-use reset tokens with short expiry and invalidate sessions after reset.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Test of the reset flow against the running backend.",
+      "evidence": "Reset token expiry and reuse test results.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-010",
+      "name": "Expensive Endpoint Rate Limiting",
+      "category": "Availability",
+      "platform": [
+        "backend"
+      ],
+      "applicability": {
+        "all": [
+          "hasBackend",
+          "usesAI"
+        ]
+      },
+      "notApplicableReason": "The project has no backend or no AI/expensive endpoints requiring cost-based rate limiting.",
+      "severity": "medium",
+      "officialReference": {
+        "title": "OWASP ASVS V13 API and Web Service",
+        "url": "https://owasp.org/www-project-application-security-verification-standard/"
+      },
+      "detectionMethod": "Server behaviour test: costly endpoints (AI, search, export) must enforce per-user quotas and rate limits.",
+      "remediation": "Apply per-user and global rate limits and spending caps to expensive endpoints.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Abuse test against expensive endpoints.",
+      "evidence": "Throttling responses and configured quotas.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-011",
+      "name": "SSRF Protection",
+      "category": "Network",
+      "platform": [
+        "backend"
+      ],
+      "applicability": {
+        "all": [
+          "hasUserControlledUrlFetch"
+        ]
+      },
+      "notApplicableReason": "The project does not fetch user-controlled URLs.",
+      "severity": "high",
+      "officialReference": {
+        "title": "OWASP ASVS V12 Files and Resources (SSRF)",
+        "url": "https://owasp.org/www-project-application-security-verification-standard/"
+      },
+      "detectionMethod": "Server behaviour test: fetches to internal, loopback and metadata addresses must be blocked, including via redirects and DNS rebinding.",
+      "remediation": "Use an allow-list of destinations, resolve and validate addresses, disable redirects or re-validate them.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "SSRF test payloads against URL-fetching endpoints.",
+      "evidence": "Blocked request logs for internal address payloads.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-012",
+      "name": "Secure Storage (MASVS-STORAGE)",
+      "category": "Storage",
+      "platform": [
+        "ios",
+        "android"
+      ],
+      "applicability": {
+        "any": [
+          "processesPersonalData",
+          "hasAuthTokens"
+        ]
+      },
+      "notApplicableReason": "The project neither processes personal data nor stores authentication tokens.",
+      "severity": "high",
+      "officialReference": {
+        "title": "Apple Security framework (Keychain Services) / OWASP MASVS-STORAGE",
+        "url": "https://developer.apple.com/documentation/security"
+      },
+      "detectionMethod": "Source scan for sensitive data written to UserDefaults, plain files or logs instead of the iOS Keychain. Cannot prove runtime behaviour.",
+      "remediation": "Store credentials and sensitive data in the Keychain with an appropriate accessibility class.",
+      "autoFix": "needs-approval",
+      "requiresApproval": true,
+      "verification": "Detector findings plus manual review of data flows.",
+      "evidence": "File, line and snippet of insecure storage use.",
+      "implementation": "PARTIAL",
+      "detectorId": "MSEC-012",
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-013",
+      "name": "Firebase App Check",
+      "category": "Platform",
+      "platform": [
+        "ios",
+        "android",
+        "backend"
+      ],
+      "applicability": {
+        "all": [
+          "usesFirebase"
+        ]
+      },
+      "notApplicableReason": "The project does not use Firebase.",
+      "severity": "medium",
+      "officialReference": {
+        "title": "OWASP MASVS-AUTH / MASVS-RESILIENCE",
+        "url": "https://mas.owasp.org/MASVS/"
+      },
+      "detectionMethod": "Source scan for App Check initialisation in the app. Server-side enforcement in Firebase console is not verifiable from source.",
+      "remediation": "Enable Firebase App Check in the app and enforce it for Firebase services.",
+      "autoFix": "needs-approval",
+      "requiresApproval": true,
+      "verification": "Detector findings plus console review for enforcement.",
+      "evidence": "Presence or absence of App Check initialisation code.",
+      "implementation": "PARTIAL",
+      "detectorId": "MSEC-013",
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-014",
+      "name": "Mobile Binary Secret Exposure (MASVS-STORAGE)",
+      "category": "Secrets",
+      "platform": [
+        "ios",
+        "android"
+      ],
+      "applicability": {
+        "always": true
+      },
+      "notApplicableReason": "This rule applies to every project.",
+      "severity": "critical",
+      "officialReference": {
+        "title": "OWASP MASVS-STORAGE",
+        "url": "https://mas.owasp.org/MASVS/"
+      },
+      "detectionMethod": "Source scan for hardcoded secrets and keys. iOS IPA and Android APK artifacts must be analysed separately; built-artifact analysis is not performed here.",
+      "remediation": "Remove embedded secrets, rotate any exposed key and fetch secrets from a backend at runtime.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Detector findings on source; separate IPA and APK inspection by a human.",
+      "evidence": "File, line and redacted secret snippet.",
+      "implementation": "PARTIAL",
+      "detectorId": "MSEC-014",
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-015",
+      "name": "Code Hardening (MASVS-RESILIENCE)",
+      "category": "Resilience",
+      "platform": [
+        "ios",
+        "android"
+      ],
+      "applicability": {
+        "always": true
+      },
+      "notApplicableReason": "This rule applies to every project.",
+      "severity": "info",
+      "officialReference": {
+        "title": "OWASP MASVS-RESILIENCE",
+        "url": "https://mas.owasp.org/MASVS/"
+      },
+      "detectionMethod": "Cannot be automated: obfuscation is not a security control and hardening depends on the threat model.",
+      "remediation": "Apply hardening only where the threat model requires it; do not rely on obfuscation for security.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Human review of the threat model and hardening choices.",
+      "evidence": "Recorded threat-model decision.",
+      "implementation": "MANUAL_ONLY",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-016",
+      "name": "Secure Token Storage (MASVS-STORAGE)",
+      "category": "Storage",
+      "platform": [
+        "ios",
+        "android"
+      ],
+      "applicability": {
+        "all": [
+          "hasAuthTokens"
+        ]
+      },
+      "notApplicableReason": "The project does not store authentication tokens.",
+      "severity": "high",
+      "officialReference": {
+        "title": "Apple Security framework (Keychain Services) / OWASP MASVS-STORAGE",
+        "url": "https://developer.apple.com/documentation/security"
+      },
+      "detectionMethod": "Source scan for tokens persisted in UserDefaults, plain files, or logs rather than the Keychain.",
+      "remediation": "Persist tokens only in the Keychain; never log them.",
+      "autoFix": "needs-approval",
+      "requiresApproval": true,
+      "verification": "Detector findings plus manual review.",
+      "evidence": "File, line and snippet of insecure token handling.",
+      "implementation": "PARTIAL",
+      "detectorId": "MSEC-016",
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-017",
+      "name": "Backup Data Protection (MASVS-STORAGE)",
+      "category": "Storage",
+      "platform": [
+        "ios",
+        "android"
+      ],
+      "applicability": {
+        "all": [
+          "processesPersonalData"
+        ]
+      },
+      "notApplicableReason": "The project does not process personal data.",
+      "severity": "medium",
+      "officialReference": {
+        "title": "OWASP MASVS-STORAGE",
+        "url": "https://mas.owasp.org/MASVS/"
+      },
+      "detectionMethod": "Review whether sensitive files are excluded from device backups; requires knowledge of data classification.",
+      "remediation": "Exclude sensitive files from backups and use data protection classes.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Manual review of file storage locations and backup flags.",
+      "evidence": "List of sensitive files and backup exclusion status.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-018",
+      "name": "Deep Link Validation (MASVS-PLATFORM)",
+      "category": "Platform",
+      "platform": [
+        "ios",
+        "android"
+      ],
+      "applicability": {
+        "all": [
+          "hasDeepLinks"
+        ]
+      },
+      "notApplicableReason": "The project does not handle deep links or universal links.",
+      "severity": "medium",
+      "officialReference": {
+        "title": "OWASP MASVS-PLATFORM",
+        "url": "https://mas.owasp.org/MASVS/"
+      },
+      "detectionMethod": "Review of deep link handlers for input validation and authentication checks; requires data-flow analysis.",
+      "remediation": "Validate and sanitise all deep link parameters; use universal links and require authentication for sensitive actions.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Manual review and runtime test of link handlers.",
+      "evidence": "Handler code references and test results.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-019",
+      "name": "TLS & Certificate Validation (MASVS-NETWORK)",
+      "category": "Network",
+      "platform": [
+        "ios",
+        "android"
+      ],
+      "applicability": {
+        "any": [
+          "usesExternalApis",
+          "hasBackend"
+        ]
+      },
+      "notApplicableReason": "The project neither calls external APIs nor has a backend, so there is no network traffic to protect.",
+      "severity": "critical",
+      "officialReference": {
+        "title": "OWASP MASVS-NETWORK",
+        "url": "https://mas.owasp.org/MASVS/"
+      },
+      "detectionMethod": "Source scan for disabled TLS validation, cleartext HTTP exceptions and trust-all handlers. Certificate pinning is required only if the threat model needs it.",
+      "remediation": "Remove TLS bypasses and ATS exceptions; add pinning only when justified by the threat model.",
+      "autoFix": "needs-approval",
+      "requiresApproval": true,
+      "verification": "Detector findings on source.",
+      "evidence": "File, line and snippet of TLS bypass.",
+      "implementation": "PARTIAL",
+      "detectorId": "MSEC-019",
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-020",
+      "name": "Least Privilege (MASVS-PLATFORM)",
+      "category": "Platform",
+      "platform": [
+        "ios",
+        "android",
+        "backend"
+      ],
+      "applicability": {
+        "always": true
+      },
+      "notApplicableReason": "This rule applies to every project.",
+      "severity": "medium",
+      "officialReference": {
+        "title": "OWASP MASVS-PLATFORM / MASVS-PRIVACY",
+        "url": "https://mas.owasp.org/MASVS/"
+      },
+      "detectionMethod": "Cannot be determined automatically: requires review of permissions, entitlements and service roles against actual needs.",
+      "remediation": "Request only the permissions, entitlements and roles the product actually needs.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Human review of permissions and entitlements.",
+      "evidence": "Permission inventory with justification.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-021",
+      "name": "Environment File Protection",
+      "category": "Secrets",
+      "platform": [
+        "repo"
+      ],
+      "applicability": {
+        "always": true
+      },
+      "notApplicableReason": "This rule applies to every project repository.",
+      "severity": "high",
+      "officialReference": {
+        "title": "OWASP MASVS-STORAGE",
+        "url": "https://mas.owasp.org/MASVS/"
+      },
+      "detectionMethod": "Source scan for committed .env files and missing .gitignore entries for them.",
+      "remediation": "Add .env patterns to .gitignore, remove committed files and rotate exposed secrets.",
+      "autoFix": "safe",
+      "requiresApproval": false,
+      "verification": "Detector findings on the workspace file list.",
+      "evidence": "Path of the committed env file or missing ignore pattern.",
+      "implementation": "PARTIAL",
+      "detectorId": "MSEC-021",
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-022",
+      "name": "Dependency Management",
+      "category": "Supply Chain",
+      "platform": [
+        "repo"
+      ],
+      "applicability": {
+        "always": true
+      },
+      "notApplicableReason": "This rule applies to every project repository.",
+      "severity": "medium",
+      "officialReference": {
+        "title": "OWASP ASVS V14 Configuration (dependencies)",
+        "url": "https://owasp.org/www-project-application-security-verification-standard/"
+      },
+      "detectionMethod": "Source scan for a committed lockfile and obviously unmanaged or permanently pinned old dependency versions. Vulnerability scanning results are not evaluated.",
+      "remediation": "Commit lockfiles, run a vulnerability scan, update dependencies in a controlled manner and avoid permanent pinning to old versions.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Detector findings plus separate vulnerability scan.",
+      "evidence": "Lockfile presence and flagged dependency specifiers.",
+      "implementation": "PARTIAL",
+      "detectorId": "MSEC-022",
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-023",
+      "name": "Installation Script Security",
+      "category": "Supply Chain",
+      "platform": [
+        "repo"
+      ],
+      "applicability": {
+        "always": true
+      },
+      "notApplicableReason": "This rule applies to every project repository.",
+      "severity": "high",
+      "officialReference": {
+        "title": "OWASP ASVS V14 Configuration",
+        "url": "https://owasp.org/www-project-application-security-verification-standard/"
+      },
+      "detectionMethod": "Source scan for piped remote scripts (curl | sh) and unverified downloads in install scripts.",
+      "remediation": "Verify checksums or signatures of downloaded scripts and avoid piping remote content to a shell.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Detector findings on scripts.",
+      "evidence": "File, line and snippet of the unsafe install command.",
+      "implementation": "PARTIAL",
+      "detectorId": "MSEC-023",
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-024",
+      "name": "Fork & Pull Request Secret Protection",
+      "category": "CI",
+      "platform": [
+        "repo"
+      ],
+      "applicability": {
+        "all": [
+          "hasCiWorkflows"
+        ]
+      },
+      "notApplicableReason": "The project has no CI workflows.",
+      "severity": "high",
+      "officialReference": {
+        "title": "GitHub Actions security guides",
+        "url": "https://docs.github.com/en/actions/security-for-github-actions/security-guides"
+      },
+      "detectionMethod": "Source scan of workflow files for pull_request_target with untrusted checkout and secret exposure to forked pull requests.",
+      "remediation": "Avoid pull_request_target with untrusted code; do not expose secrets to fork workflows.",
+      "autoFix": "needs-approval",
+      "requiresApproval": true,
+      "verification": "Detector findings on workflow files.",
+      "evidence": "Workflow file, line and snippet.",
+      "implementation": "PARTIAL",
+      "detectorId": "MSEC-024",
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-025",
+      "name": "Prompt Injection Defense",
+      "category": "AI Agent Security",
+      "platform": [
+        "ai-agent"
+      ],
+      "applicability": {
+        "always": true
+      },
+      "notApplicableReason": "This rule applies to the Studio AI engine in every workspace.",
+      "severity": "critical",
+      "officialReference": {
+        "title": "OWASP ASVS V5 Validation (untrusted input handling)",
+        "url": "https://owasp.org/www-project-application-security-verification-standard/"
+      },
+      "detectionMethod": "Source scan for untrusted content concatenated into agent instructions or executed without a trust boundary. Cannot prove runtime robustness.",
+      "remediation": "Separate instructions from untrusted data, require approval for actions derived from untrusted content.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Detector findings plus red-team review.",
+      "evidence": "File, line and snippet of unguarded untrusted input.",
+      "implementation": "PARTIAL",
+      "detectorId": "MSEC-025",
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "MSEC-026",
+      "name": "AI Agent Least Privilege",
+      "category": "AI Agent Security",
+      "platform": [
+        "ai-agent"
+      ],
+      "applicability": {
+        "always": true
+      },
+      "notApplicableReason": "This rule applies to the Studio AI engine in every workspace.",
+      "severity": "high",
+      "officialReference": {
+        "title": "OWASP ASVS V4 Access Control",
+        "url": "https://owasp.org/www-project-application-security-verification-standard/"
+      },
+      "detectionMethod": "Source scan for unrestricted tool, file or shell access and missing approval gates in agent configuration.",
+      "remediation": "Grant agents the minimum tools, paths and credentials, with human approval for destructive actions.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Detector findings plus configuration review.",
+      "evidence": "File, line and snippet of broad agent permissions.",
+      "implementation": "PARTIAL",
+      "detectorId": "MSEC-026",
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    }
+  ]
+}

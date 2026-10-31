@@ -7,6 +7,12 @@ export interface Entry {
   isDir: boolean;
 }
 
+export interface ScanResult {
+  files: { path: string; content: string }[];
+  truncated: boolean;
+  skipped: number;
+}
+
 export const inDesktopApp = (): boolean => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
 export const ipc = {
@@ -14,5 +20,6 @@ export const ipc = {
   listDir: (path: string) => invoke<Entry[]>('list_dir', { path }),
   readFile: (path: string) => invoke<string>('read_file', { path }),
   writeFile: (path: string, content: string) => invoke<void>('write_file', { path, content }),
+  scanWorkspace: () => invoke<ScanResult>('scan_workspace'),
   createFile: (path: string) => invoke<void>('create_file', { path }),
 };

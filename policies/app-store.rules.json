@@ -1,0 +1,694 @@
+{
+  "catalog": "app-store",
+  "policyVersion": "2026.10.0",
+  "rules": [
+    {
+      "id": "ASR-001",
+      "name": "Application Launch Stability",
+      "category": "Completeness",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "always": true
+      },
+      "notApplicableReason": "Applies to every app; a crash on launch is never acceptable.",
+      "severity": "critical",
+      "officialReference": {
+        "title": "App Review Guidelines 2.1 App Completeness",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "Requires running the app on a device or simulator-equivalent; static source analysis cannot prove launch stability.",
+      "remediation": "Reproduce the launch crash on a device, fix the root cause, and re-test on the oldest supported iOS version.",
+      "autoFix": "none",
+      "requiresApproval": false,
+      "verification": "Manual launch test on a physical device across supported iOS versions.",
+      "evidence": "Tester notes with device model, iOS version and result.",
+      "implementation": "MANUAL_ONLY",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-002",
+      "name": "Review Demo Account Availability",
+      "category": "Review Access",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "all": [
+          "hasUserAccounts"
+        ]
+      },
+      "notApplicableReason": "The app has no user accounts, so no demo account is needed for review.",
+      "severity": "high",
+      "officialReference": {
+        "title": "App Review Guidelines 2.1 App Completeness (demo account information)",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "The demo account lives in App Store Connect review information; it cannot be read from source.",
+      "remediation": "Provide a working demo account (or a demo mode) in App Store Connect review notes.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Check App Store Connect App Review Information manually.",
+      "evidence": "Confirmation that credentials are present and active.",
+      "implementation": "MANUAL_ONLY",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-003",
+      "name": "Demo Account Validation",
+      "category": "Review Access",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "all": [
+          "hasUserAccounts"
+        ]
+      },
+      "notApplicableReason": "The app has no user accounts, so there is no demo account to validate.",
+      "severity": "high",
+      "officialReference": {
+        "title": "App Review Guidelines 2.1 App Completeness (demo account information)",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "Requires signing in with the supplied credentials against the production backend.",
+      "remediation": "Refresh expired credentials, make sure the account has the data needed to reach all features, and re-verify before submission.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Manual sign-in with the supplied demo credentials immediately before submission.",
+      "evidence": "Date and result of the manual sign-in.",
+      "implementation": "MANUAL_ONLY",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-004",
+      "name": "Feature Discoverability",
+      "category": "Review Access",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "always": true
+      },
+      "notApplicableReason": "Applies to every app; reviewers must be able to find all features.",
+      "severity": "medium",
+      "officialReference": {
+        "title": "App Review Guidelines 2.1 App Completeness",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "Needs human judgement of the running UI and review notes.",
+      "remediation": "Explain hidden or gated features in the review notes and make main features reachable without special setup.",
+      "autoFix": "none",
+      "requiresApproval": false,
+      "verification": "Reviewer-style walkthrough of the app.",
+      "evidence": "Walkthrough checklist.",
+      "implementation": "MANUAL_ONLY",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-005",
+      "name": "Privacy Policy",
+      "category": "Metadata and Privacy",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "all": [
+          "targetsAppStore"
+        ]
+      },
+      "notApplicableReason": "The app is not distributed through the App Store, so App Store privacy policy requirements do not apply.",
+      "severity": "high",
+      "officialReference": {
+        "title": "App Review Guidelines 5.1.1 Data Collection and Storage (privacy policy)",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "The privacy policy URL is set in App Store Connect and must be reachable and accurate; this needs URL reachability and human review.",
+      "remediation": "Publish an accurate privacy policy, link it in App Store Connect and inside the app.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Open the URL and compare the policy with actual data practices.",
+      "evidence": "URL, fetch date and reviewer notes.",
+      "implementation": "MANUAL_ONLY",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-006",
+      "name": "Metadata Consistency",
+      "category": "Metadata and Privacy",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "all": [
+          "targetsAppStore"
+        ]
+      },
+      "notApplicableReason": "The app is not distributed through the App Store, so App Store metadata rules do not apply.",
+      "severity": "medium",
+      "officialReference": {
+        "title": "App Review Guidelines 2.3 Accurate Metadata",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "Would compare app name, description and keywords with app behaviour; needs App Store Connect data and judgement.",
+      "remediation": "Align name, subtitle, description and keywords with what the app actually does.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Manual comparison of App Store Connect metadata with the build.",
+      "evidence": "Metadata snapshot.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-007",
+      "name": "Support URL",
+      "category": "Metadata and Privacy",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "all": [
+          "targetsAppStore"
+        ]
+      },
+      "notApplicableReason": "The app is not distributed through the App Store, so a support URL is not required.",
+      "severity": "medium",
+      "officialReference": {
+        "title": "App Review Guidelines 1.5 Developer Information",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "Requires checking that the URL is reachable and offers real contact or support options.",
+      "remediation": "Provide a working support page with contact information.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Open the URL and confirm it responds with real support content.",
+      "evidence": "URL, HTTP result and fetch date.",
+      "implementation": "MANUAL_ONLY",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-008",
+      "name": "Subscription Disclosure",
+      "category": "Subscriptions",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "all": [
+          "hasSubscriptions"
+        ]
+      },
+      "notApplicableReason": "The app has no subscriptions, so subscription disclosure requirements do not apply.",
+      "severity": "high",
+      "officialReference": {
+        "title": "App Review Guidelines 3.1.2 Subscriptions",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "Would check the paywall for price, period, renewal and cancellation disclosure; needs UI review.",
+      "remediation": "Show price, billing period, auto-renewal terms and how to cancel clearly before purchase.",
+      "autoFix": "none",
+      "requiresApproval": false,
+      "verification": "Manual review of the paywall UI.",
+      "evidence": "Paywall screenshots.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-009",
+      "name": "Terms of Use / EULA",
+      "category": "Subscriptions",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "all": [
+          "hasSubscriptions"
+        ]
+      },
+      "notApplicableReason": "The app has no subscriptions, so a Terms of Use link is not required for subscription disclosure.",
+      "severity": "medium",
+      "officialReference": {
+        "title": "App Review Guidelines 3.1.2 Subscriptions",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "Would check for a Terms of Use (EULA) link in the app and in App Store metadata.",
+      "remediation": "Link the Terms of Use (or the standard Apple EULA) in the paywall and in App Store Connect.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Manual check of in-app and App Store Connect links.",
+      "evidence": "Link locations and URLs.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-010",
+      "name": "Pricing Transparency",
+      "category": "Subscriptions",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "all": [
+          "hasSubscriptions"
+        ]
+      },
+      "notApplicableReason": "The app has no subscriptions, so subscription pricing display rules do not apply.",
+      "severity": "high",
+      "officialReference": {
+        "title": "App Review Guidelines 3.1.2 Subscriptions",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "Would check that the billed amount is the most prominent price and that trial terms are explicit; needs UI review.",
+      "remediation": "Make the billed price clear, and show trial length and post-trial price.",
+      "autoFix": "none",
+      "requiresApproval": false,
+      "verification": "Manual review of price presentation.",
+      "evidence": "Paywall screenshots.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-011",
+      "name": "Restore Purchases",
+      "category": "In-App Purchase",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "any": [
+          "hasSubscriptions",
+          "hasInAppPurchases"
+        ]
+      },
+      "notApplicableReason": "The app has no subscriptions or in-app purchases, so a restore mechanism is not required.",
+      "severity": "high",
+      "officialReference": {
+        "title": "App Review Guidelines 3.1.1 In-App Purchase (restore purchases)",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "Source-level detector searches for restore-purchases calls (StoreKit restore or sync APIs) when purchases exist. It cannot prove the control is visible or works at runtime.",
+      "remediation": "Add a visible Restore Purchases control that calls the StoreKit restore flow.",
+      "autoFix": "none",
+      "requiresApproval": false,
+      "verification": "Source detector plus manual test with a sandbox account.",
+      "evidence": "Matched file and line, or absence of any restore call.",
+      "implementation": "PARTIAL",
+      "detectorId": "ASR-011",
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-012",
+      "name": "External Payment Compliance",
+      "category": "In-App Purchase",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "all": [
+          "hasExternalPaymentLinks"
+        ]
+      },
+      "notApplicableReason": "The app has no external payment links, so external payment rules do not apply.",
+      "severity": "high",
+      "officialReference": {
+        "title": "App Review Guidelines 3.1.1 In-App Purchase and 3.1.3 Other Purchase Methods",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "Allowed external purchase links depend on storefront and entitlements; this needs human judgement. Never blanket-ban external links and never add them automatically.",
+      "remediation": "Review each external link against the storefront and any entitlement held; remove or gate links that are not permitted. Do not add external payment links automatically.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Manual review of storefront and entitlement status.",
+      "evidence": "Link inventory with storefront and entitlement notes.",
+      "implementation": "MANUAL_ONLY",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-013",
+      "name": "Account Deletion",
+      "category": "Accounts",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "all": [
+          "hasUserAccounts"
+        ]
+      },
+      "notApplicableReason": "The app has no user accounts, so account deletion is not required.",
+      "severity": "high",
+      "officialReference": {
+        "title": "App Review Guidelines 5.1.1(v) Account Sign-In (account deletion)",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "Source-level detector looks for account deletion UI or API calls when accounts exist. It cannot verify that the backend really deletes data.",
+      "remediation": "Offer in-app account deletion that initiates deletion of the account and its data.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Source detector plus manual deletion test.",
+      "evidence": "Matched file and line, or absence of any deletion flow.",
+      "implementation": "PARTIAL",
+      "detectorId": "ASR-013",
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-014",
+      "name": "Sign in with Apple",
+      "category": "Accounts",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "all": [
+          "hasSocialLogin"
+        ]
+      },
+      "notApplicableReason": "The app does not use third-party social login, so Sign in with Apple is not required.",
+      "severity": "high",
+      "officialReference": {
+        "title": "App Review Guidelines 4.8 Login Services",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "Source-level detector checks whether Sign in with Apple is present when third-party social login is used. It cannot judge whether an exception applies. Never add Sign in with Apple blindly.",
+      "remediation": "Evaluate whether an exemption applies; if not, offer Sign in with Apple or an equivalent login service. Do not add it automatically.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Source detector plus human judgement on exemptions.",
+      "evidence": "Detected social providers and the Sign in with Apple finding.",
+      "implementation": "PARTIAL",
+      "detectorId": "ASR-014",
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-015",
+      "name": "Permission Purpose Strings",
+      "category": "Privacy",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "any": [
+          "usesCamera",
+          "usesMicrophone",
+          "usesLocation",
+          "usesPhotos"
+        ]
+      },
+      "notApplicableReason": "The app does not use camera, microphone, location or photos, so usage description strings are not required.",
+      "severity": "high",
+      "officialReference": {
+        "title": "App Review Guidelines 5.1.1 Data Collection and Storage (permission purpose strings)",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "Source-level detector flags missing or empty Info.plist usage descriptions for used permissions. Whether a string is specific and honest, and whether unused permissions remain, still needs review.",
+      "remediation": "Add a specific, honest purpose string per permission and remove permissions the app does not use.",
+      "autoFix": "needs-approval",
+      "requiresApproval": true,
+      "verification": "Source detector plus manual wording review.",
+      "evidence": "Info.plist keys and the missing or empty ones.",
+      "implementation": "PARTIAL",
+      "detectorId": "ASR-015",
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-016",
+      "name": "App Tracking Transparency",
+      "category": "Privacy",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "all": [
+          "usesTracking"
+        ]
+      },
+      "notApplicableReason": "The app does not track users, so no App Tracking Transparency prompt is needed (and none should be shown).",
+      "severity": "high",
+      "officialReference": {
+        "title": "App Review Guidelines 5.1.2 Data Use and Sharing",
+        "url": "https://developer.apple.com/app-store/user-privacy-and-data-use/"
+      },
+      "detectionMethod": "Would check that the ATT prompt exists when tracking is used and is absent when it is not; needs data-flow review.",
+      "remediation": "Request ATT before tracking, or remove the tracking and any ATT prompt.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Manual review of SDKs and data flows.",
+      "evidence": "SDK inventory and tracking declaration.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-017",
+      "name": "Placeholder Content",
+      "category": "Completeness",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "always": true
+      },
+      "notApplicableReason": "Applies to every app; placeholder content is never acceptable.",
+      "severity": "medium",
+      "officialReference": {
+        "title": "App Review Guidelines 2.1 App Completeness",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "Source-level detector scans for placeholder strings such as lorem ipsum or TODO text in shipped sources and resources. It cannot see images or server content.",
+      "remediation": "Replace placeholder text and assets with final content.",
+      "autoFix": "none",
+      "requiresApproval": false,
+      "verification": "Source detector plus manual UI walkthrough.",
+      "evidence": "Matched file, line and snippet.",
+      "implementation": "PARTIAL",
+      "detectorId": "ASR-017",
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-018",
+      "name": "Screenshot Accuracy",
+      "category": "Metadata and Privacy",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "all": [
+          "targetsAppStore"
+        ]
+      },
+      "notApplicableReason": "The app is not distributed through the App Store, so App Store screenshots do not apply.",
+      "severity": "medium",
+      "officialReference": {
+        "title": "App Review Guidelines 2.3 Accurate Metadata (screenshots)",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "Needs the uploaded screenshots and a human comparison with the real app.",
+      "remediation": "Use screenshots that show the real app in use.",
+      "autoFix": "none",
+      "requiresApproval": false,
+      "verification": "Manual comparison of screenshots with the build.",
+      "evidence": "Screenshot set and reviewer notes.",
+      "implementation": "MANUAL_ONLY",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-019",
+      "name": "Branding Consistency",
+      "category": "Metadata and Privacy",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "always": true
+      },
+      "notApplicableReason": "Applies to every app; the name and branding must be consistent.",
+      "severity": "low",
+      "officialReference": {
+        "title": "App Review Guidelines 2.3 Accurate Metadata",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "Source-level detector compares names declared in project files (for example display name versus other declared names). It cannot compare against store metadata or icons.",
+      "remediation": "Use one consistent app name and branding across project files and store metadata.",
+      "autoFix": "needs-approval",
+      "requiresApproval": true,
+      "verification": "Source detector plus manual store metadata comparison.",
+      "evidence": "Names found and where.",
+      "implementation": "PARTIAL",
+      "detectorId": "ASR-019",
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-020",
+      "name": "Age Rating",
+      "category": "Metadata and Privacy",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "all": [
+          "targetsAppStore"
+        ]
+      },
+      "notApplicableReason": "The app is not distributed through the App Store, so no App Store age rating is needed.",
+      "severity": "medium",
+      "officialReference": {
+        "title": "App Review Guidelines 2.3 Accurate Metadata (age rating)",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "The rating questionnaire is answered in App Store Connect and needs human judgement of the content.",
+      "remediation": "Answer the questionnaire truthfully. The rating is never changed automatically or randomly.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Manual review of the questionnaire answers.",
+      "evidence": "Answers and reviewer.",
+      "implementation": "MANUAL_ONLY",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-021",
+      "name": "Template / Copycat Detection",
+      "category": "Design",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "always": true
+      },
+      "notApplicableReason": "Applies to every app; repackaged template or copycat apps risk rejection.",
+      "severity": "medium",
+      "officialReference": {
+        "title": "App Review Guidelines 4.3 Spam and 4.1 Copycats",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "Would assess similarity to templates and other apps; needs external comparison and human judgement.",
+      "remediation": "Add distinctive functionality and original design; avoid reusing another developer's app or template unchanged.",
+      "autoFix": "none",
+      "requiresApproval": false,
+      "verification": "Manual originality review.",
+      "evidence": "Reviewer notes.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-022",
+      "name": "Feature Claims Verification",
+      "category": "Metadata and Privacy",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "all": [
+          "targetsAppStore"
+        ]
+      },
+      "notApplicableReason": "The app is not distributed through the App Store, so store feature claims do not apply.",
+      "severity": "medium",
+      "officialReference": {
+        "title": "App Review Guidelines 2.3 Accurate Metadata",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "Would match claims in the description with implemented features; needs metadata and judgement.",
+      "remediation": "Remove or implement every feature claimed in the metadata.",
+      "autoFix": "none",
+      "requiresApproval": false,
+      "verification": "Manual claim-by-claim check.",
+      "evidence": "Claims table with verification result.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-023",
+      "name": "Minimum App Functionality",
+      "category": "Design",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "always": true
+      },
+      "notApplicableReason": "Applies to every app; an app must offer more than a bare web wrapper.",
+      "severity": "high",
+      "officialReference": {
+        "title": "App Review Guidelines 4.2 Minimum Functionality",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "Would flag apps that only load a website in a web view; needs behavioural judgement.",
+      "remediation": "Add native functionality and value beyond a repackaged website.",
+      "autoFix": "none",
+      "requiresApproval": false,
+      "verification": "Manual review of app functionality.",
+      "evidence": "Reviewer notes.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    },
+    {
+      "id": "ASR-024",
+      "name": "Rejection Analysis & Appeal",
+      "category": "Process",
+      "platform": [
+        "ios"
+      ],
+      "applicability": {
+        "all": [
+          "targetsAppStore"
+        ]
+      },
+      "notApplicableReason": "The app is not distributed through the App Store, so there is no App Review rejection to analyse.",
+      "severity": "info",
+      "officialReference": {
+        "title": "App Review Guidelines (overview)",
+        "url": "https://developer.apple.com/app-store/review/guidelines/"
+      },
+      "detectionMethod": "Module design only: analyse a rejection message, map it to rules and draft a reply. Any appeal sent to Apple requires explicit user approval and is never sent automatically.",
+      "remediation": "Draft the analysis and reply for the user to review; the user submits any appeal.",
+      "autoFix": "none",
+      "requiresApproval": true,
+      "verification": "Not available; sending an appeal always requires explicit user approval.",
+      "evidence": "Rejection text and mapped rules.",
+      "implementation": "NOT_IMPLEMENTED",
+      "detectorId": null,
+      "lastVerified": null,
+      "policyVersion": "2026.10.0"
+    }
+  ]
+}

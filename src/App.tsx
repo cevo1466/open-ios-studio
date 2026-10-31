@@ -2,9 +2,12 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import { CommandPalette, type Command } from './components/CommandPalette';
 import { EditorPane } from './components/EditorPane';
 import { Explorer } from './components/Explorer';
+import { AppStoreReadiness, SecurityCenter } from './components/PolicyPanels';
 import { SettingsDialog } from './components/SettingsDialog';
 import { inDesktopApp, ipc } from './ipc';
 import { effectiveTheme, loadSettings, saveSettings, type Settings } from './settings';
+import { analyzeProject } from './policy';
+import type { EvaluationReport } from './policy/types';
 import { initialState, isDirty, reducer } from './state/store';
 
 const PLANNED: { label: string; milestone: string }[] = [
@@ -13,8 +16,6 @@ const PLANNED: { label: string; milestone: string }[] = [
   { label: 'AI Chat', milestone: 'M3' },
   { label: 'Build (xtool)', milestone: 'M2' },
   { label: 'Devices', milestone: 'M4' },
-  { label: 'App Store Readiness', milestone: 'Policy Engine' },
-  { label: 'Security Center', milestone: 'Policy Engine' },
 ];
 
 export function App() {
@@ -26,6 +27,10 @@ export function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
   const [newName, setNewName] = useState<string | null>(null);
+  const [panel, setPanel] = useState<'asr' | 'msec' | null>(null);
+  const [report, setReport] = useState<EvaluationReport | null>(null);
+  const [analysing, setAnalysing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const desktop = inDesktopApp();
 
   const theme = effectiveTheme(settings.theme, prefersDark);
@@ -84,6 +89,24 @@ export function App() {
       fail(`Cannot save ${tab.path}: ${String(e)}`);
     }
   }, [state.tabs, state.active, fail]);
+
+  const runAnalysis = useCallback(async () => {
+    setAnalysisError(null);
+    if (!state.workspace) {
+      setAnalysisError('Open a folder first: the analysis reads the files of the open project.');
+      return;
+    }
+    setAnalysing(true);
+    try {
+      const scan = await ipc.scanWorkspace();
+      setReport(analyzeProject(scan.files));
+      if (scan.truncated) setAnalysisError('Scan limit reached: some files were not analysed, results are incomplete.');
+    } catch (e) {
+      setAnalysisError(String(e));
+    } finally {
+      setAnalysing(false);
+    }
+  }, [state.workspace]);
 
   const saveRef = useRef(save);
   useEffect(() => {
@@ -165,6 +188,14 @@ export function App() {
               <small>{p.milestone}</small>
             </button>
           ))}
+          <button type="button" className="act" onClick={() => setPanel('asr')}>
+            App Store Readiness
+            <small>static checks</small>
+          </button>
+          <button type="button" className="act" onClick={() => setPanel('msec')}>
+            Security Center
+            <small>static checks</small>
+          </button>
           <button type="button" className="act bottom" onClick={() => setShowSettings(true)}>
             Settings
           </button>
@@ -239,7 +270,21 @@ export function App() {
         <span>Ctrl+Shift+P: commands · Ctrl+S: save</span>
       </footer>
       {showSettings && <SettingsDialog settings={settings} onChange={setSettings} onClose={() => setShowSettings(false)} />}
+      {panel && (
+        <PolicyPanel
+          which={panel}
+          report={report}
+          loading={analysing}
+          error={analysisError}
+          onRun={() => void runAnalysis()}
+          onClose={() => setPanel(null)}
+        />
+      )}
       {showPalette && <CommandPalette commands={commands} onClose={() => setShowPalette(false)} />}
     </div>
   );
+}
+
+function PolicyPanel({ which, ...props }: { which: 'asr' | 'msec' } & React.ComponentProps<typeof SecurityCenter>) {
+  return which === 'asr' ? <AppStoreReadiness {...props} /> : <SecurityCenter {...props} />;
 }

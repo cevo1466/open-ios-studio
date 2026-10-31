@@ -2,7 +2,7 @@ mod fs_engine;
 
 use std::sync::Mutex;
 
-use fs_engine::{Entry, FsError, Workspace};
+use fs_engine::{Entry, FsError, ScanResult, Workspace};
 use tauri::State;
 use tauri_plugin_dialog::DialogExt;
 
@@ -64,6 +64,12 @@ fn create_file(state: State<'_, AppState>, path: String) -> Result<(), String> {
     with_workspace(&state, |ws| ws.create_file(&path))
 }
 
+/// Text files of the open workspace, for the static policy analysis in the webview.
+#[tauri::command]
+fn scan_workspace(state: State<'_, AppState>) -> Result<ScanResult, String> {
+    with_workspace(&state, |ws| Ok(ws.scan_text_files()))
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -73,7 +79,8 @@ pub fn run() {
             list_dir,
             read_file,
             write_file,
-            create_file
+            create_file,
+            scan_workspace
         ])
         .run(tauri::generate_context!())
         .expect("error while running Open iOS Studio");

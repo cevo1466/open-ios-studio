@@ -1,0 +1,39 @@
+.pp-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); display: flex; justify-content: flex-end; z-index: 50; }
+.pp-panel { background: var(--bg); color: var(--fg); border-left: 1px solid var(--border); width: min(860px, 100%); height: 100%; display: flex; flex-direction: column; }
+.pp-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg2); }
+.pp-head h2 { margin: 0; font-size: 16px; }
+.pp-actions { display: flex; gap: 6px; }
+.pp-body { flex: 1; overflow: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; }
+.pp-foot { border-top: 1px solid var(--border); background: var(--bg2); padding: 8px 16px; font-size: 12px; color: var(--muted); }
+.pp-foot p { margin: 2px 0; }
+.pp-blocked { background: var(--danger-bg); color: var(--danger-fg); border: 1px solid var(--danger-fg); border-radius: 6px; padding: 8px 12px; font-weight: 700; }
+.pp-unverified { border: 1px solid var(--accent); border-radius: 6px; padding: 8px 12px; font-weight: 600; }
+.pp-counts { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.pp-counts li { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; }
+.pp-meta, .pp-muted { color: var(--muted); font-size: 12px; }
+.pp-state { margin: auto; text-align: center; max-width: 440px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.pp-error { background: var(--danger-bg); color: var(--danger-fg); border-radius: 6px; padding: 8px 12px; }
+.pp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pp-chip { border-radius: 12px; padding: 2px 10px; }
+.pp-chip[aria-pressed='true'] { background: var(--accent); color: #fff; border-color: var(--accent); }
+.pp-group h3 { margin: 8px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.pp-rules { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.pp-rule { border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+.pp-rule-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; text-align: left; border: 0; background: transparent; padding: 6px 10px; }
+.pp-rule-head:hover { background: var(--bg2); }
+.pp-id { font-family: ui-monospace, monospace; color: var(--muted); }
+.pp-name { flex: 1; min-width: 160px; font-weight: 600; }
+.pp-badge { font-size: 11px; font-weight: 700; border-radius: 4px; padding: 1px 6px; border: 1px solid var(--border); background: var(--bg3); white-space: nowrap; }
+.pp-status-FAIL, .pp-status-BLOCKED { background: var(--danger-bg); color: var(--danger-fg); border-color: var(--danger-fg); }
+.pp-status-WARNING { border-color: var(--accent); border-style: dashed; }
+.pp-status-PASS { border-color: var(--accent); color: var(--accent); }
+.pp-status-NOT_VERIFIED { border-style: dotted; border-width: 2px; }
+.pp-status-NOT_APPLICABLE { color: var(--muted); }
+.pp-impl { background: transparent; color: var(--muted); }
+.pp-sev { background: transparent; text-transform: uppercase; }
+.pp-reason { padding: 0 10px 6px; color: var(--muted); }
+.pp-detail { border-top: 1px solid var(--border); padding: 8px 10px; display: flex; flex-direction: column; gap: 8px; }
+.pp-finding { border-left: 3px solid var(--border); padding-left: 8px; }
+.pp-loc { font-family: ui-monospace, monospace; color: var(--accent); }
+.pp-finding pre { margin: 4px 0; padding: 6px; background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+.pp-remed { margin: 0; }

@@ -3,27 +3,22 @@
 Last updated: 2026-10-31
 
 ## Current stage
-Milestone 1 — desktop foundation (PR #13). M0 merged (PR #1).
+Policy Engine core (branch `feature/policy-engine-core`). M0 (#1) and M1 (#13) are merged.
 
-## Done
-- Tauri 2 + React + Vite + Monaco (Swift highlighting) app: open folder (native picker in Rust), explorer, tabs, create/edit/save (atomic), dirty tracking, settings (theme, font size), command palette, light/dark.
-- `fs_engine` (Rust): workspace root canonicalization, traversal and symlink-escape rejection, size cap, UTF-8 only, atomic write.
-- Not-yet-built features are visible but disabled and labelled with their milestone.
-- CI: `ci.yml` (typecheck, eslint, vitest, build, npm audit, cargo fmt/clippy/test, advisory cargo-audit) and `build-linux.yml` (DEB + AppImage + SHA256).
-- Found and fixed in CI: rustfmt diff; critical `dompurify` advisory pulled in by monaco-editor (pinned `monaco-editor@0.56.0`, `overrides: dompurify ^3.4.17`).
+## Policy Engine — what exists
+- Catalogs: `policies/app-store.rules.json` (ASR-001..024), `policies/mobile-security.rules.json` (MSEC-001..026), schema `policies/schema/rule.schema.json`, validated by `scripts/validate-policies.mjs` (CI job `policy`).
+- Engine (`src/policy/`): capability manifest, applicability, evaluator (PASS only when a detector ran), catalog loader, remediation flow with approval and forbidden-automatic list, AI prompt context with untrusted-data fencing.
+- Detectors: 6 App Store (ASR-011, 013, 014, 015, 017, 019) and 11 security (MSEC-012, 013, 014, 016, 019, 021, 022, 023, 024, 025, 026), all `PARTIAL` (source-level only).
+- UI: App Store Readiness and Security Center panels in the activity bar; the Rust command `scan_workspace` feeds project files to the engine.
+- Remaining 33 rules are `MANUAL_ONLY` or `NOT_IMPLEMENTED` and always show `NOT_VERIFIED`. No score is computed.
+- `lastVerified` is `null` for every rule: official sources were not compared in this session; Apple guideline numbers in titles come from memory and need verification.
+
+## Not done yet
+- AI engine does not call `buildPolicyContext` yet (the AI engine itself arrives in M3); the function and tests exist.
+- Remediation flow is not wired to a UI; no auto-fix is applied anywhere.
+- Fixture-directory layout (`policies/fixtures/`) not used; fixtures are inline in tests.
+- Secret scanning job in CI, Playwright smoke, window-close unsaved-changes warning.
+- IPA/APK binary analysis (MSEC-014 checks source only).
 
 ## Test status
-- Vitest: 9 passed (reducer, settings). ESLint, tsc, vite build: pass locally and in CI.
-- Rust: fmt, clippy `-D warnings`, `cargo test` (fs_engine incl. symlink escape): pass in CI.
-- Artifact inspection: SHA256 verified; DEB structure and contents listed (binary `usr/bin/open-ios-studio`, desktop entry, icons); AppImage is an ELF, 80 MB.
-- **NOT VERIFIED:** the app window launching on a real Linux desktop (no display on dev host). Owner must run the DEB/AppImage on Linux Mint.
-- **Not delivered yet:** Playwright smoke test, Rust-side IPC integration test, window-close warning for unsaved changes, secret scanning job.
-
-## Known issues
-- Bundle ships Monaco language workers (ts/css/html/json) that are not wired; ~14 MB frontend. Can be trimmed later.
-- GitHub Actions pinned by major tag, not SHA (hardening TODO).
-- Placeholder generated icon.
-
-## Next
-1. Policy Engine core PR (`feature/policy-engine-core`).
-2. M2 xtool adapter.
+See the PR. NOT VERIFIED: launch of the desktop app on a real Linux desktop.

@@ -29,6 +29,22 @@ jobs:
       - name: Dependency audit (high and critical fail the job)
         run: npm audit --audit-level=high
 
+  policy:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Policy catalog schema and honesty checks
+        run: node scripts/validate-policies.mjs
+      - name: Release gate self-test
+        run: node scripts/policy-gate.mjs --self-test
+      - name: Policy engine tests (rules, detectors, remediation, prompt context)
+        run: npx vitest run src/policy
+
   rust:
     runs-on: ubuntu-22.04
     steps:
