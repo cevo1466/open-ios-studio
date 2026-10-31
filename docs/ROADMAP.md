@@ -27,8 +27,8 @@ CLI adapter, toolchain/SDK diagnostics, project creation, build + log streaming,
 ## M3 — AI Development Engine ☑ (merged, PR #16)
 Provider interface (Claude/OpenAI/Ollama), keyring key storage, streaming chat, project context with token budget, plan → manifest → generation → validation → review → write, diff approval, build-error repair loop (bounded retries).
 
-## M4 — Device & Testing ◐
+## M4 — Device & Testing ◐ (merged; device flows BLOCKED without an iPhone)
 Device discovery, signing flow, install/launch, test results. Device tests `BLOCKED` without an iPhone.
 
-## M5 — Open Source Release ◐
+## M5 — Open Source Release ☑ (v0.1.0 pre-release published)
 Release workflow (tag-triggered, owner-approved), checksums, contributor guide, SECURITY.md, versioning, release notes, README for Linux Mint.
