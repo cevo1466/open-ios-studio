@@ -405,14 +405,20 @@ mod tests {
                 udid: Some(bad.into()),
                 ..RunArgs::default()
             };
-            assert!(build_spec("run-device", &run, xtool, &ws).is_err(), "{bad:?}");
+            assert!(
+                build_spec("run-device", &run, xtool, &ws).is_err(),
+                "{bad:?}"
+            );
         }
         for bad in ["", "--x", ".hidden", "a b", "a;b", "a/b"] {
             let launch = RunArgs {
                 bundle_id: Some(bad.into()),
                 ..RunArgs::default()
             };
-            assert!(build_spec("launch", &launch, xtool, &ws).is_err(), "{bad:?}");
+            assert!(
+                build_spec("launch", &launch, xtool, &ws).is_err(),
+                "{bad:?}"
+            );
         }
     }
 
