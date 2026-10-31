@@ -1,7 +1,9 @@
 //! API key storage in the OS keyring. Keys are written and read here only; the webview can set,
 //! delete and ask whether a key exists, but never read one back.
 
+#[cfg(test)]
 use std::collections::HashMap;
+#[cfg(test)]
 use std::sync::Mutex;
 
 pub const SERVICE: &str = "io.github.cevo1466.openiosstudio";
@@ -67,9 +69,11 @@ impl SecretStore for KeyringStore {
 }
 
 /// In-memory store for tests.
+#[cfg(test)]
 #[derive(Default)]
 pub struct MemoryStore(Mutex<HashMap<String, String>>);
 
+#[cfg(test)]
 impl SecretStore for MemoryStore {
     fn set(&self, account: &str, secret: &str) -> Result<(), String> {
         self.0

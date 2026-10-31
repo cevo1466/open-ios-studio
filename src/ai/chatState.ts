@@ -37,6 +37,7 @@ export interface ChatState {
 
 export type ChatAction =
   | { type: 'userMessage'; text: string }
+  | { type: 'note'; text: string }
   | { type: 'assistantStart' }
   | { type: 'assistantDelta'; text: string }
   | { type: 'assistantDone'; stopReason: string | null; inputTokens: number | null; outputTokens: number | null }
@@ -76,6 +77,8 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
   switch (action.type) {
     case 'userMessage':
       return push(state, 'user', action.text);
+    case 'note':
+      return push(state, 'system-note', action.text);
     case 'assistantStart':
       return { ...push(state, 'assistant', '', { streaming: true }), status: 'streaming', usage: null };
     case 'assistantDelta':

@@ -55,14 +55,14 @@ describe('buildProjectContext', () => {
   });
 
   it('respects the budget and truncates with a marker', () => {
-    const big = Array.from({ length: 50 }, (_, i) => `let v${i} = ${i}`).join('\n');
+    const big = Array.from({ length: 200 }, (_, i) => `let v${i} = ${i}`).join('\n');
     const files = [f('A.swift', big), f('B.swift', big), f('C.swift', big)];
-    for (const maxTokens of [120, 300, 450, 700]) {
+    for (const maxTokens of [120, 300, 600, 1000]) {
       const r = buildProjectContext({ files, openPaths: [], activePath: 'A.swift', maxTokens });
       expect(r.estimatedTokens).toBeLessThanOrEqual(maxTokens);
       expect(r.estimatedTokens).toBe(estimateTokens(r.text));
     }
-    const r = buildProjectContext({ files, openPaths: [], activePath: 'A.swift', maxTokens: 450 });
+    const r = buildProjectContext({ files, openPaths: [], activePath: 'A.swift', maxTokens: 600 });
     expect(r.text).toContain('truncated to fit');
     expect(r.omittedCount).toBeGreaterThan(0);
   });

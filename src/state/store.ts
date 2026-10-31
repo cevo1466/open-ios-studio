@@ -16,6 +16,7 @@ export type Action =
   | { type: 'edit'; path: string; content: string }
   | { type: 'saved'; path: string; content: string }
   | { type: 'close'; path: string }
+  | { type: 'reloaded'; path: string; content: string }
   | { type: 'activate'; path: string };
 
 export const initialState: EditorState = { workspace: null, tabs: [], active: null };
@@ -52,6 +53,12 @@ export function reducer(state: EditorState, action: Action): EditorState {
         state.active === action.path ? (tabs[Math.min(index, tabs.length - 1)]?.path ?? null) : state.active;
       return { ...state, tabs, active };
     }
+    case 'reloaded':
+      // The file was rewritten on disk (approved AI change): editor and saved snapshot both follow it.
+      return {
+        ...state,
+        tabs: state.tabs.map((t) => (t.path === action.path ? { ...t, content: action.content, saved: action.content } : t)),
+      };
     case 'activate':
       return state.tabs.some((t) => t.path === action.path) ? { ...state, active: action.path } : state;
   }

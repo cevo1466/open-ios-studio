@@ -24,7 +24,7 @@ Definition of Done (all milestones): code implemented; relevant tests pass; erro
 ## M2 — xtool Integration ☐
 CLI adapter, toolchain/SDK diagnostics, project creation, build + log streaming, cancel, error parsing, mock + CI fixture tests; real build tests on owner machine (`BLOCKED` in CI: SDK license).
 
-## M3 — AI Development Engine ☐
+## M3 — AI Development Engine ◐ (PR #16)
 Provider interface (Claude/OpenAI/Ollama), keyring key storage, streaming chat, project context with token budget, plan → manifest → generation → validation → review → write, diff approval, build-error repair loop (bounded retries).
 
 ## M4 — Device & Testing ☐

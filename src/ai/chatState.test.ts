@@ -89,3 +89,11 @@ describe('chatReducer', () => {
     expect(chatReducer(initialChatState, { type: 'load', state: s })).toBe(s);
   });
 });
+
+describe('note', () => {
+  it('adds a system note without touching streaming state', () => {
+    const s = chatReducer(initialChatState, { type: 'note', text: 'Ignored: x' });
+    expect(s.messages[0]).toMatchObject({ role: 'system-note', content: 'Ignored: x' });
+    expect(s.status).toBe('idle');
+  });
+});

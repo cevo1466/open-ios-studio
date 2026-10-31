@@ -2,7 +2,13 @@
 
 Last updated: 2026-10-31
 
-## M2 (PR #15, in progress)
+## M3 (PR #16, in progress)
+- Rust: `ai.rs` (Anthropic/OpenAI/Ollama streaming, dynamic model lists), `secrets.rs` (OS keyring), `apply_file`, `read_file_if_exists`.
+- TS: file-block protocol parser, token-budgeted context, prompts (generate/chat/repair/plan), policy-checked proposals, review UI with Monaco diff, chat state/persistence, bounded repair loop (3 attempts).
+- NOT VERIFIED: any real provider call (needs user API key / local Ollama); the OS keyring on a real desktop session (needs a Secret Service such as gnome-keyring).
+- Not delivered: structured planning step UI (plan prompt exists, not wired), project memory beyond a notes field, file deletion by the AI (intentionally unsupported).
+
+## M2 (merged, PR #15)
 - Shell-free runner, xtool adapter (version, sdk status, new, build), Build panel, real xtool 1.24.0 CLI fixtures captured in CI and used in tests.
 - BLOCKED: real build, signing, device (need Darwin SDK/Apple ID/iPhone).
 - rustfmt patch artifact step added to CI (uploads a patch when formatting fails).

@@ -133,7 +133,7 @@ pub fn validate_ollama_base(url: &str) -> Result<(), String> {
         .or_else(|| url.strip_prefix("https://"))
         .ok_or("Ollama URL must start with http:// or https://")?;
     let authority = rest
-        .split(|c: char| c == '/' || c == '?' || c == '#')
+        .split(['/', '?', '#'])
         .next()
         .unwrap_or("");
     if authority.contains('@') {
