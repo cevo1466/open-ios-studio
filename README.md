@@ -17,14 +17,14 @@ Download from the CI run artifacts or, once published, from GitHub Releases (no 
 
 DEB:
 ```bash
-sudo apt install ./Open-iOS-Studio_0.1.0_amd64.deb
+sudo apt install "./Open iOS Studio_0.1.0_amd64.deb"
 ```
 AppImage:
 ```bash
-chmod +x Open-iOS-Studio_0.1.0_amd64.AppImage
-./Open-iOS-Studio_0.1.0_amd64.AppImage
+chmod +x "Open iOS Studio_0.1.0_amd64.AppImage"
+"./Open iOS Studio_0.1.0_amd64.AppImage"
 ```
-Verify downloads with `sha256sum -c SHA256SUMS.txt`. The exact file names depend on the packaging output.
+Verify downloads with `sha256sum -c SHA256SUMS.txt`. File names contain spaces (Tauri uses the product name).
 
 Runtime needs WebKitGTK 4.1 (Linux Mint 21+ / Ubuntu 22.04+).
 
