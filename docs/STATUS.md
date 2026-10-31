@@ -2,7 +2,13 @@
 
 Last updated: 2026-10-31
 
-## M3 (PR #16, in progress)
+## M4 + M5 (this PR)
+- Devices panel: `xtool devices --no-wait`, `auth status`, run on device (`dev run`), launch by bundle id; UDID/bundle id validated in Rust. Device output format is from xtool source (no device in CI): NOT VERIFIED on hardware. Device-dependent tests are BLOCKED.
+- Not delivered: test-result view (no iOS test runner is available through xtool on Linux), signing flow UI beyond showing `auth status` (login stays in the user's terminal by design).
+- E2E: Playwright against a mocked Tauri IPC (CI job `e2e`), gitleaks secret scan (CI job `secret-scan`).
+- Release: `release.yml` (tag-triggered pre-release with checksums), SECURITY/CONTRIBUTING/CODE_OF_CONDUCT/CHANGELOG/RELEASING docs.
+
+## M3 (merged, PR #16)
 - Rust: `ai.rs` (Anthropic/OpenAI/Ollama streaming, dynamic model lists), `secrets.rs` (OS keyring), `apply_file`, `read_file_if_exists`.
 - TS: file-block protocol parser, token-budgeted context, prompts (generate/chat/repair/plan), policy-checked proposals, review UI with Monaco diff, chat state/persistence, bounded repair loop (3 attempts).
 - NOT VERIFIED: any real provider call (needs user API key / local Ollama); the OS keyring on a real desktop session (needs a Secret Service such as gnome-keyring).

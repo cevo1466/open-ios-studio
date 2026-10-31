@@ -1,4 +1,5 @@
-import type { Compatibility, Diagnostic, ParsedVersion } from './types';
+import type {
+  Device, Compatibility, Diagnostic, ParsedVersion } from './types';
 
 // eslint-disable-next-line no-control-regex
 const ANSI_RE =/\u001b\[[0-9;?]*[ -/]*[@-~]/g;
@@ -118,4 +119,23 @@ export function buildOutcome(
   else if (exit.timedOut) status = 'timed_out';
   else status = 'failed';
   return { status, errorCount, warningCount };
+}
+
+const DEVICE_LINE = /^(.*) \[([A-Za-z]+)\]: ([0-9A-Fa-f-]{8,64})$/;
+
+/** Parse `xtool devices` output. Unrecognised lines (such as "Waiting for devices…") are ignored. */
+export function parseDevices(output: string): Device[] {
+  const devices: Device[] = [];
+  for (const line of output.split('\n')) {
+    const m = DEVICE_LINE.exec(stripAnsi(line).replace(/\r$/, '').trim());
+    if (m) devices.push({ name: m[1], connection: m[2].toLowerCase(), udid: m[3] });
+  }
+  return devices;
+}
+
+/** `xtool auth status` prints `Logged out` when there is no saved login; anything else is a login. */
+export function parseAuthStatus(output: string): { loggedIn: boolean; detail: string } {
+  const text = stripAnsi(output).trim();
+  if (text === '') return { loggedIn: false, detail: 'No output from xtool auth status.' };
+  return { loggedIn: !/^logged out\b/i.test(text), detail: text };
 }

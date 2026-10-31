@@ -3,7 +3,7 @@
  * The webview never passes raw argv: it names an allow-listed operation and Rust builds the command.
  */
 
-export type XtoolOp = 'version' | 'sdk-status' | 'new' | 'build';
+export type XtoolOp = 'version' | 'sdk-status' | 'new' | 'build' | 'auth-status' | 'devices' | 'run-device' | 'launch';
 
 export interface XtoolRunArgs {
   /** `new`: package name, validated by `validateProjectName` and again in Rust. */
@@ -12,6 +12,10 @@ export interface XtoolRunArgs {
   project?: string;
   /** `build`: configuration. */
   configuration?: 'debug' | 'release';
+  /** `run-device` / `launch`: device UDID (hex and dashes). */
+  udid?: string;
+  /** `launch`: bundle id of an installed app. */
+  bundleId?: string;
 }
 
 export type RunEvent =
@@ -55,4 +59,12 @@ export interface Diagnostic {
   severity: 'error' | 'warning' | 'note';
   message: string;
   raw: string;
+}
+
+/** One line of `xtool devices`: `<name> [<usb|network>]: <udid>`. Format read from DevicesCommand.swift
+ *  (no real device was available in CI, so this is SUPPORTED_BY_SOURCE, not VERIFIED). */
+export interface Device {
+  name: string;
+  connection: string;
+  udid: string;
 }

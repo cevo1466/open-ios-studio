@@ -31,6 +31,8 @@ pub struct RunArgs {
     pub name: Option<String>,
     pub project: Option<String>,
     pub configuration: Option<String>,
+    pub udid: Option<String>,
+    pub bundle_id: Option<String>,
 }
 
 #[cfg(unix)]
@@ -70,6 +72,50 @@ pub fn validate_project_name(name: &str) -> Result<(), String> {
         ));
     }
     Ok(())
+}
+
+/// Device UDIDs are hex digits and dashes (e.g. `00008110-001A2B3C4D5E6F78`).
+pub fn validate_udid(udid: &str) -> Result<(), String> {
+    let ok = (8..=64).contains(&udid.len())
+        && udid.chars().all(|c| c.is_ascii_hexdigit() || c == '-')
+        && !udid.starts_with('-');
+    if ok {
+        Ok(())
+    } else {
+        Err("The device id (UDID) is not valid.".to_owned())
+    }
+}
+
+pub fn validate_bundle_id(bundle_id: &str) -> Result<(), String> {
+    let ok = !bundle_id.is_empty()
+        && bundle_id.len() <= 155
+        && !bundle_id.starts_with(['-', '.'])
+        && bundle_id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-');
+    if ok {
+        Ok(())
+    } else {
+        Err("The bundle id is not valid.".to_owned())
+    }
+}
+
+fn configuration_of(args: &RunArgs) -> Result<&'static str, String> {
+    match args.configuration.as_deref() {
+        None | Some("debug") => Ok("debug"),
+        Some("release") => Ok("release"),
+        Some(other) => Err(format!("Unknown configuration '{other}'.")),
+    }
+}
+
+/// Project directory (workspace-confined) that contains a Package.swift.
+fn project_dir(args: &RunArgs, workspace: &Workspace) -> Result<PathBuf, String> {
+    let rel = args.project.as_deref().unwrap_or("");
+    let dir = workspace.resolve(rel).map_err(|e| e.to_string())?;
+    if !dir.join("Package.swift").is_file() {
+        return Err("No Package.swift in the selected project folder.".to_owned());
+    }
+    Ok(dir)
 }
 
 fn tool_spec(program: &Path, args: &[&str], cwd: &Path, timeout: Duration) -> Spec {
@@ -149,22 +195,42 @@ pub fn build_spec(
             ))
         }
         "build" => {
-            let rel = args.project.as_deref().unwrap_or("");
-            let dir = workspace.resolve(rel).map_err(|e| e.to_string())?;
-            if !dir.join("Package.swift").is_file() {
-                return Err("No Package.swift in the selected project folder.".to_owned());
-            }
-            let configuration = match args.configuration.as_deref() {
-                None | Some("debug") => "debug",
-                Some("release") => "release",
-                Some(other) => return Err(format!("Unknown configuration '{other}'.")),
-            };
+            let dir = project_dir(args, workspace)?;
+            let configuration = configuration_of(args)?;
             Ok(tool_spec(
                 xtool,
                 &["dev", "build", "--configuration", configuration],
                 &dir,
                 BUILD_TIMEOUT,
             ))
+        }
+        "auth-status" => Ok(tool_spec(xtool, &["auth", "status"], root, QUICK_TIMEOUT)),
+        // `--no-wait` is essential: the default waits forever for a device to appear.
+        "devices" => Ok(tool_spec(
+            xtool,
+            &["devices", "--no-wait"],
+            root,
+            DETECT_TIMEOUT,
+        )),
+        "run-device" => {
+            let dir = project_dir(args, workspace)?;
+            let configuration = configuration_of(args)?;
+            let mut argv = vec!["dev", "run", "--configuration", configuration];
+            if let Some(udid) = args.udid.as_deref() {
+                validate_udid(udid)?;
+                argv.extend(["--udid", udid]);
+            }
+            Ok(tool_spec(xtool, &argv, &dir, BUILD_TIMEOUT))
+        }
+        "launch" => {
+            let bundle_id = args.bundle_id.as_deref().unwrap_or_default();
+            validate_bundle_id(bundle_id)?;
+            let mut argv = vec!["launch", bundle_id];
+            if let Some(udid) = args.udid.as_deref() {
+                validate_udid(udid)?;
+                argv.extend(["--udid", udid]);
+            }
+            Ok(tool_spec(xtool, &argv, root, BUILD_TIMEOUT))
         }
         other => Err(format!("Unknown operation '{other}'.")),
     }
@@ -292,6 +358,62 @@ mod tests {
             ..RunArgs::default()
         };
         assert!(build_spec("build", &escape, xtool, &ws).is_err());
+    }
+
+    #[test]
+    fn device_operations_build_fixed_argument_vectors() {
+        let (_d, ws) = ws();
+        let xtool = Path::new("/usr/bin/xtool");
+        let devices = build_spec("devices", &RunArgs::default(), xtool, &ws).expect("devices");
+        assert_eq!(devices.args, ["devices", "--no-wait"]);
+        let auth = build_spec("auth-status", &RunArgs::default(), xtool, &ws).expect("auth");
+        assert_eq!(auth.args, ["auth", "status"]);
+
+        fs::write(ws.root().join("Package.swift"), "").expect("write");
+        let run = RunArgs {
+            udid: Some("00008110-001A2B3C4D5E6F78".into()),
+            configuration: Some("release".into()),
+            ..RunArgs::default()
+        };
+        let spec = build_spec("run-device", &run, xtool, &ws).expect("run-device");
+        assert_eq!(
+            spec.args,
+            [
+                "dev",
+                "run",
+                "--configuration",
+                "release",
+                "--udid",
+                "00008110-001A2B3C4D5E6F78"
+            ]
+        );
+        let launch = RunArgs {
+            bundle_id: Some("com.example.Demo-App".into()),
+            ..RunArgs::default()
+        };
+        let spec = build_spec("launch", &launch, xtool, &ws).expect("launch");
+        assert_eq!(spec.args, ["launch", "com.example.Demo-App"]);
+    }
+
+    #[test]
+    fn device_arguments_are_validated() {
+        let (_d, ws) = ws();
+        let xtool = Path::new("/usr/bin/xtool");
+        fs::write(ws.root().join("Package.swift"), "").expect("write");
+        for bad in ["", "--help", "zzzzzzzz", "-0000000000", "0000 0000"] {
+            let run = RunArgs {
+                udid: Some(bad.into()),
+                ..RunArgs::default()
+            };
+            assert!(build_spec("run-device", &run, xtool, &ws).is_err(), "{bad:?}");
+        }
+        for bad in ["", "--x", ".hidden", "a b", "a;b", "a/b"] {
+            let launch = RunArgs {
+                bundle_id: Some(bad.into()),
+                ..RunArgs::default()
+            };
+            assert!(build_spec("launch", &launch, xtool, &ws).is_err(), "{bad:?}");
+        }
     }
 
     #[test]

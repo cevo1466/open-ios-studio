@@ -5,6 +5,7 @@ import { Explorer } from './components/Explorer';
 import { useAi } from './ai/useAi';
 import { BuildPanel } from './components/BuildPanel';
 import { ChatPanel } from './components/ChatPanel';
+import { DevicesPanel } from './components/DevicesPanel';
 import { AppStoreReadiness, SecurityCenter } from './components/PolicyPanels';
 import { SettingsDialog } from './components/SettingsDialog';
 import { inDesktopApp, ipc } from './ipc';
@@ -13,13 +14,12 @@ import { analyzeProject } from './policy';
 import type { EvaluationReport } from './policy/types';
 import { initialState, isDirty, reducer } from './state/store';
 import { buildReducer, initialBuildState } from './xtool/buildState';
-import { buildOutcome, compatibility, parseDiagnostics, parseSwiftVersion, parseXtoolVersion, redactLine } from './xtool/parse';
-import type { RunEvent, XtoolInfo, XtoolOp, XtoolRunArgs } from './xtool/types';
+import { buildOutcome, compatibility, parseAuthStatus, parseDevices, parseDiagnostics, parseSwiftVersion, parseXtoolVersion, redactLine } from './xtool/parse';
+import type { Device, RunEvent, XtoolInfo, XtoolOp, XtoolRunArgs } from './xtool/types';
 
 const PLANNED: { label: string; milestone: string }[] = [
   { label: 'Search', milestone: 'planned' },
   { label: 'Source Control', milestone: 'planned' },
-  { label: 'Devices', milestone: 'M4' },
 ];
 
 export function App() {
@@ -39,6 +39,13 @@ export function App() {
   const [build, buildDispatch] = useReducer(buildReducer, initialBuildState);
   const [xtoolInfo, setXtoolInfo] = useState<XtoolInfo | null>(null);
   const [xtoolLoading, setXtoolLoading] = useState(false);
+  const [devicesOpen, setDevicesOpen] = useState(false);
+  const [devices, setDevices] = useState<Device[] | null>(null);
+  const [authText, setAuthText] = useState<string | null>(null);
+  const [authLoggedIn, setAuthLoggedIn] = useState<boolean | null>(null);
+  const [devicesLoading, setDevicesLoading] = useState(false);
+  const [devicesError, setDevicesError] = useState<string | null>(null);
+  const [selectedUdid, setSelectedUdid] = useState<string | null>(null);
   const desktop = inDesktopApp();
 
   const theme = effectiveTheme(settings.theme, prefersDark);
@@ -142,6 +149,51 @@ export function App() {
     },
     [],
   );
+
+  /** Run a short xtool operation and return its output without touching the build log. */
+  const collectXtool = useCallback(async (op: XtoolOp, args: XtoolRunArgs = {}) => {
+    const lines: string[] = [];
+    let code: number | null = null;
+    await ipc.xtoolRun(op, args, (e) => {
+      if (e.kind === 'line') lines.push(redactLine(e.text));
+      else code = e.code;
+    });
+    return { text: lines.join('\n'), code };
+  }, []);
+
+  const refreshDevices = useCallback(async () => {
+    setDevicesError(null);
+    if (state.workspace === null) {
+      setDevicesError('Open a folder first: xtool runs inside your workspace.');
+      return;
+    }
+    setDevicesLoading(true);
+    try {
+      const info = xtoolInfo ?? (await ipc.xtoolDetect());
+      setXtoolInfo(info);
+      if (!info.found) {
+        setDevices([]);
+        return;
+      }
+      const auth = await collectXtool('auth-status');
+      const parsedAuth = parseAuthStatus(auth.text);
+      setAuthText(parsedAuth.detail);
+      setAuthLoggedIn(auth.code === 0 ? parsedAuth.loggedIn : null);
+      const listed = await collectXtool('devices');
+      if (listed.code !== 0) throw new Error(listed.text || 'xtool devices failed');
+      setDevices(parseDevices(listed.text));
+    } catch (e) {
+      setDevices(null);
+      setDevicesError(String(e));
+    } finally {
+      setDevicesLoading(false);
+    }
+  }, [state.workspace, xtoolInfo, collectXtool]);
+
+  const openDevices = useCallback(() => {
+    setDevicesOpen(true);
+    void refreshDevices();
+  }, [refreshDevices]);
 
   const openBuild = useCallback(() => {
     setBuildOpen(true);
@@ -267,6 +319,10 @@ export function App() {
             Build (xtool)
             <small>M2</small>
           </button>
+          <button type="button" className="act" onClick={openDevices} disabled={!desktop} title={desktop ? 'Connected iPhones and signing status' : 'Desktop app only'}>
+            Devices
+            <small>M4</small>
+          </button>
           <button type="button" className="act" onClick={() => setChatOpen(true)} disabled={!desktop} title={desktop ? 'AI assistant' : 'Desktop app only'}>
             AI Chat
             <small>M3</small>
@@ -346,6 +402,32 @@ export function App() {
             onChange={(path, content) => dispatch({ type: 'edit', path, content })}
             onSave={() => void saveRef.current()}
           />
+          {devicesOpen && (
+            <div className="bp-dock">
+              <DevicesPanel
+                xtoolFound={xtoolInfo?.found === true}
+                devices={devices}
+                authText={authText}
+                authLoggedIn={authLoggedIn}
+                loading={devicesLoading}
+                error={devicesError}
+                hasWorkspace={hasWorkspace}
+                running={build.running}
+                selectedUdid={selectedUdid}
+                onSelect={setSelectedUdid}
+                onRefresh={() => void refreshDevices()}
+                onRunOnDevice={(udid, configuration) => {
+                  setBuildOpen(true);
+                  void runXtool('run-device', { configuration, udid: udid ?? undefined });
+                }}
+                onLaunch={(udid, bundleId) => {
+                  setBuildOpen(true);
+                  void runXtool('launch', { bundleId, udid: udid ?? undefined });
+                }}
+                onClose={() => setDevicesOpen(false)}
+              />
+            </div>
+          )}
           {buildOpen && ai.repairAvailable && (
             <div className="notice" role="status">
               The build failed. The AI can propose a minimal fix; you review it before anything is written.
