@@ -129,6 +129,31 @@ fn spawn_reader<R: Read + Send + 'static>(
     })
 }
 
+/// A binary that was written a moment ago can still be "busy" (ETXTBSY) while another thread's
+/// fork holds the write handle. The condition clears within milliseconds, so retry briefly.
+#[cfg(unix)]
+fn is_text_file_busy(error: &std::io::Error) -> bool {
+    error.raw_os_error() == Some(libc::ETXTBSY)
+}
+
+#[cfg(not(unix))]
+fn is_text_file_busy(_error: &std::io::Error) -> bool {
+    false
+}
+
+fn spawn_with_retry(command: &mut Command) -> std::io::Result<Child> {
+    let mut attempt: u32 = 0;
+    loop {
+        match command.spawn() {
+            Err(error) if is_text_file_busy(&error) && attempt < 8 => {
+                attempt += 1;
+                thread::sleep(Duration::from_millis(25 * u64::from(attempt)));
+            }
+            other => return other,
+        }
+    }
+}
+
 #[cfg(unix)]
 fn terminate(child: &mut Child, hard: bool) {
     let signal = if hard { libc::SIGKILL } else { libc::SIGTERM };
@@ -176,7 +201,7 @@ pub fn run(
         command.process_group(0);
     }
 
-    let mut child = command.spawn()?;
+    let mut child = spawn_with_retry(&mut command)?;
     let (tx, rx) = mpsc::sync_channel::<Line>(1024);
     if let Some(out) = child.stdout.take() {
         spawn_reader(out, Stream::Stdout, tx.clone());

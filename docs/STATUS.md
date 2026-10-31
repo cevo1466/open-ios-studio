@@ -1,5 +1,9 @@
 # Status
 
+## Released
+**v0.1.0 (pre-release)**: https://github.com/cevo1466/open-ios-studio/releases/tag/v0.1.0 — `Open-iOS-Studio_0.1.0_amd64.deb`, `Open-iOS-Studio_0.1.0_amd64.AppImage`, `SHA256SUMS.txt` (checksums re-verified after downloading the published assets). Published by `release.yml` after verify and bundle jobs passed.
+**NOT VERIFIED:** that the app window opens on a real Linux desktop (no display in CI or on the dev host). Please try the DEB/AppImage on Linux Mint and report.
+
 Last updated: 2026-10-31
 
 ## M4 + M5 (this PR)
