@@ -13,18 +13,20 @@ Open-source desktop IDE that helps developers **without a Mac** build iOS apps, 
 | App Store Readiness / Security Center (policy engine) | next PR after M1 |
 
 ## Install on Linux Mint (x86_64)
-Download from the CI run artifacts or, once published, from GitHub Releases (no release exists yet).
+Download the files from the latest [GitHub Release](https://github.com/cevo1466/open-ios-studio/releases) (pre-release). In the terminal, first go to the folder you downloaded them to (usually `~/Downloads`); `apt` reports "unsupported file" when the path is wrong.
 
 DEB:
 ```bash
-sudo apt install "./Open iOS Studio_0.1.0_amd64.deb"
+cd ~/Downloads
+sudo apt install ./Open-iOS-Studio_0.1.1_amd64.deb
 ```
 AppImage:
 ```bash
-chmod +x "Open iOS Studio_0.1.0_amd64.AppImage"
-"./Open iOS Studio_0.1.0_amd64.AppImage"
+cd ~/Downloads
+chmod +x Open-iOS-Studio_0.1.1_amd64.AppImage
+./Open-iOS-Studio_0.1.1_amd64.AppImage
 ```
-Verify downloads with `sha256sum -c SHA256SUMS.txt`. File names contain spaces (Tauri uses the product name).
+Verify downloads with `sha256sum -c --ignore-missing SHA256SUMS.txt`. Release asset names use hyphens (GitHub replaces spaces).
 
 Runtime needs WebKitGTK 4.1 (Linux Mint 21+ / Ubuntu 22.04+).
 

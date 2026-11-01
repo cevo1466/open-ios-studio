@@ -4,6 +4,24 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-01
+
+### Added
+- Turkish user interface and a guided welcome screen with four status-aware steps.
+- Unsaved-changes prompt when the window is closed.
+- "Önce plan" button: asks the AI for a short step list before generating files.
+- Seven more source-level policy detectors (ASR-005, 008, 009, 016, 023; MSEC-017, 018); 24 of 50 rules now have a partial detector.
+- AI connection help (Claude/OpenAI via API key, Ollama local; CLI subscriptions are not API keys).
+
+### Changed
+- Build and Devices docks are mutually exclusive; disabled placeholder sections removed.
+- GitHub Actions pinned to commit SHAs.
+- README install instructions use the real release asset names.
+
+### Known limitations
+- Desktop behaviour (window close prompt, keyring) is covered by E2E with a fake Tauri backend only; not verified on a real desktop by the maintainer.
+- Rule texts remain English; no Codex CLI integration.
+
 ## [0.1.0] - 2026-10-31
 
 First pre-release.
