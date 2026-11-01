@@ -16,6 +16,8 @@ import { DevicesPanel } from './components/DevicesPanel';
 import { AppStoreReadiness, SecurityCenter } from './components/PolicyPanels';
 import { CloseGuardDialog } from './components/CloseGuard';
 import { WelcomeScreen } from './components/WelcomeScreen';
+import { BinaryCard } from './components/BinaryCard';
+import { classifyPath, isNotTextError, type FileKind } from './files/kind';
 import { SettingsDialog } from './components/SettingsDialog';
 import { dirtyTabs, saveAllDirty } from './state/closeGuard';
 import { inDesktopApp, ipc } from './ipc';
@@ -49,6 +51,8 @@ export function App() {
   const [analysing, setAnalysing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [buildOpen, setBuildOpen] = useState(false);
+  const [binary, setBinary] = useState<{ path: string; kind: Exclude<FileKind, 'text'>; error: string | null } | null>(null);
+  const [revealArtifacts, setRevealArtifacts] = useState(0);
   const [terminal, setTerminal] = useState<{ kind: PtyKind; key: number } | null>(null);
   const [layout, setLayout] = useState<LayoutState>(loadLayout);
   const [bottomActive, setBottomActive] = useState<BottomTabId>('terminal');
@@ -113,6 +117,13 @@ export function App() {
 
   const openFile = useCallback(
     async (path: string) => {
+      const kind = classifyPath(path);
+      if (kind !== 'text') {
+        // Build output and binaries never go to the text editor.
+        setBinary({ path, kind, error: null });
+        return;
+      }
+      setBinary(null);
       if (state.tabs.some((t) => t.path === path)) {
         dispatch({ type: 'activate', path });
         return;
@@ -121,7 +132,8 @@ export function App() {
         dispatch({ type: 'open', path, content: await ipc.readFile(path) });
         setNotice(null);
       } catch (e) {
-        fail(`Dosya açılamadı (${path}): ${String(e)}`);
+        if (isNotTextError(String(e))) setBinary({ path, kind: 'binary', error: null });
+        else fail(`Dosya açılamadı (${path}): ${String(e)}`);
       }
     },
     [state.tabs, fail],
@@ -586,7 +598,8 @@ export function App() {
             <Explorer
               root={state.workspace}
               refreshKey={refreshKey}
-              activePath={state.active}
+              activePath={binary ? binary.path : state.active}
+              revealArtifacts={revealArtifacts}
               onOpen={(p) => void openFile(p)}
               onError={fail}
             />
@@ -619,7 +632,17 @@ export function App() {
               </button>
             </div>
           )}
-          {state.tabs.length === 0 ? (
+          {binary ? (
+            <BinaryCard
+              path={binary.path}
+              kind={binary.kind}
+              error={binary.error}
+              onRevealSelf={() => void ipc.revealPath(binary.path, false).catch((e: unknown) => setBinary({ ...binary, error: String(e) }))}
+              onRevealParent={() => void ipc.revealPath(binary.path, true).catch((e: unknown) => setBinary({ ...binary, error: String(e) }))}
+              onShowArtifacts={() => setRevealArtifacts((n) => n + 1)}
+              onClose={() => setBinary(null)}
+            />
+          ) : state.tabs.length === 0 ? (
             <WelcomeScreen
               desktop={desktop}
               workspace={state.workspace}

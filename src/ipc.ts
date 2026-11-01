@@ -57,5 +57,6 @@ export const ipc = {
   ptyWrite: (id: number, data: string) => invoke<void>('pty_write', { id, data }),
   ptyResize: (id: number, rows: number, cols: number) => invoke<void>('pty_resize', { id, rows, cols }),
   ptyClose: (id: number) => invoke<void>('pty_close', { id }),
+  revealPath: (path: string, parent: boolean) => invoke<void>('reveal_path', { path, parent }),
   createFile: (path: string) => invoke<void>('create_file', { path }),
 };

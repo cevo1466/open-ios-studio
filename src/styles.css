@@ -64,3 +64,9 @@ input, select { background: var(--bg); border: 1px solid var(--border); border-r
 .palette li button { width: 100%; text-align: left; border: 0; background: transparent; display: flex; justify-content: space-between; }
 .hint { color: var(--muted); }
 .ai-dock { width: var(--ai-w, 380px); min-width: 280px; max-width: 50vw; flex: none; background: var(--bg2); display: flex; flex-direction: column; min-height: 0; }
+.tree-row.bundle { color: var(--muted); }
+.tree-group-head, .tree-link { width: 100%; text-align: left; border: 0; border-radius: 0; background: transparent; padding: 3px 8px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+.tree-group-head:hover, .tree-link:hover { background: var(--bg3); color: var(--fg); }
+.tree-group { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 4px; }
+.tree-count { margin-left: auto; font-size: 11px; background: var(--bg3); border-radius: 999px; padding: 0 7px; }
+.tree-hidden { margin-top: 2px; } .tree-link { font-size: 12px; }

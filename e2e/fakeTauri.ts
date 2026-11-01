@@ -13,6 +13,11 @@ export async function installFakeTauri(page: Page): Promise<void> {
       ['Package.swift', '// swift-tools-version: 5.9\nimport PackageDescription\nlet package = Package(name: "Demo")\n'],
       ['xtool.yml', 'version: 1\nbundleID: com.example.Demo\n'],
       ['Sources/Demo/ContentView.swift', 'import SwiftUI\n\nstruct ContentView: View {\n  var body: some View { Text("Hi") }\n}\n'],
+      ['.build/debug/Demo', 'ELF'],
+      ['.build/debug/Demo.build/main.o', 'obj'],
+      ['xtool/Demo.app/Info.plist', 'bplist'],
+      ['xtool/Demo.app/Demo', 'bin'],
+      ['.git/config', '[core]'],
       ['Sources/Demo/DemoApp.swift', 'import SwiftUI\n\n@main struct DemoApp: App {\n  var body: some Scene { WindowGroup { ContentView() } }\n}\n'],
     ]);
     const w = window as unknown as Record<string, unknown>;
@@ -81,6 +86,7 @@ export async function installFakeTauri(page: Page): Promise<void> {
         return null;
       },
       xtool_cancel: () => null,
+      reveal_path: () => null,
       secret_status: () => false,
       ai_list_models: () => [],
       ai_cancel: () => null,
