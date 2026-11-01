@@ -26,7 +26,7 @@ interface Props {
   /** Shown on a plain shell: starts Claude Code with the project context instead. */
   onStartClaudeCode?: { label: string; run(): void };
   /** A `claude-code` session only: what was asked for, and a warning when the settings changed since. */
-  session?: { summary: string; stale: boolean; restart(): void };
+  session?: { summary: string; bypass: boolean; stale: boolean; restart(): void };
 }
 
 type Phase = 'starting' | 'running' | 'exited' | 'error';
@@ -133,7 +133,8 @@ export function TerminalPanel({ kind, options, runKey, theme, onExit, onClose, o
         <strong>{TERMINAL_TITLES[kind]}</strong>
         {kind === 'claude-code' && (
           <span className="term-role">
-            Claude Code · tam ajan: dosyaları okur, komut çalıştırır, her adımda izin sorar
+            Claude Code · tam ajan: dosyaları okur, komut çalıştırır,{' '}
+            {session?.bypass ? <strong className="term-bypass">izin sormadan çalışıyor</strong> : 'her adımda izin sorar'}
             {session?.summary ? ` · istenen: ${session.summary}` : ''}
           </span>
         )}
@@ -151,7 +152,7 @@ export function TerminalPanel({ kind, options, runKey, theme, onExit, onClose, o
       </div>
       {session?.stale && (
         <p className="term-stale" role="status">
-          Model veya efor ayarı bu oturumdan sonra değişti. Yeni ayar için oturumu yeniden başlatın.{' '}
+          Model, efor veya izin ayarı bu oturumdan sonra değişti. Yeni ayar için oturumu yeniden başlatın.{' '}
           <button type="button" className="tree-link" onClick={session.restart}>
             Yeni ayarla yeniden başlat
           </button>

@@ -24,6 +24,8 @@ export type PtyKind = 'claude-login' | 'codex-login' | 'user-shell' | 'claude-co
 export interface PtyOptions {
   model: string;
   effort: string;
+  /** Start Claude Code without permission prompts. */
+  skipPermissions?: boolean;
   /** Live website Claude Code may study. Handed to that one session only; never stored. */
   remote?: RemoteSite;
 }

@@ -78,7 +78,7 @@ test.describe('AI chat column, model and effort', () => {
     await expect.poll(async () => (await ipcCalls(page)).filter((c) => c.cmd === 'pty_open').length).toBeGreaterThan(0);
     const open = (await ipcCalls(page)).filter((c) => c.cmd === 'pty_open').at(-1)!;
     expect(open.args.kind).toBe('claude-code');
-    expect(open.args.options).toEqual({ model: 'opus', effort: 'high' });
+    expect(open.args.options).toEqual({ model: 'opus', effort: 'high', skipPermissions: true });
   });
 
   test('a plain terminal offers to start Claude Code with the project context', async ({ page }) => {
@@ -148,5 +148,27 @@ test.describe('AI chat column, model and effort', () => {
     await panel.getByRole('button', { name: 'Yeni ayarla yeniden başlat' }).click();
     await expect(panel.locator('.term-stale')).toHaveCount(0);
     await expect(panel.locator('.term-role')).toContainText('Sonnet · Maksimum');
+  });
+
+  test('Claude Code starts without permission prompts by default and the choice can be turned off', async ({ page }) => {
+    await page.goto('/');
+    await useClaude(page);
+    const toggle = page.getByRole('checkbox', { name: /İzin sormadan çalış/ });
+    await expect(toggle).toBeChecked();
+    await expect(page.getByText(/onay istemez/)).toBeVisible();
+    await page.getByRole('button', { name: "Claude Code'u bu projede aç" }).click();
+    const panel = page.getByRole('region', { name: 'Claude Code' });
+    await expect(panel.locator('.term-bypass')).toHaveText('izin sormadan çalışıyor');
+    let open = (await ipcCalls(page)).filter((c) => c.cmd === 'pty_open').at(-1)!;
+    expect((open.args.options as { skipPermissions: boolean }).skipPermissions).toBe(true);
+
+    // Turning it off warns that the running session is out of date; a restart honours it.
+    await toggle.uncheck();
+    await expect(panel.locator('.term-stale')).toBeVisible();
+    await panel.getByRole('button', { name: 'Yeni ayarla yeniden başlat' }).click();
+    await expect(panel.locator('.term-bypass')).toHaveCount(0);
+    await expect(panel.locator('.term-role')).toContainText('her adımda izin sorar');
+    open = (await ipcCalls(page)).filter((c) => c.cmd === 'pty_open').at(-1)!;
+    expect((open.args.options as { skipPermissions: boolean }).skipPermissions).toBe(false);
   });
 });
