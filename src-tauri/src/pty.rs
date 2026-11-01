@@ -89,8 +89,7 @@ pub fn validate_remote(r: &RemoteSite) -> Result<(), String> {
     let host_ok = !r.host.is_empty()
         && r.host.chars().count() <= 253
         && !r.host.starts_with('-')
-        && r
-            .host
+        && r.host
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | ':' | '[' | ']'));
     if !host_ok {
@@ -99,8 +98,7 @@ pub fn validate_remote(r: &RemoteSite) -> Result<(), String> {
     let user_ok = !r.user.is_empty()
         && r.user.chars().count() <= 64
         && !r.user.starts_with('-')
-        && r
-            .user
+        && r.user
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-' | '@' | '+'));
     if !user_ok {
@@ -447,14 +445,38 @@ mod tests {
     fn remote_site_is_validated() {
         assert!(validate_remote(&site()).is_ok());
         for bad in [
-            RemoteSite { protocol: "scp".into(), ..site() },
-            RemoteSite { host: "-oProxyCommand=x".into(), ..site() },
-            RemoteSite { host: "a b".into(), ..site() },
-            RemoteSite { host: String::new(), ..site() },
-            RemoteSite { user: "a;b".into(), ..site() },
-            RemoteSite { user: "-x".into(), ..site() },
-            RemoteSite { password: "a\nb".into(), ..site() },
-            RemoteSite { password: "x".repeat(257), ..site() },
+            RemoteSite {
+                protocol: "scp".into(),
+                ..site()
+            },
+            RemoteSite {
+                host: "-oProxyCommand=x".into(),
+                ..site()
+            },
+            RemoteSite {
+                host: "a b".into(),
+                ..site()
+            },
+            RemoteSite {
+                host: String::new(),
+                ..site()
+            },
+            RemoteSite {
+                user: "a;b".into(),
+                ..site()
+            },
+            RemoteSite {
+                user: "-x".into(),
+                ..site()
+            },
+            RemoteSite {
+                password: "a\nb".into(),
+                ..site()
+            },
+            RemoteSite {
+                password: "x".repeat(257),
+                ..site()
+            },
         ] {
             assert!(validate_remote(&bad).is_err(), "{bad:?}");
         }
@@ -463,13 +485,30 @@ mod tests {
     #[test]
     fn default_ports_follow_the_protocol() {
         assert_eq!(site().effective_port(), 22);
-        assert_eq!(RemoteSite { protocol: "ftp".into(), ..site() }.effective_port(), 21);
-        assert_eq!(RemoteSite { port: 2222, ..site() }.effective_port(), 2222);
+        assert_eq!(
+            RemoteSite {
+                protocol: "ftp".into(),
+                ..site()
+            }
+            .effective_port(),
+            21
+        );
+        assert_eq!(
+            RemoteSite {
+                port: 2222,
+                ..site()
+            }
+            .effective_port(),
+            2222
+        );
     }
 
     #[test]
     fn remote_details_go_to_the_environment_only() {
-        let opts = PtyOptions { remote: Some(site()), ..PtyOptions::default() };
+        let opts = PtyOptions {
+            remote: Some(site()),
+            ..PtyOptions::default()
+        };
         let env = session_env(PtyKind::ClaudeCode, &opts);
         assert!(env.contains(&("OIS_REMOTE_HOST".to_owned(), "ftp.example.com".to_owned())));
         assert!(env.contains(&("OIS_REMOTE_PORT".to_owned(), "22".to_owned())));
