@@ -199,7 +199,7 @@ export function useAi(params: Params) {
         }
       };
       try {
-        const request = { provider, model: settings.models[provider], messages };
+        const request = { provider, model: settings.models[provider], effort: settings.efforts[provider], messages };
         if (isCliProvider(provider)) await ipc.cliStream(request, onEvent);
         else await ipc.aiStream(request, onEvent);
       } catch (e) {
@@ -208,7 +208,7 @@ export function useAi(params: Params) {
       }
       return failed ? null : text;
     },
-    [provider, settings.models],
+    [provider, settings.models, settings.efforts],
   );
 
   const reviewProposal = useCallback(

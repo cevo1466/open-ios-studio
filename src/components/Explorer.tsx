@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties } from 'react';
+import { artifactNote, entryNote, partitionEntries, sortRoot } from '../files/explorerFilter';
 import { isBundleName } from '../files/kind';
-import { partitionEntries, sortRoot } from '../files/explorerFilter';
 import { ipc, type Entry } from '../ipc';
+import { TreeConfig, TreeFile, TreeFolder, TreePackage, TreeSwift } from './icons';
 
 interface Props {
   root: string;
@@ -9,14 +10,16 @@ interface Props {
   activePath: string | null;
   /** Increment to expand the "Build çıktıları" group (used by the binary-file card). */
   revealArtifacts: number;
+  /** Increment to collapse every folder. */
+  collapseKey: number;
   onOpen: (path: string) => void;
   onError: (message: string) => void;
 }
 
-export function Explorer({ root, refreshKey, activePath, revealArtifacts, onOpen, onError }: Props) {
+export function Explorer({ root, refreshKey, activePath, revealArtifacts, collapseKey, onOpen, onError }: Props) {
   return (
     <ul className="tree" role="tree" aria-label={`${root} içindeki dosyalar`}>
-      <Level dir="" depth={0} refreshKey={refreshKey} activePath={activePath} revealArtifacts={revealArtifacts} onOpen={onOpen} onError={onError} />
+      <Level dir="" depth={0} refreshKey={refreshKey} activePath={activePath} revealArtifacts={revealArtifacts} collapseKey={collapseKey} onOpen={onOpen} onError={onError} />
     </ul>
   );
 }
@@ -26,7 +29,35 @@ interface LevelProps extends Omit<Props, 'root'> {
   depth: number;
 }
 
-function Level({ dir, depth, refreshKey, activePath, revealArtifacts, onOpen, onError }: LevelProps) {
+const CONFIG_EXT = new Set(['yml', 'yaml', 'json', 'plist', 'xcconfig', 'toml']);
+
+function FileIcon({ name }: { name: string }) {
+  const ext = name.includes('.') ? name.split('.').pop()!.toLowerCase() : '';
+  if (ext === 'swift') return <TreeSwift />;
+  if (CONFIG_EXT.has(ext)) return <TreeConfig />;
+  return <TreeFile />;
+}
+
+/** Folder group at the project root ("Build çıktıları", "Gizli dosyalar"). Collapsed by default. */
+function Group(props: { title: string; hint: string; entries: Entry[]; open: boolean; onToggle(): void; render: (e: Entry) => React.ReactNode }) {
+  return (
+    <li className="tree-group" role="none">
+      <button type="button" className="tree-group-head" aria-expanded={props.open} onClick={props.onToggle} title={props.hint}>
+        <span aria-hidden="true" className={`tree-chev${props.open ? ' open' : ''}`} />
+        {props.title}
+        <span className="tree-count">{props.entries.length}</span>
+      </button>
+      {props.open && (
+        <>
+          <p className="tree-group-hint">{props.hint}</p>
+          <ul role="group">{props.entries.map(props.render)}</ul>
+        </>
+      )}
+    </li>
+  );
+}
+
+function Level({ dir, depth, refreshKey, activePath, revealArtifacts, collapseKey, onOpen, onError }: LevelProps) {
   const [entries, setEntries] = useState<Entry[] | null>(null);
   const [showHidden, setShowHidden] = useState(false);
   const [artifactsOpen, setArtifactsOpen] = useState(false);
@@ -47,11 +78,17 @@ function Level({ dir, depth, refreshKey, activePath, revealArtifacts, onOpen, on
     };
   }, [dir, refreshKey, onError]);
 
-  // Open the group when the binary-file card asks for it (adjusting state while rendering).
+  // Adjust state while rendering: open the artifact group on request, close groups on "collapse all".
   const [seenReveal, setSeenReveal] = useState(revealArtifacts);
   if (atRoot && revealArtifacts !== seenReveal) {
     setSeenReveal(revealArtifacts);
     if (revealArtifacts > 0) setArtifactsOpen(true);
+  }
+  const [seenCollapse, setSeenCollapse] = useState(collapseKey);
+  if (collapseKey !== seenCollapse) {
+    setSeenCollapse(collapseKey);
+    setArtifactsOpen(false);
+    setShowHidden(false);
   }
 
   if (entries === null) return <li className="tree-note">Yükleniyor…</li>;
@@ -59,36 +96,43 @@ function Level({ dir, depth, refreshKey, activePath, revealArtifacts, onOpen, on
 
   const parts = partitionEntries(entries, atRoot);
   const primary = atRoot ? sortRoot(parts.primary) : parts.primary;
-  const rest = { refreshKey, activePath, revealArtifacts, onOpen, onError };
-  const renderNode = (entry: Entry) => <Node key={entry.path} entry={entry} depth={depth} {...rest} />;
+  const rest = { refreshKey, activePath, revealArtifacts, collapseKey, onOpen, onError };
+  const renderNode = (entry: Entry) => <Node key={entry.path} entry={entry} depth={depth} atRoot={atRoot} {...rest} />;
 
   return (
     <>
       {primary.map(renderNode)}
       {atRoot && parts.artifacts.length > 0 && (
-        <li className="tree-group" role="none">
-          <button type="button" className="tree-group-head" aria-expanded={artifactsOpen} onClick={() => setArtifactsOpen((v) => !v)}>
-            <span aria-hidden="true" className={`tree-chev${artifactsOpen ? ' open' : ''}`} />
-            Build çıktıları
-            <span className="tree-count">{parts.artifacts.length}</span>
-          </button>
-          {artifactsOpen && <ul role="group">{parts.artifacts.map(renderNode)}</ul>}
-        </li>
+        <Group
+          title="Build çıktıları"
+          hint="Derleme sonucu kendiliğinden oluşan dosyalar. Elle düzenlemeyin; derleyince yeniden üretilir."
+          entries={parts.artifacts}
+          open={artifactsOpen}
+          onToggle={() => setArtifactsOpen((v) => !v)}
+          render={renderNode}
+        />
       )}
       {parts.hidden.length > 0 && (
-        <li className="tree-hidden" role="none">
-          <button type="button" className="tree-link" onClick={() => setShowHidden((v) => !v)}>
-            {showHidden ? 'Gizli öğeleri gizle' : `Gizli öğeleri göster (${parts.hidden.length})`}
-          </button>
-          {showHidden && <ul role="group">{parts.hidden.map(renderNode)}</ul>}
-        </li>
+        <Group
+          title="Gizli dosyalar"
+          hint="Araçların kullandığı nokta ile başlayan dosyalar (.git, .gitignore …). Genelde dokunmanız gerekmez."
+          entries={parts.hidden}
+          open={showHidden}
+          onToggle={() => setShowHidden((v) => !v)}
+          render={renderNode}
+        />
       )}
     </>
   );
 }
 
-function Node({ entry, depth, ...rest }: { entry: Entry; depth: number } & Omit<LevelProps, 'dir' | 'depth'>) {
+function Node({ entry, depth, atRoot, ...rest }: { entry: Entry; depth: number; atRoot: boolean } & Omit<LevelProps, 'dir' | 'depth'>) {
   const [open, setOpen] = useState(false);
+  const [seenCollapse, setSeenCollapse] = useState(rest.collapseKey);
+  if (rest.collapseKey !== seenCollapse) {
+    setSeenCollapse(rest.collapseKey);
+    setOpen(false);
+  }
   // A .app / .framework directory is a build package: it behaves like one file, never expands.
   const bundle = entry.isDir && isBundleName(entry.name);
   const expandable = entry.isDir && !bundle;
@@ -96,21 +140,30 @@ function Node({ entry, depth, ...rest }: { entry: Entry; depth: number } & Omit<
     if (expandable) setOpen((v) => !v);
     else rest.onOpen(entry.path);
   }, [entry, expandable, rest]);
+  const note = atRoot ? entryNote(entry.name) : null;
+  const title = bundle ? 'Uygulama paketi (derleme çıktısı)' : (note?.title ?? artifactNote(entry.name) ?? undefined);
+  const guide = { '--guide-x': `${8 + depth * 14 + 7}px` } as CSSProperties;
 
   return (
     <li role="treeitem" aria-expanded={expandable ? open : undefined} aria-selected={rest.activePath === entry.path}>
       <button
         type="button"
-        className={`tree-row${rest.activePath === entry.path ? ' active' : ''}${bundle ? ' bundle' : ''}`}
+        className={`tree-row${rest.activePath === entry.path ? ' active' : ''}${bundle ? ' bundle' : ''}${entry.isDir ? ' dir' : ''}`}
         style={{ paddingLeft: 8 + depth * 14 }}
         onClick={toggle}
-        title={bundle ? 'Uygulama paketi (derleme çıktısı)' : undefined}
+        title={title}
       >
-        <span aria-hidden="true" className={expandable ? `tree-chev${open ? ' open' : ''}` : bundle ? 'tree-bundle' : 'tree-dot'} />
-        {entry.name}
+        <span aria-hidden="true" className={expandable ? `tree-chev${open ? ' open' : ''}` : 'tree-chev-space'} />
+        {bundle ? <TreePackage /> : entry.isDir ? <TreeFolder open={open} /> : <FileIcon name={entry.name} />}
+        <span className="tree-name">{entry.name}</span>
+        {note && (
+          <span className="tree-note-inline" aria-hidden="true">
+            {note.label}
+          </span>
+        )}
       </button>
       {expandable && open && (
-        <ul role="group">
+        <ul role="group" className="tree-children" style={guide}>
           <Level dir={entry.path} depth={depth + 1} {...rest} />
         </ul>
       )}

@@ -3,6 +3,8 @@ import { CLI_BADGE_TEXT, CLI_COMMAND, cliBadge, looksLikeApiKeyLogin } from '../
 import { sessionState } from '../ai/readiness';
 import { MAX_NOTES_CHARS, type AiSettings } from '../ai/settings';
 import { PROVIDERS, type CliProviderId, type CliStatus, type ProviderId } from '../ai/types';
+import { modelChoices } from '../ai/models';
+import { ModelPicker } from './ModelPicker';
 import '../ai-panel.css';
 
 export const PROVIDER_LABELS: Record<ProviderId, string> = {
@@ -31,6 +33,8 @@ export interface AiSettingsPanelProps {
   onRefreshCli(): void;
   onLoginEmbedded(): void;
   onLoginSystem(): void;
+  /** Opens an interactive Claude Code session in the embedded terminal, in the project, with studio context. */
+  onOpenClaudeCode(): void;
   onOpenChat(): void;
 }
 
@@ -75,6 +79,15 @@ export function AiSettingsPanel(props: AiSettingsPanelProps) {
         </select>
       </label>
 
+      {modelChoices(settings.provider) ? (
+        <ModelPicker
+          provider={settings.provider}
+          model={model}
+          effort={settings.efforts[settings.provider]}
+          onModel={(v) => props.onSettings({ ...settings, models: { ...settings.models, [settings.provider]: v } })}
+          onEffort={(v) => props.onSettings({ ...settings, efforts: { ...settings.efforts, [settings.provider]: v } })}
+        />
+      ) : (
       <div className="ai-field">
         <label htmlFor="ai-model-input">Model</label>
         <div className="ai-row">
@@ -104,6 +117,7 @@ export function AiSettingsPanel(props: AiSettingsPanelProps) {
           </p>
         )}
       </div>
+      )}
 
       {cliProvider ? (
         <div className="ai-field">
@@ -128,6 +142,14 @@ export function AiSettingsPanel(props: AiSettingsPanelProps) {
             <p className="ai-error" role="alert">
               {props.cliError}
             </p>
+          )}
+          {cliProvider === 'claude-cli' && (
+            <div className="ai-field">
+              <button type="button" className="wide" onClick={props.onOpenClaudeCode} disabled={props.cliStatus?.installed === false}>
+                Claude Code'u bu projede aç
+              </button>
+              <p className="ai-note">Gömülü terminalde, proje klasöründe ve seçtiğiniz model/eforla başlar. Claude proje türünü ve xtool'u önceden bilir.</p>
+            </div>
           )}
         </div>
       ) : settings.provider === 'ollama' ? (

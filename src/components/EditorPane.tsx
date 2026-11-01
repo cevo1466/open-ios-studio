@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
 import type { Tab } from '../state/store';
 import { isDirty } from '../state/store';
+import { useThemeDef } from '../theme/ThemeContext';
+import { monacoThemeName } from '../theme/themes';
 
 const LANGUAGES: Record<string, string> = {
   swift: 'swift',
@@ -31,6 +33,7 @@ interface Props {
 }
 
 export function EditorPane({ tabs, active, theme, fontSize, onActivate, onClose, onChange, onSave }: Props) {
+  const themeDef = useThemeDef(theme);
   const current = tabs.find((t) => t.path === active);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const appliedRev = useRef(new Map<string, number>());
@@ -71,7 +74,7 @@ export function EditorPane({ tabs, active, theme, fontSize, onActivate, onClose,
           path={current.path}
           language={languageFor(current.path)}
           defaultValue={current.content}
-          theme={theme === 'dark' ? 'vs-dark' : 'vs'}
+          theme={monacoThemeName(themeDef)}
           options={{ fontSize, minimap: { enabled: false }, automaticLayout: true, scrollBeyondLastLine: false }}
           onChange={(value) => onChange(current.path, value ?? '')}
           onMount={(editor, monaco) => {

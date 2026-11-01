@@ -1,10 +1,12 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { ChatState } from '../ai/chatState';
+import { describeChoice, modelChoices } from '../ai/models';
 import { sendBlockedReason, sessionState } from '../ai/readiness';
 import type { AiSettings } from '../ai/settings';
 import type { CliStatus } from '../ai/types';
 import { PROVIDER_LABELS } from './AiSettingsPanel';
 import { ChangeReview } from './ChangeReview';
+import { ModelPicker } from './ModelPicker';
 import '../ai-panel.css';
 
 export interface ChatPanelProps {
@@ -22,6 +24,7 @@ export interface ChatPanelProps {
   onApply(): void;
   applying: boolean;
   applyBlockedReason: string | null;
+  onSettings(next: AiSettings): void;
   onOpenSettings(): void;
   onClose(): void;
 }
@@ -79,7 +82,7 @@ export function ChatPanel(props: ChatPanelProps) {
           <button type="button" className="ai-chip" onClick={props.onOpenSettings} title="Sağlayıcı ve model ayarlarını aç">
             <span className={`sb-dot sb-${session.tone === 'warn' ? 'warn' : session.tone === 'ok' ? 'ok' : 'unknown'}`} aria-hidden="true" />
             {PROVIDER_LABELS[settings.provider]}
-            {model ? ` · ${model}` : ''}
+            {describeChoice(settings.provider, model, settings.efforts[settings.provider]) ? ` · ${describeChoice(settings.provider, model, settings.efforts[settings.provider])}` : model ? ` · ${model}` : ''}
           </button>
         </div>
         <button type="button" className="icon-btn" onClick={props.onClose} aria-label="Yapay zekâ panelini kapat">
@@ -141,7 +144,21 @@ export function ChatPanel(props: ChatPanelProps) {
       )}
 
       <div className="ai-composer">
+        <label className="ai-composer-label" htmlFor="ai-composer-input">
+          Yapay zekâya ne yaptırmak istiyorsunuz?
+        </label>
+        {modelChoices(settings.provider) && (
+          <ModelPicker
+            compact
+            provider={settings.provider}
+            model={model}
+            effort={settings.efforts[settings.provider]}
+            onModel={(v) => props.onSettings({ ...settings, models: { ...settings.models, [settings.provider]: v } })}
+            onEffort={(v) => props.onSettings({ ...settings, efforts: { ...settings.efforts, [settings.provider]: v } })}
+          />
+        )}
         <textarea
+          id="ai-composer-input"
           aria-label="Mesaj"
           rows={3}
           value={draft}
@@ -152,7 +169,7 @@ export function ChatPanel(props: ChatPanelProps) {
               send('chat');
             }
           }}
-          placeholder="Bir soru sorun veya üretilecek dosyaları anlatın (Ctrl+Enter ile sorun)"
+          placeholder="Örnek: Yapılacaklar listesi uygulaması yap. (Ctrl+Enter ile gönderilir)"
         />
         <div className="ai-row">
           <button type="button" className="primary ai-grow" disabled={!canSend} title={blocked ?? (draft.trim() ? 'Dosya önerilerini fark olarak hazırlar' : 'Önce bir mesaj yazın')} onClick={() => send('generate')}>
@@ -170,6 +187,7 @@ export function ChatPanel(props: ChatPanelProps) {
             </button>
           )}
         </div>
+        <span className="ai-note">Sor: soru-cevap · Önce plan: yazmadan adımları listeler · Dosya üret: kodu yazar, siz onaylarsınız.</span>
         <span className="ai-note">Bağlam: {props.contextSummary}</span>
       </div>
     </aside>

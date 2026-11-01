@@ -18,7 +18,13 @@ export interface CliStatus {
 }
 
 /** Embedded terminal session kinds (ADR-0009). Argument vectors are fixed in Rust. */
-export type PtyKind = 'claude-login' | 'codex-login' | 'user-shell';
+export type PtyKind = 'claude-login' | 'codex-login' | 'user-shell' | 'claude-code';
+
+/** Choices for an interactive Claude Code session. Empty strings = CLI defaults. */
+export interface PtyOptions {
+  model: string;
+  effort: string;
+}
 
 export type PtyEvent = { kind: 'data'; text: string } | { kind: 'exit'; code: number | null };
 
@@ -31,6 +37,8 @@ export interface ChatRequest {
   provider: ProviderId;
   /** Model id typed or picked by the user; never hard-coded (listed dynamically with ai_list_models). */
   model: string;
+  /** Reasoning effort for the CLI providers ("low" … "max"); omitted or empty = CLI default. */
+  effort?: string;
   messages: ChatMessage[];
   maxTokens?: number;
   temperature?: number;

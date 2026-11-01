@@ -2,7 +2,10 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSS
 import { CommandPalette, type Command } from './components/CommandPalette';
 import { EditorPane } from './components/EditorPane';
 import { Explorer } from './components/Explorer';
+import { IconCollapse, IconRefresh } from './components/icons';
 import { useAi } from './ai/useAi';
+import { ThemeContext } from './theme/ThemeContext';
+import { THEME_VAR_NAMES, resolveTheme } from './theme/themes';
 import { BuildSidebar } from './components/BuildSidebar';
 import { LogView } from './components/LogView';
 import { ProblemsList } from './components/ProblemsList';
@@ -17,7 +20,8 @@ import { Splitter } from './layout/Splitter';
 import './layout/layout.css';
 import { AI_DEFAULT, AI_MAX, AI_MIN, BOTTOM_DEFAULT, BOTTOM_MIN, SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN, bottomMax, loadLayout, saveLayout, type LayoutState } from './layout/layout';
 import { CLI_TERMINAL_KIND } from './ai/cli';
-import type { PtyKind } from './ai/types';
+import { describeChoice } from './ai/models';
+import type { PtyKind, PtyOptions } from './ai/types';
 import { ChatPanel } from './components/ChatPanel';
 import { DevicesPanel } from './components/DevicesPanel';
 import { AppStoreReadiness, SecurityCenter } from './components/PolicyPanels';
@@ -28,7 +32,7 @@ import { classifyPath, isNotTextError, type FileKind } from './files/kind';
 import { SettingsDialog } from './components/SettingsDialog';
 import { dirtyTabs, saveAllDirty } from './state/closeGuard';
 import { inDesktopApp, ipc } from './ipc';
-import { effectiveTheme, loadSettings, saveSettings, type Settings } from './settings';
+import { loadSettings, saveSettings, type Settings } from './settings';
 import { analyzeProject } from './policy';
 import type { EvaluationReport } from './policy/types';
 import { initialState, isDirty, reducer } from './state/store';
@@ -49,6 +53,7 @@ export function App() {
   const [prefersDark, setPrefersDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
   const [notice, setNotice] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [collapseKey, setCollapseKey] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
   const [newName, setNewName] = useState<string | null>(null);
@@ -62,7 +67,7 @@ export function App() {
   const [view, setView] = useState<SidebarView>('files');
   const [binary, setBinary] = useState<{ path: string; kind: Exclude<FileKind, 'text'>; error: string | null } | null>(null);
   const [revealArtifacts, setRevealArtifacts] = useState(0);
-  const [terminal, setTerminal] = useState<{ kind: PtyKind; key: number } | null>(null);
+  const [terminal, setTerminal] = useState<{ kind: PtyKind; key: number; options?: PtyOptions } | null>(null);
   const [layout, setLayout] = useState<LayoutState>(loadLayout);
   const [bottomActive, setBottomActive] = useState<BottomTabId>('output');
   const [bottomHidden, setBottomHidden] = useState(false);
@@ -78,9 +83,9 @@ export function App() {
     setBottomActive(id);
     setBottomHidden(false);
   }, []);
-  const openTerminal = (kind: PtyKind) => {
-    // The plain shell is reused if it is already running; login commands always start fresh.
-    setTerminal((t) => (kind === 'user-shell' && t?.kind === 'user-shell' ? t : { kind, key: (t?.key ?? 0) + 1 }));
+  const openTerminal = (kind: PtyKind, options?: PtyOptions) => {
+    // The plain shell is reused if it is already running; login and Claude Code sessions start fresh.
+    setTerminal((t) => (kind === 'user-shell' && t?.kind === 'user-shell' ? t : { kind, options, key: (t?.key ?? 0) + 1 }));
     showBottom('terminal');
   };
   const [build, buildDispatch] = useReducer(buildReducer, initialBuildState);
@@ -96,7 +101,8 @@ export function App() {
   const [selectedUdid, setSelectedUdid] = useState<string | null>(null);
   const desktop = inDesktopApp();
 
-  const theme = effectiveTheme(settings.theme, prefersDark);
+  const themeDef = resolveTheme(settings.theme, prefersDark);
+  const theme = themeDef.mode;
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
@@ -106,9 +112,13 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
+    const root = document.documentElement;
+    root.dataset.theme = themeDef.mode;
+    root.dataset.palette = themeDef.id;
+    for (const name of THEME_VAR_NAMES) root.style.removeProperty(name);
+    for (const [name, value] of Object.entries(themeDef.vars)) root.style.setProperty(name, value);
     saveSettings(settings);
-  }, [theme, settings]);
+  }, [themeDef, settings]);
 
   const fail = useCallback((message: string) => setNotice(message), []);
 
@@ -428,6 +438,7 @@ export function App() {
         enabled: true,
         run: () => setSettings((s) => ({ ...s, theme: theme === 'dark' ? 'light' : 'dark' })),
       },
+      { id: 'theme-pick', title: 'Renk temasını seç…', enabled: true, run: () => setShowSettings(true) },
     ],
     [desktop, hasWorkspace, openFolder, theme],
   );
@@ -472,6 +483,10 @@ export function App() {
       content: <ProblemsList diagnostics={diagnostics} onOpenFile={(path) => void openFile(path)} />,
     });
   }
+  const claudeCodeLabel = `Claude Code'u projeyle aç (${describeChoice('claude-cli', ai.settings.models['claude-cli'], ai.settings.efforts['claude-cli']) || 'varsayılan model'})`;
+  function openClaudeCode() {
+    openTerminal('claude-code', { model: ai.settings.models['claude-cli'], effort: ai.settings.efforts['claude-cli'] });
+  }
   if (terminal) {
     bottomTabs.push({
       id: 'terminal',
@@ -479,6 +494,8 @@ export function App() {
       content: (
         <TerminalPanel
           kind={terminal.kind}
+          options={terminal.options}
+          onStartClaudeCode={terminal.kind === 'user-shell' ? { label: claudeCodeLabel, run: openClaudeCode } : undefined}
           runKey={terminal.key}
           theme={theme}
           onExit={() => ai.refreshCli()}
@@ -524,6 +541,7 @@ export function App() {
   } as CSSProperties;
 
   return (
+    <ThemeContext.Provider value={themeDef}>
     <div className="app" ref={appRef} style={layoutVars}>
       {!desktop && (
         <div className="banner" role="alert">
@@ -553,10 +571,29 @@ export function App() {
           <div className="side-title">{SIDEBAR_TITLES[view]}</div>
           {view === 'files' && (
             <>
-            <div className="side-head">
-              {state.workspace && <strong>{state.workspace.split('/').pop()}</strong>}
-              <span>
-                <button type="button" onClick={() => void openFolder()} disabled={!desktop}>
+            <div className="files-head">
+              <div className="files-title">
+                <span>Dosyalar</span>
+                <span className="files-tools">
+                  <button type="button" className="icon-btn" onClick={() => setRefreshKey((k) => k + 1)} disabled={!hasWorkspace} aria-label="Dosya listesini yenile" title="Dosya listesini yenile">
+                    <IconRefresh />
+                  </button>
+                  <button type="button" className="icon-btn" onClick={() => setCollapseKey((k) => k + 1)} disabled={!hasWorkspace} aria-label="Tüm klasörleri daralt" title="Tüm klasörleri daralt">
+                    <IconCollapse />
+                  </button>
+                </span>
+              </div>
+              {state.workspace ? (
+                <div className="files-project" title={state.workspace}>
+                  <span className="files-project-caption">Açık proje klasörü</span>
+                  <strong>{state.workspace.split('/').pop()}</strong>
+                  <span className="files-project-path">{state.workspace}</span>
+                </div>
+              ) : (
+                <p className="files-empty">Henüz bir proje klasörü açık değil.</p>
+              )}
+              <span className="files-actions">
+                <button type="button" className={state.workspace ? '' : 'primary'} onClick={() => void openFolder()} disabled={!desktop}>
                   Klasör aç
                 </button>
                 <button type="button" onClick={() => setNewName('')} disabled={!hasWorkspace}>
@@ -575,7 +612,7 @@ export function App() {
                 <input
                   autoFocus
                   value={newName}
-                  placeholder="Sources/Uygulama/Ekran.swift"
+                  placeholder="Sources/Uygulama/Ekran.swift (proje klasörüne göre yol)"
                   aria-label="Yeni dosya yolu"
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Escape' && setNewName(null)}
@@ -588,6 +625,7 @@ export function App() {
                 refreshKey={refreshKey}
                 activePath={binary ? binary.path : state.active}
                 revealArtifacts={revealArtifacts}
+                collapseKey={collapseKey}
                 onOpen={(p) => void openFile(p)}
                 onError={fail}
               />
@@ -657,6 +695,7 @@ export function App() {
               onRefreshCli={ai.refreshCli}
               onLoginEmbedded={() => ai.cliProvider && openTerminal(CLI_TERMINAL_KIND[ai.cliProvider])}
               onLoginSystem={ai.openSystemLogin}
+              onOpenClaudeCode={openClaudeCode}
               onOpenChat={() => setChatOpen(true)}
             />
           )}
@@ -804,6 +843,7 @@ export function App() {
               onApply={ai.apply}
               applying={ai.applying}
               applyBlockedReason={ai.applyBlockedReason}
+              onSettings={ai.setSettings}
               onOpenSettings={() => setView('ai')}
               onClose={() => setChatOpen(false)}
             />
@@ -855,6 +895,7 @@ export function App() {
       )}
       {showPalette && <CommandPalette commands={commands} onClose={() => setShowPalette(false)} />}
     </div>
+    </ThemeContext.Provider>
   );
 }
 

@@ -81,6 +81,9 @@ impl CliKind {
 pub struct CliChatRequest {
     pub provider: CliKind,
     pub model: String,
+    /// Reasoning effort ("low" … "max"); empty = CLI default.
+    #[serde(default)]
+    pub effort: String,
     pub messages: Vec<Message>,
 }
 
@@ -194,7 +197,40 @@ pub fn validate_model(model: &str) -> Result<(), String> {
     }
 }
 
-pub fn build_args(kind: CliKind, model: &str) -> Vec<String> {
+/// Effort levels each CLI accepts. Anything else is rejected before it reaches an argument vector.
+pub fn validate_effort(kind: CliKind, effort: &str) -> Result<(), String> {
+    let e = effort.trim();
+    if e.is_empty() {
+        return Ok(());
+    }
+    let allowed: &[&str] = match kind {
+        CliKind::Claude => &["low", "medium", "high", "xhigh", "max"],
+        CliKind::Codex => &["low", "medium", "high"],
+    };
+    if allowed.contains(&e) {
+        Ok(())
+    } else {
+        Err(format!(
+            "Unsupported effort level `{e}` for {}.",
+            kind.program()
+        ))
+    }
+}
+
+/// Arguments that select the reasoning effort; empty when no effort was chosen.
+/// The value must have passed [`validate_effort`].
+pub fn effort_args(kind: CliKind, effort: &str) -> Vec<String> {
+    let e = effort.trim();
+    if e.is_empty() {
+        return Vec::new();
+    }
+    match kind {
+        CliKind::Claude => vec!["--effort".to_owned(), e.to_owned()],
+        CliKind::Codex => vec!["-c".to_owned(), format!("model_reasoning_effort=\"{e}\"")],
+    }
+}
+
+pub fn build_args(kind: CliKind, model: &str, effort: &str) -> Vec<String> {
     let model = model.trim();
     match kind {
         CliKind::Claude => {
@@ -216,6 +252,7 @@ pub fn build_args(kind: CliKind, model: &str) -> Vec<String> {
                 args.push("--model".to_owned());
                 args.push(model.to_owned());
             }
+            args.extend(effort_args(kind, effort));
             args
         }
         CliKind::Codex => {
@@ -236,6 +273,7 @@ pub fn build_args(kind: CliKind, model: &str) -> Vec<String> {
                 args.push("-m".to_owned());
                 args.push(model.to_owned());
             }
+            args.extend(effort_args(kind, effort));
             // "-" makes codex read the prompt from stdin.
             args.push("-".to_owned());
             args
@@ -666,6 +704,7 @@ pub async fn stream_cli(
     mut emit: impl FnMut(AiEvent),
 ) -> Result<(), String> {
     validate_model(&req.model)?;
+    validate_effort(req.provider, &req.effort)?;
     if req.messages.is_empty() {
         return Err("No messages to send.".to_owned());
     }
@@ -680,7 +719,7 @@ pub async fn stream_cli(
     let workdir = TempDir::create()?;
 
     let mut cmd = Command::new(&program);
-    cmd.args(build_args(kind, &req.model))
+    cmd.args(build_args(kind, &req.model, &req.effort))
         .current_dir(&workdir.0)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -782,22 +821,38 @@ mod tests {
 
     #[test]
     fn claude_args_disable_tools_and_take_model() {
-        let a = build_args(CliKind::Claude, " opus ");
+        let a = build_args(CliKind::Claude, " opus ", "");
         assert!(a.windows(2).any(|w| w == ["--tools", ""]));
         assert!(a.windows(2).any(|w| w == ["--model", "opus"]));
         assert!(a.contains(&"--no-session-persistence".to_owned()));
-        let none = build_args(CliKind::Claude, "");
+        let none = build_args(CliKind::Claude, "", "");
         assert!(!none.contains(&"--model".to_owned()));
     }
 
     #[test]
+    fn effort_is_validated_and_passed_per_cli() {
+        assert!(validate_effort(CliKind::Claude, "").is_ok());
+        assert!(validate_effort(CliKind::Claude, "max").is_ok());
+        assert!(validate_effort(CliKind::Codex, "max").is_err());
+        assert!(validate_effort(CliKind::Claude, "--x").is_err());
+        let c = build_args(CliKind::Claude, "opus", "high");
+        assert!(c.windows(2).any(|w| w == ["--effort", "high"]));
+        let x = build_args(CliKind::Codex, "", "medium");
+        assert!(x
+            .windows(2)
+            .any(|w| w == ["-c", "model_reasoning_effort=\"medium\""]));
+        assert_eq!(x.last().map(String::as_str), Some("-"));
+        assert!(!build_args(CliKind::Claude, "", "").contains(&"--effort".to_owned()));
+    }
+
+    #[test]
     fn codex_args_are_read_only_and_read_stdin() {
-        let a = build_args(CliKind::Codex, "");
+        let a = build_args(CliKind::Codex, "", "");
         assert_eq!(a.last().map(String::as_str), Some("-"));
         assert!(a.windows(2).any(|w| w == ["--sandbox", "read-only"]));
         assert!(a.contains(&"--ephemeral".to_owned()));
         assert!(!a.contains(&"-m".to_owned()));
-        let m = build_args(CliKind::Codex, "gpt-x");
+        let m = build_args(CliKind::Codex, "gpt-x", "");
         assert!(m.windows(2).any(|w| w == ["-m", "gpt-x"]));
     }
 

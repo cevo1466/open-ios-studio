@@ -1,9 +1,12 @@
+import { isKnownEffort } from './models';
 import { PROVIDERS, type ProviderId } from './types';
 
 export interface AiSettings {
   provider: ProviderId;
   /** Model id per provider. Never hard-coded: the user types or picks one. */
   models: Record<ProviderId, string>;
+  /** Reasoning effort per provider ("" = CLI default). Only the CLI providers use it. */
+  efforts: Record<ProviderId, string>;
   maxContextTokens: number;
   /** Free-form project notes sent as context. */
   notes: string;
@@ -17,6 +20,7 @@ const KEY = 'open-ios-studio.ai.v1';
 export const defaultAiSettings: AiSettings = {
   provider: 'anthropic',
   models: { anthropic: '', openai: '', ollama: '', 'claude-cli': '', 'codex-cli': '' },
+  efforts: { anthropic: '', openai: '', ollama: '', 'claude-cli': '', 'codex-cli': '' },
   maxContextTokens: 24000,
   notes: '',
 };
@@ -41,10 +45,18 @@ export function parseAiSettings(raw: string | null): AiSettings {
         if (typeof x === 'string') models[p] = x.slice(0, 200);
       }
     }
+    const efforts: Record<ProviderId, string> = { ...defaultAiSettings.efforts };
+    if (typeof o.efforts === 'object' && o.efforts !== null) {
+      const f = o.efforts as Record<string, unknown>;
+      for (const p of PROVIDERS) {
+        const x = f[p];
+        if (typeof x === 'string' && isKnownEffort(x)) efforts[p] = x;
+      }
+    }
     const maxContextTokens =
       typeof o.maxContextTokens === 'number' ? clampContextTokens(o.maxContextTokens) : defaultAiSettings.maxContextTokens;
     const notes = typeof o.notes === 'string' ? o.notes.slice(0, MAX_NOTES_CHARS) : '';
-    return { provider, models, maxContextTokens, notes };
+    return { provider, models, efforts, maxContextTokens, notes };
   } catch {
     return defaultAiSettings;
   }
@@ -64,6 +76,7 @@ export function saveAiSettings(s: AiSettings): void {
     const safe: AiSettings = {
       provider: s.provider,
       models: s.models,
+      efforts: s.efforts,
       maxContextTokens: clampContextTokens(s.maxContextTokens),
       notes: s.notes.slice(0, MAX_NOTES_CHARS),
     };

@@ -42,7 +42,7 @@ input:hover, select:hover, textarea:hover { border-color: var(--muted); }
 .app { display: flex; flex-direction: column; height: 100%; }
 .body { flex: 1; display: flex; min-height: 0; min-width: 0; overflow: hidden; }
 .banner { background: var(--warn-bg); color: var(--fg); border-bottom: 1px solid var(--warn); padding: 6px 12px; }
-.main { flex: 1; display: flex; flex-direction: column; min-width: 220px; min-height: 0; }
+.main { flex: 1; display: flex; flex-direction: column; min-width: 320px; min-height: 0; }
 .editor-region { flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
 
 /* Activity bar: icon over a short label. */
@@ -65,13 +65,11 @@ input:hover, select:hover, textarea:hover { border-color: var(--muted); }
 .new-file { padding: 8px 12px; } .new-file input { width: 100%; }
 .tree, .tree ul { list-style: none; margin: 0; padding: 0; }
 .tree { padding: 4px 0 12px; }
-.tree-row { width: 100%; text-align: left; border: 0; border-radius: 0; background: transparent; padding-top: 3px; padding-bottom: 3px; min-height: 24px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree-row { width: 100%; text-align: left; border: 0; border-radius: 0; background: transparent; padding-top: 3px; padding-bottom: 3px; padding-right: 8px; min-height: 24px; display: flex; align-items: center; gap: 4px; overflow: hidden; white-space: nowrap; }
 .tree-row:hover { background: var(--bg3); border: 0; } .tree-row.active { background: var(--bg3); color: var(--accent); box-shadow: inset 2px 0 0 var(--accent); }
-.tree-chev, .tree-dot, .tree-bundle { display: inline-block; width: 14px; height: 10px; position: relative; vertical-align: middle; flex: none; }
+.tree-chev, .tree-chev-space { display: inline-block; width: 14px; height: 10px; position: relative; vertical-align: middle; flex: none; }
 .tree-chev::before { content: ''; position: absolute; left: 3px; top: 1px; width: 0; height: 0; border: 4px solid transparent; border-left: 6px solid var(--muted); transition: transform 0.12s; transform-origin: 30% 50%; }
 .tree-chev.open::before { transform: rotate(90deg); }
-.tree-dot::before { content: ''; position: absolute; left: 5px; top: 3px; width: 3px; height: 3px; border-radius: 50%; background: var(--muted); opacity: 0.6; }
-.tree-bundle::before { content: ''; position: absolute; left: 3px; top: 1px; width: 7px; height: 7px; border: 1.5px solid var(--muted); border-radius: 2px; }
 .tree-group-head { gap: 6px; }
 .tree-note, .muted { color: var(--muted); } .pad { padding: 12px; } .tree-note { padding: 4px 12px; }
 .tree-row.bundle { color: var(--muted); }
@@ -116,3 +114,32 @@ button.sb-seg:hover { background: var(--bg3); color: var(--fg); border: 0; }
 .palette ul { list-style: none; margin: 0; padding: 0; max-height: 280px; overflow: auto; }
 .palette li button { width: 100%; text-align: left; border: 0; background: transparent; display: flex; justify-content: space-between; }
 .hint { color: var(--muted); }
+
+/* Theme picker */
+.theme-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.theme-card { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 6px; text-align: center; font-size: 12px; }
+.theme-card.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.theme-swatch { display: flex; align-items: flex-end; gap: 4px; height: 34px; padding: 6px; border-radius: var(--r1); border: 1px solid var(--border); }
+.theme-swatch i { display: block; height: 6px; border-radius: 3px; flex: 1; }
+.theme-swatch i:last-child { flex: 2; opacity: 0.85; }
+
+/* Explorer */
+.files-head { flex: none; display: flex; flex-direction: column; gap: 8px; padding: 8px 12px 10px; border-bottom: 1px solid var(--border); }
+.files-title { display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.files-tools { display: flex; gap: 2px; }
+.files-tools .icon-btn { padding: 2px 4px; } .files-tools .ico { width: 16px; height: 16px; }
+.files-project { display: flex; flex-direction: column; gap: 1px; min-width: 0; padding: 6px 8px; border-radius: var(--r1); background: var(--bg3); border-left: 3px solid var(--accent); }
+.files-project-caption { font-size: 10.5px; color: var(--muted); }
+.files-project strong { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.files-project-path { font-size: 11px; color: var(--muted); direction: rtl; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.files-empty { margin: 0; color: var(--muted); }
+.files-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.tree-chev-space { flex: none; }
+.tico { flex: none; }
+.tico-folder { fill: var(--accent); opacity: 0.85; } .tico-swift { fill: #f05138; } .tico-config, .tico-file { fill: var(--muted); } .tico-package { fill: var(--warn); }
+.tree-name { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tree-row.dir .tree-name { font-weight: 500; }
+.tree-note-inline { margin-left: auto; padding-left: 8px; font-size: 11px; color: var(--muted); white-space: nowrap; flex: none; }
+.tree-children { position: relative; }
+.tree-children::before { content: ''; position: absolute; left: var(--guide-x, 15px); top: 0; bottom: 0; width: 1px; background: var(--border); opacity: 0.7; pointer-events: none; }
+.tree-group-hint { margin: 0; padding: 2px 12px 6px 28px; font-size: 11px; line-height: 1.4; color: var(--muted); }
