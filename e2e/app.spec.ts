@@ -5,7 +5,7 @@ test.use({ colorScheme: 'light' });
 
 async function openWorkspace(page: Page) {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Open folder' }).click();
+  await page.getByRole('button', { name: 'Klasör aç' }).first().click();
   await expect(page.getByRole('tree')).toBeVisible();
 }
 
@@ -19,8 +19,8 @@ async function openContentView(page: Page) {
 
 test('plain browser shows banner and disables Open folder', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('alert').filter({ hasText: 'Running in a plain browser' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Open folder' })).toBeDisabled();
+  await expect(page.getByRole('alert').filter({ hasText: 'Tarayıcıda çalışıyor' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Klasör aç' }).first()).toBeDisabled();
 });
 
 test.describe('with fake desktop backend', () => {
@@ -48,11 +48,11 @@ test.describe('with fake desktop backend', () => {
     // Wait until Monaco has rendered the whole input; pressing Ctrl+S earlier would save a stale snapshot.
     await expect(page.locator('.view-lines').first()).toContainText(/let\s+edited\s*=\s*1/);
 
-    const dirty = page.getByRole('tab', { name: /ContentView\.swift/ }).getByTitle('Unsaved changes');
+    const dirty = page.getByRole('tab', { name: /ContentView\.swift/ }).getByTitle('Kaydedilmemiş değişiklikler');
     await expect(dirty).toBeVisible();
 
     await page.keyboard.press('Control+S');
-    await expect(page.getByTitle('Unsaved changes')).toHaveCount(0);
+    await expect(page.getByTitle('Kaydedilmemiş değişiklikler')).toHaveCount(0);
     await expect
       .poll(async () => (await fsWrites(page)).some((w) => w.path === 'Sources/Demo/ContentView.swift' && w.content.includes('let edited = 1')))
       .toBe(true);
@@ -60,8 +60,8 @@ test.describe('with fake desktop backend', () => {
 
   test('New file creates and opens the file', async ({ page }) => {
     await openWorkspace(page);
-    await page.getByRole('button', { name: 'New file' }).click();
-    await page.getByLabel('New file path').fill('Sources/Demo/Extra.swift');
+    await page.getByRole('button', { name: 'Yeni dosya' }).first().click();
+    await page.getByLabel('Yeni dosya yolu').fill('Sources/Demo/Extra.swift');
     await page.keyboard.press('Enter');
 
     await expect(page.getByRole('tab', { name: /Extra\.swift/ })).toBeVisible();
@@ -75,9 +75,9 @@ test.describe('with fake desktop backend', () => {
     const html = page.locator('html');
     await expect(html).toHaveAttribute('data-theme', 'light');
     await page.keyboard.press('Control+Shift+P');
-    const dialog = page.getByRole('dialog', { name: 'Command palette' });
+    const dialog = page.getByRole('dialog', { name: 'Komut paleti' });
     await expect(dialog).toBeVisible();
-    await dialog.getByPlaceholder('Type a command…').fill('theme');
+    await dialog.getByPlaceholder('Komut ara…').fill('tema');
     await page.keyboard.press('Enter');
     await expect(dialog).toBeHidden();
     await expect(html).toHaveAttribute('data-theme', 'dark');
@@ -85,35 +85,50 @@ test.describe('with fake desktop backend', () => {
 
   test('settings dialog switches to dark theme', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'Settings' });
-    await dialog.getByLabel('Theme').selectOption('dark');
+    await page.getByRole('button', { name: 'Ayarlar', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Ayarlar' });
+    await dialog.getByLabel('Tema').selectOption('dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   });
 
   test('App Store Readiness reports unverified rules without a score', async ({ page }) => {
     await openWorkspace(page);
-    await page.getByRole('button', { name: /^App Store Readiness/ }).click();
-    const dialog = page.getByRole('dialog', { name: 'App Store Readiness' });
+    await page.getByRole('button', { name: /^App Store hazırlığı/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'App Store Hazırlığı' });
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByText('Only Apple decides')).toBeVisible();
+    await expect(dialog.getByText('yalnızca Apple karar verir')).toBeVisible();
 
-    await dialog.getByRole('button', { name: 'Run analysis' }).first().click();
+    await dialog.getByRole('button', { name: 'Analizi çalıştır' }).first().click();
     await expect(dialog.locator('.pp-status-NOT_VERIFIED').first()).toBeVisible();
-    await expect(dialog.getByText('Unverified:', { exact: false }).first()).toBeVisible();
+    await expect(dialog.locator('.pp-unverified').first()).toBeVisible();
 
-    const text = (await dialog.innerText()).replace(/Generated .*/, '');
+    const text = (await dialog.innerText()).replace(/Oluşturulma: .*/, '');
     expect(text).not.toMatch(/\d+\s*%/);
     expect(text).not.toMatch(/\bscore\b/i);
   });
 });
 
-test('unavailable features are visibly disabled', async ({ page }) => {
+test('welcome guide is shown and has no disabled placeholder sections', async ({ page }) => {
   await installFakeTauri(page);
   await page.goto('/');
-  for (const name of [/^Search/, /^Source Control/]) {
-    const button = page.getByRole('button', { name });
-    await expect(button).toBeDisabled();
-    await expect(button).toContainText(/planned|M\d/);
-  }
+  await expect(page.getByRole('heading', { name: /hoş geldiniz/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Search|^Source Control/ })).toHaveCount(0);
+});
+
+test('closing a dirty window asks first and can be cancelled', async ({ page }) => {
+  await installFakeTauri(page);
+  await openWorkspace(page);
+  await openContentView(page);
+  const editor = page.locator('.monaco-editor').first();
+  await expect(editor).toBeVisible();
+  await editor.click();
+  await page.keyboard.press('Control+End');
+  await page.keyboard.type('let z = 1');
+  await expect(page.locator('.view-lines').first()).toContainText(/let\s+z\s*=\s*1/);
+  await expect(page.getByTitle('Kaydedilmemiş değişiklikler').first()).toBeVisible();
+  await page.evaluate(() => (window as unknown as { __requestClose: () => void }).__requestClose());
+  const dialog = page.getByRole('alertdialog', { name: 'Kaydedilmemiş değişiklikler' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Vazgeç' }).click();
+  await expect(dialog).toHaveCount(0);
 });

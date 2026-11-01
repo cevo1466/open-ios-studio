@@ -17,14 +17,14 @@ describe('deviceStatus', () => {
   it('no device', () => {
     const s = deviceStatus({ ...base, devices: [] });
     expect(s.kind).toBe('no-device');
-    expect(s.title).toBe('No iPhone detected');
-    for (const w of ['USB', 'unlock', 'Trust', 'Developer Mode', 'usbmuxd']) expect(s.detail).toContain(w);
+    expect(s.title).toBe('iPhone algılanmadı');
+    for (const w of ['USB', 'kilidini', 'Trust', 'Developer Mode', 'usbmuxd']) expect(s.detail).toContain(w);
   });
   it('not signed in', () => {
     for (const a of [false, null]) {
       const s = deviceStatus({ ...base, authLoggedIn: a });
       expect(s.kind).toBe('not-signed-in');
-      expect(s.detail).toContain('never handles Apple credentials');
+      expect(s.detail).toContain('Apple kimlik bilgilerini');
       expect(s.detail).toContain('xtool setup');
       expect(s.detail).toContain('xtool auth login');
     }
@@ -37,14 +37,14 @@ describe('canRunOnDevice', () => {
   it('ok with one device', () => expect(canRunOnDevice(ok)).toEqual({ ok: true, reason: null }));
   it('ok with selected', () => expect(canRunOnDevice({ ...ok, selectedUdid: dev.udid }).ok).toBe(true));
   it('xtool missing', () => expect(canRunOnDevice({ ...ok, xtoolFound: false }).reason).toMatch(/xtool/));
-  it('running', () => expect(canRunOnDevice({ ...ok, running: true }).reason).toMatch(/already active/));
-  it('no workspace', () => expect(canRunOnDevice({ ...ok, hasWorkspace: false }).reason).toMatch(/workspace/));
-  it('no devices', () => expect(canRunOnDevice({ ...ok, devices: [] }).reason).toMatch(/No iPhone/));
-  it('not signed in', () => expect(canRunOnDevice({ ...ok, authLoggedIn: null }).reason).toMatch(/Not signed in/));
-  it('stale selection', () => expect(canRunOnDevice({ ...ok, selectedUdid: 'zzz' }).reason).toMatch(/no longer/));
+  it('running', () => expect(canRunOnDevice({ ...ok, running: true }).reason).toMatch(/Zaten çalışan/));
+  it('no workspace', () => expect(canRunOnDevice({ ...ok, hasWorkspace: false }).reason).toMatch(/çalışma klasörü/));
+  it('no devices', () => expect(canRunOnDevice({ ...ok, devices: [] }).reason).toMatch(/iPhone algılanmadı/));
+  it('not signed in', () => expect(canRunOnDevice({ ...ok, authLoggedIn: null }).reason).toMatch(/Oturum açık değil/));
+  it('stale selection', () => expect(canRunOnDevice({ ...ok, selectedUdid: 'zzz' }).reason).toMatch(/bağlantısı kesildi/));
   it('multiple, none selected', () => {
     const two = [dev, { ...dev, udid: 'AAAA' }];
-    expect(canRunOnDevice({ ...ok, devices: two }).reason).toMatch(/Select a device/);
+    expect(canRunOnDevice({ ...ok, devices: two }).reason).toMatch(/bir cihaz seçin/);
   });
 });
 

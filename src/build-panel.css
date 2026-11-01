@@ -1,29 +1,29 @@
-.bp-panel { display: flex; flex-direction: column; gap: 8px; padding: 8px 12px; background: var(--bg2); border-top: 1px solid var(--border); height: 100%; min-height: 0; overflow: hidden; }
-.bp-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.bp-panel { display: flex; flex-direction: column; gap: 14px; padding: 14px 18px; background: var(--bg2); border-top: 1px solid var(--border); height: 100%; min-height: 0; overflow: hidden; }
+.bp-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .bp-head h2 { margin: 0; font-size: 1rem; }
-.bp-status { display: flex; flex-direction: column; gap: 4px; font-size: 0.9em; }
-.bp-status dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 0; }
+.bp-status { display: flex; flex-direction: column; gap: 8px; font-size: 0.9em; line-height: 1.5; overflow-wrap: anywhere; }
+.bp-status dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; }
 .bp-status dt { color: var(--muted); }
 .bp-status dd { margin: 0; word-break: break-all; }
-.bp-warn { background: var(--danger-bg); color: var(--danger-fg); padding: 6px 10px; border-radius: 4px; }
-.bp-help { color: var(--muted); }
-.bp-help p { margin: 4px 0; }
-.bp-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.bp-actions label { display: inline-flex; align-items: center; gap: 4px; }
-.bp-actions input[type='text'] { width: 140px; }
-.bp-error { color: var(--danger-fg); background: var(--danger-bg); padding: 2px 6px; border-radius: 4px; }
-.bp-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); }
+.bp-warn { background: var(--danger-bg); color: var(--danger-fg); padding: 10px 14px; border-radius: 4px; line-height: 1.5; overflow-wrap: anywhere; }
+.bp-help { color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; }
+.bp-help p { margin: 8px 0; }
+.bp-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.bp-actions label { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.bp-actions input[type='text'] { width: 140px; max-width: 100%; }
+.bp-error { color: var(--danger-fg); background: var(--danger-bg); overflow-wrap: anywhere; padding: 4px 8px; border-radius: 4px; }
+.bp-tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--border); }
 .bp-tab { background: transparent; border-color: transparent; border-radius: 4px 4px 0 0; }
 .bp-tab[aria-selected='true'] { background: var(--bg); border-color: var(--border); font-weight: 600; }
 .bp-body { flex: 1; min-height: 80px; overflow: auto; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; }
-.bp-log { margin: 0; padding: 6px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; }
+.bp-log { margin: 0; padding: 10px 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; }
 .bp-line-stderr { color: var(--danger-fg); background: var(--danger-bg); display: block; }
 .bp-line-stdout { display: block; }
-.bp-note { color: var(--muted); padding: 4px 8px; font-size: 0.85em; }
+.bp-note { color: var(--muted); padding: 8px 12px; font-size: 0.85em; line-height: 1.5; }
 .bp-problems { list-style: none; margin: 0; padding: 0; }
-.bp-problems li { display: flex; gap: 8px; align-items: baseline; padding: 4px 8px; border-bottom: 1px solid var(--border); }
+.bp-problems li { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: baseline; padding: 8px 12px; overflow-wrap: anywhere; border-bottom: 1px solid var(--border); }
 .bp-badge { font-size: 0.75em; font-weight: 600; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; border: 1px solid var(--border); background: var(--bg3); }
 .bp-badge-error { background: var(--danger-bg); color: var(--danger-fg); }
 .bp-link { background: transparent; border: none; color: var(--accent); text-decoration: underline; padding: 0; }
-.bp-outcome { font-weight: 600; }
-.bp-disclaimer { color: var(--muted); font-size: 0.85em; margin: 0; }
+.bp-outcome { font-weight: 600; overflow-wrap: anywhere; }
+.bp-disclaimer { color: var(--muted); font-size: 0.85em; line-height: 1.5; margin: 0; overflow-wrap: anywhere; }

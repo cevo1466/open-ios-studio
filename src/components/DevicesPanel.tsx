@@ -44,7 +44,7 @@ export function DevicesPanel(props: DevicesPanelProps) {
   });
 
   const bundleOk = BUNDLE_ID_RE.test(bundleId);
-  const bundleError = bundleId.length > 0 && !bundleOk ? 'Bundle id may contain letters, digits, dots and dashes only (max 155 characters).' : null;
+  const bundleError = bundleId.length > 0 && !bundleOk ? 'Bundle kimliği yalnızca harf, rakam, nokta ve tire içerebilir (en fazla 155 karakter).' : null;
   const launchBase = canRunOnDevice({
     xtoolFound: props.xtoolFound,
     hasWorkspace: true,
@@ -53,7 +53,7 @@ export function DevicesPanel(props: DevicesPanelProps) {
     devices,
     selectedUdid,
   });
-  const launchReason = launchBase.reason ?? (bundleOk ? null : 'Enter a valid bundle id first.');
+  const launchReason = launchBase.reason ?? (bundleOk ? null : 'Önce geçerli bir bundle kimliği girin.');
 
   const submitLaunch = () => {
     if (launchReason) return;
@@ -61,11 +61,11 @@ export function DevicesPanel(props: DevicesPanelProps) {
   };
 
   return (
-    <section className="dp-panel" aria-label="Devices panel">
+    <section className="dp-panel" aria-label="Cihazlar paneli">
       <div className="dp-head">
-        <h2>Devices</h2>
-        <button type="button" onClick={props.onClose} aria-label="Close devices panel">
-          Close
+        <h2>Cihazlar</h2>
+        <button type="button" onClick={props.onClose} aria-label="Cihazlar panelini kapat">
+          Kapat
         </button>
       </div>
 
@@ -75,19 +75,19 @@ export function DevicesPanel(props: DevicesPanelProps) {
       </div>
 
       <div className="dp-section">
-        <h3>Signing status</h3>
-        <pre className="dp-auth" aria-label="xtool auth status output">
-          {props.authText && props.authText.trim() !== '' ? props.authText : 'No output from xtool auth status yet.'}
+        <h3>İmzalama durumu</h3>
+        <pre className="dp-auth" aria-label="xtool auth status çıktısı">
+          {props.authText && props.authText.trim() !== '' ? props.authText : 'xtool auth status henüz çıktı vermedi.'}
         </pre>
         <p className="dp-note">
-          Credentials are handled by xtool in your own terminal only. Open iOS Studio never sees or stores them.
+          Apple kimlik bilgileri yalnızca sizin terminalinizde xtool tarafından işlenir. Open iOS Studio bunları görmez ve saklamaz.
         </p>
       </div>
 
       <div className="dp-section">
-        <h3>Connected devices</h3>
+        <h3>Bağlı cihazlar</h3>
         {devices && devices.length > 0 ? (
-          <ul className="dp-list" role="radiogroup" aria-label="Devices">
+          <ul className="dp-list" role="radiogroup" aria-label="Cihazlar">
             {devices.map((d) => (
               <li key={d.udid}>
                 <label className="dp-device">
@@ -107,16 +107,16 @@ export function DevicesPanel(props: DevicesPanelProps) {
             ))}
           </ul>
         ) : (
-          <div className="dp-empty">{props.loading ? 'Checking...' : 'No devices to show.'}</div>
+          <div className="dp-empty">{props.loading ? 'Denetleniyor...' : 'Gösterilecek cihaz yok.'}</div>
         )}
       </div>
 
-      <div className="dp-actions" role="toolbar" aria-label="Device actions">
-        <button type="button" onClick={props.onRefresh} disabled={props.loading || running} title={running ? 'A run is active.' : undefined}>
-          Refresh
+      <div className="dp-actions" role="toolbar" aria-label="Cihaz işlemleri">
+        <button type="button" onClick={props.onRefresh} disabled={props.loading || running} title={running ? 'Çalışan bir işlem var.' : undefined}>
+          Yenile
         </button>
         <label>
-          Configuration
+          Yapılandırma
           <select value={configuration} onChange={(e) => setConfiguration(e.target.value as 'debug' | 'release')}>
             <option value="debug">debug</option>
             <option value="release">release</option>
@@ -128,13 +128,13 @@ export function DevicesPanel(props: DevicesPanelProps) {
           disabled={!run.ok}
           title={run.reason ?? undefined}
         >
-          Build and run on device
+          Derle ve cihazda çalıştır
         </button>
       </div>
 
       <div className="dp-actions">
         <label>
-          Bundle id
+          Bundle kimliği
           <input
             type="text"
             value={bundleId}
@@ -145,7 +145,7 @@ export function DevicesPanel(props: DevicesPanelProps) {
           />
         </label>
         <button type="button" onClick={submitLaunch} disabled={launchReason !== null} title={launchReason ?? undefined}>
-          Launch installed app
+          Yüklü uygulamayı başlat
         </button>
         {bundleError && (
           <span className="dp-error" role="alert">
@@ -154,8 +154,8 @@ export function DevicesPanel(props: DevicesPanelProps) {
         )}
       </div>
 
-      <p className="dp-honesty">There is no iOS Simulator on Linux. Runs happen on a real iPhone via xtool.</p>
-      <p className="dp-honesty">Device runs were not verified in CI (no device available).</p>
+      <p className="dp-honesty">Linux'ta iOS Simülatörü yoktur. Uygulamalar xtool aracılığıyla gerçek bir iPhone'da çalışır.</p>
+      <p className="dp-honesty">Cihazda çalıştırma CI'da doğrulanmadı (CI'da cihaz yok).</p>
     </section>
   );
 }

@@ -11,7 +11,7 @@ interface Props {
 
 export function Explorer({ root, refreshKey, activePath, onOpen, onError }: Props) {
   return (
-    <ul className="tree" role="tree" aria-label={`Files in ${root}`}>
+    <ul className="tree" role="tree" aria-label={`${root} içindeki dosyalar`}>
       <Level dir="" depth={0} refreshKey={refreshKey} activePath={activePath} onOpen={onOpen} onError={onError} />
     </ul>
   );
@@ -40,8 +40,8 @@ function Level({ dir, depth, refreshKey, activePath, onOpen, onError }: LevelPro
     };
   }, [dir, refreshKey, onError]);
 
-  if (entries === null) return <li className="tree-note">Loading…</li>;
-  if (entries.length === 0 && depth === 0) return <li className="tree-note">This folder is empty.</li>;
+  if (entries === null) return <li className="tree-note">Yükleniyor…</li>;
+  if (entries.length === 0 && depth === 0) return <li className="tree-note">Bu klasör boş.</li>;
   return (
     <>
       {entries.map((entry) => (

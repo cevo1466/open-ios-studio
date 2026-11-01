@@ -38,9 +38,9 @@ export function BuildPanel(props: BuildPanelProps) {
   const nameError = name.length > 0 && !nameCheck.ok ? nameCheck.reason : null;
 
   let blocked: string | null = null;
-  if (state.running) blocked = 'A run is already active. Cancel it or wait for it to finish.';
-  else if (!found) blocked = 'xtool was not found, so this action is unavailable.';
-  else if (!hasWorkspace) blocked = 'Open a workspace folder first.';
+  if (state.running) blocked = 'Zaten çalışan bir işlem var. İptal edin veya bitmesini bekleyin.';
+  else if (!found) blocked = 'xtool bulunamadı, bu yüzden bu işlem kullanılamıyor.';
+  else if (!hasWorkspace) blocked = 'Önce bir çalışma klasörü açın.';
 
   const onScroll = () => {
     const el = logRef.current;
@@ -60,67 +60,67 @@ export function BuildPanel(props: BuildPanelProps) {
   };
 
   return (
-    <section className="bp-panel" aria-label="Build panel">
+    <section className="bp-panel" aria-label="Derleme paneli">
       <div className="bp-head">
-        <h2>Build</h2>
-        <button type="button" onClick={props.onClose} aria-label="Close build panel">
-          Close
+        <h2>Derleme</h2>
+        <button type="button" onClick={props.onClose} aria-label="Derleme panelini kapat">
+          Kapat
         </button>
       </div>
 
       <div className="bp-status" aria-live="polite">
         {infoLoading || !info ? (
-          <span>Detecting xtool...</span>
+          <span>xtool algılanıyor...</span>
         ) : found ? (
           <>
             <dl>
               <dt>xtool</dt>
-              <dd>Found{info.path ? ` at ${info.path}` : ''}</dd>
-              <dt>Version</dt>
-              <dd>{versionLabel ?? 'unknown'}</dd>
-              <dt>Swift toolchain</dt>
-              <dd>{swiftLabel ?? 'Not found on PATH'}</dd>
+              <dd>Bulundu{info.path ? `: ${info.path}` : ''}</dd>
+              <dt>Sürüm</dt>
+              <dd>{versionLabel ?? 'bilinmiyor'}</dd>
+              <dt>Swift araç zinciri</dt>
+              <dd>{swiftLabel ?? 'PATH içinde bulunamadı'}</dd>
             </dl>
             {compatibility !== 'tested' && (
               <div className="bp-warn" role="alert">
                 {compatibility === 'untested'
-                  ? 'Untested version: this xtool version has not been verified with Open iOS Studio. Command flags, output format and diagnostics parsing may differ from what was tested.'
-                  : 'Unknown version: the xtool version could not be determined, so compatibility with Open iOS Studio is unverified (command flags, output format and diagnostics parsing).'}
+                  ? 'Test edilmemiş sürüm: bu xtool sürümü Open iOS Studio ile doğrulanmadı. Komut seçenekleri, çıktı biçimi ve hata ayrıştırma test edilenden farklı olabilir.'
+                  : 'Bilinmeyen sürüm: xtool sürümü belirlenemedi, bu yüzden Open iOS Studio ile uyumluluk doğrulanamadı (komut seçenekleri, çıktı biçimi ve hata ayrıştırma).'}
               </div>
             )}
           </>
         ) : (
           <div className="bp-help">
             <p>
-              <strong>Not available:</strong> xtool was not found{info.error ? ` (${info.error})` : ''}. Builds cannot run
-              until it is installed.
+              <strong>Kullanılamıyor:</strong> xtool bulunamadı{info.error ? ` (${info.error})` : ''}. xtool kurulana kadar
+              derleme yapılamaz.
             </p>
             <p>
-              Install xtool: github.com/xtool-org/xtool, see the Installation-Linux docs. The Darwin SDK must be installed
-              by you with <code>xtool sdk install</code> from an Xcode.xip.
+              xtool'u kurmak için github.com/xtool-org/xtool adresindeki Linux kurulum belgelerine bakın. Darwin SDK'yı
+              siz, bir Xcode.xip dosyasından <code>xtool sdk install</code> komutuyla kurmalısınız.
             </p>
             <p>
-              Open iOS Studio never handles Apple credentials. Run <code>xtool setup</code> in your own terminal.
+              Open iOS Studio Apple kimlik bilgilerini görmez. <code>xtool setup</code> komutunu kendi terminalinizde çalıştırın.
             </p>
-            <p>Swift toolchain: {swiftLabel ?? 'Not found on PATH'}</p>
+            <p>Swift araç zinciri: {swiftLabel ?? 'PATH içinde bulunamadı'}</p>
           </div>
         )}
       </div>
 
-      <div className="bp-actions" role="toolbar" aria-label="Build actions">
-        <button type="button" onClick={props.onRedetect} disabled={infoLoading || state.running} title={state.running ? 'A run is active.' : undefined}>
-          Re-detect
+      <div className="bp-actions" role="toolbar" aria-label="Derleme işlemleri">
+        <button type="button" onClick={props.onRedetect} disabled={infoLoading || state.running} title={state.running ? 'Çalışan bir işlem var.' : undefined}>
+          Yeniden algıla
         </button>
         <button type="button" onClick={() => props.onRun('sdk-status', {})} disabled={blocked !== null} title={blocked ?? undefined}>
-          SDK status
+          SDK durumu
         </button>
         <button type="button" onClick={() => setShowNew((v) => !v)} disabled={blocked !== null} title={blocked ?? undefined} aria-expanded={showNew}>
-          New project
+          Yeni proje
         </button>
         {showNew && (
           <span className="bp-actions">
             <label>
-              Name
+              Ad
               <input
                 type="text"
                 value={name}
@@ -130,46 +130,46 @@ export function BuildPanel(props: BuildPanelProps) {
               />
             </label>
             <button type="button" onClick={submitNew} disabled={blocked !== null || !nameCheck.ok} title={blocked ?? nameError ?? undefined}>
-              Create
+              Oluştur
             </button>
             {nameError && <span className="bp-error" role="alert">{nameError}</span>}
           </span>
         )}
         <label>
-          Configuration
+          Yapılandırma
           <select value={configuration} onChange={(e) => setConfiguration(e.target.value as 'debug' | 'release')}>
             <option value="debug">debug</option>
             <option value="release">release</option>
           </select>
         </label>
         <label>
-          Project dir
-          <input type="text" value={project} placeholder="(workspace root)" onChange={(e) => setProject(e.target.value)} />
+          Proje klasörü
+          <input type="text" value={project} placeholder="(çalışma klasörü kökü)" onChange={(e) => setProject(e.target.value)} />
         </label>
         <button type="button" onClick={() => props.onRun('build', { project, configuration })} disabled={blocked !== null} title={blocked ?? undefined}>
-          Build
+          Derle
         </button>
         {state.running && (
           <button type="button" onClick={props.onCancel}>
-            Cancel
+            İptal
           </button>
         )}
       </div>
 
-      <div className="bp-tabs" role="tablist" aria-label="Build output">
+      <div className="bp-tabs" role="tablist" aria-label="Derleme çıktısı">
         <button type="button" role="tab" className="bp-tab" aria-selected={tab === 'output'} onClick={() => setTab('output')}>
-          Output
+          Çıktı
         </button>
         <button type="button" role="tab" className="bp-tab" aria-selected={tab === 'problems'} onClick={() => setTab('problems')}>
-          Problems ({diagnostics.length})
+          Sorunlar ({diagnostics.length})
         </button>
       </div>
 
       <div className="bp-body" role="tabpanel" ref={logRef} onScroll={onScroll}>
         {tab === 'output' ? (
           <>
-            {state.dropped > 0 && <div className="bp-note">{state.dropped} earlier lines dropped</div>}
-            <pre className="bp-log" aria-label="Build log">
+            {state.dropped > 0 && <div className="bp-note">Önceki {state.dropped} satır atıldı</div>}
+            <pre className="bp-log" aria-label="Derleme günlüğü">
               {state.lines.map((l) => (
                 <span key={l.id} className={l.stream === 'stderr' ? 'bp-line-stderr' : 'bp-line-stdout'}>
                   {l.text}
@@ -179,7 +179,7 @@ export function BuildPanel(props: BuildPanelProps) {
             </pre>
           </>
         ) : diagnostics.length === 0 ? (
-          <div className="bp-note">No problems reported.</div>
+          <div className="bp-note">Bildirilen sorun yok.</div>
         ) : (
           <ul className="bp-problems">
             {diagnostics.map((d, i) => (
@@ -204,7 +204,7 @@ export function BuildPanel(props: BuildPanelProps) {
         </div>
       )}
       <p className="bp-disclaimer">
-        Build success is not App Store compliance. Check App Store Readiness and Security Center separately.
+        Derlemenin başarılı olması App Store uygunluğu anlamına gelmez. App Store Hazırlığı ve Güvenlik Merkezi'ni ayrıca kontrol edin.
       </p>
     </section>
   );

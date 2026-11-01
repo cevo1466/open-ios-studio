@@ -7,7 +7,10 @@ import { BuildPanel } from './components/BuildPanel';
 import { ChatPanel } from './components/ChatPanel';
 import { DevicesPanel } from './components/DevicesPanel';
 import { AppStoreReadiness, SecurityCenter } from './components/PolicyPanels';
+import { CloseGuardDialog } from './components/CloseGuard';
+import { WelcomeScreen } from './components/WelcomeScreen';
 import { SettingsDialog } from './components/SettingsDialog';
+import { dirtyTabs, saveAllDirty } from './state/closeGuard';
 import { inDesktopApp, ipc } from './ipc';
 import { effectiveTheme, loadSettings, saveSettings, type Settings } from './settings';
 import { analyzeProject } from './policy';
@@ -17,10 +20,7 @@ import { buildReducer, initialBuildState } from './xtool/buildState';
 import { buildOutcome, compatibility, parseAuthStatus, parseDevices, parseDiagnostics, parseSwiftVersion, parseXtoolVersion, redactLine } from './xtool/parse';
 import type { Device, RunEvent, XtoolInfo, XtoolOp, XtoolRunArgs } from './xtool/types';
 
-const PLANNED: { label: string; milestone: string }[] = [
-  { label: 'Search', milestone: 'planned' },
-  { label: 'Source Control', milestone: 'planned' },
-];
+const PROVIDER_LABELS: Record<string, string> = { anthropic: 'Claude (Anthropic)', openai: 'OpenAI', ollama: 'Ollama (yerel)' };
 
 export function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -87,7 +87,7 @@ export function App() {
         dispatch({ type: 'open', path, content: await ipc.readFile(path) });
         setNotice(null);
       } catch (e) {
-        fail(`Cannot open ${path}: ${String(e)}`);
+        fail(`Dosya açılamadı (${path}): ${String(e)}`);
       }
     },
     [state.tabs, fail],
@@ -101,21 +101,21 @@ export function App() {
       dispatch({ type: 'saved', path: tab.path, content: tab.content });
       setNotice(null);
     } catch (e) {
-      fail(`Cannot save ${tab.path}: ${String(e)}`);
+      fail(`Kaydedilemedi (${tab.path}): ${String(e)}`);
     }
   }, [state.tabs, state.active, fail]);
 
   const runAnalysis = useCallback(async () => {
     setAnalysisError(null);
     if (!state.workspace) {
-      setAnalysisError('Open a folder first: the analysis reads the files of the open project.');
+      setAnalysisError('Önce bir klasör açın: analiz, açık projenin dosyalarını okur.');
       return;
     }
     setAnalysing(true);
     try {
       const scan = await ipc.scanWorkspace();
       setReport(analyzeProject(scan.files));
-      if (scan.truncated) setAnalysisError('Scan limit reached: some files were not analysed, results are incomplete.');
+      if (scan.truncated) setAnalysisError('Tarama sınırına ulaşıldı: bazı dosyalar analiz edilmedi, sonuçlar eksik.');
     } catch (e) {
       setAnalysisError(String(e));
     } finally {
@@ -164,7 +164,7 @@ export function App() {
   const refreshDevices = useCallback(async () => {
     setDevicesError(null);
     if (state.workspace === null) {
-      setDevicesError('Open a folder first: xtool runs inside your workspace.');
+      setDevicesError('Önce bir klasör açın: xtool çalışma klasörünüzün içinde çalışır.');
       return;
     }
     setDevicesLoading(true);
@@ -191,11 +191,23 @@ export function App() {
   }, [state.workspace, xtoolInfo, collectXtool]);
 
   const openDevices = useCallback(() => {
+    setBuildOpen(false);
     setDevicesOpen(true);
     void refreshDevices();
   }, [refreshDevices]);
 
+  useEffect(() => {
+    if (!desktop) return;
+    ipc
+      .xtoolDetect()
+      .then(setXtoolInfo)
+      .catch(() => {
+        /* the Build panel shows the detection error when opened */
+      });
+  }, [desktop]);
+
   const openBuild = useCallback(() => {
+    setDevicesOpen(false);
     setBuildOpen(true);
     if (xtoolInfo === null) void detectXtool();
   }, [xtoolInfo, detectXtool]);
@@ -243,11 +255,74 @@ export function App() {
   const closeTab = useCallback(
     (path: string) => {
       const tab = state.tabs.find((t) => t.path === path);
-      if (tab && isDirty(tab) && !window.confirm(`${path} has unsaved changes. Close anyway?`)) return;
+      if (tab && isDirty(tab) && !window.confirm(`${path} dosyasında kaydedilmemiş değişiklikler var. Yine de kapatılsın mı?`)) return;
       dispatch({ type: 'close', path });
     },
     [state.tabs],
   );
+
+  const tabsRef = useRef(state.tabs);
+  useEffect(() => {
+    tabsRef.current = state.tabs;
+  }, [state.tabs]);
+  const [closePrompt, setClosePrompt] = useState(false);
+  const [closeBusy, setCloseBusy] = useState(false);
+  const [closeError, setCloseError] = useState<string | null>(null);
+
+  // Ask before the window closes with unsaved changes (desktop app only).
+  useEffect(() => {
+    if (!desktop) return;
+    let cancelled = false;
+    let unlisten: (() => void) | undefined;
+    import('@tauri-apps/api/window')
+      .then(({ getCurrentWindow }) =>
+        getCurrentWindow().onCloseRequested((event) => {
+          if (dirtyTabs(tabsRef.current).length > 0) {
+            event.preventDefault();
+            setClosePrompt(true);
+          }
+        }),
+      )
+      .then((fn) => {
+        if (cancelled) fn();
+        else unlisten = fn;
+      })
+      .catch(() => {
+        /* window API unavailable: closing is not guarded */
+      });
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, [desktop]);
+
+  const forceClose = async () => {
+    try {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      await getCurrentWindow().destroy();
+    } catch (e) {
+      setCloseBusy(false);
+      setCloseError(`Pencere kapatılamadı: ${String(e)}`);
+    }
+  };
+
+  const saveAndClose = async () => {
+    setCloseBusy(true);
+    setCloseError(null);
+    const result = await saveAllDirty(state.tabs, ipc.writeFile);
+    for (const s of result.saved) dispatch({ type: 'saved', path: s.path, content: s.content });
+    if (result.failed.length > 0) {
+      setCloseBusy(false);
+      setCloseError(`Kaydedilemedi: ${result.failed.map((f) => `${f.path} (${f.error})`).join(', ')}`);
+      return;
+    }
+    await forceClose();
+  };
+
+  const discardAndClose = () => {
+    setCloseBusy(true);
+    void forceClose();
+  };
 
   const createFile = useCallback(
     async (name: string) => {
@@ -259,7 +334,7 @@ export function App() {
         setRefreshKey((k) => k + 1);
         await openFile(path);
       } catch (e) {
-        fail(`Cannot create ${path}: ${String(e)}`);
+        fail(`Dosya oluşturulamadı (${path}): ${String(e)}`);
       }
     },
     [openFile, fail],
@@ -283,13 +358,13 @@ export function App() {
   const hasWorkspace = state.workspace !== null;
   const commands: Command[] = useMemo(
     () => [
-      { id: 'open', title: 'Open folder…', enabled: desktop, run: () => void openFolder() },
-      { id: 'new', title: 'New file…', enabled: hasWorkspace, run: () => setNewName('') },
-      { id: 'save', title: 'Save file', enabled: hasWorkspace, hint: 'Ctrl+S', run: () => void saveRef.current() },
-      { id: 'settings', title: 'Open settings', enabled: true, run: () => setShowSettings(true) },
+      { id: 'open', title: 'Klasör aç…', enabled: desktop, run: () => void openFolder() },
+      { id: 'new', title: 'Yeni dosya…', enabled: hasWorkspace, run: () => setNewName('') },
+      { id: 'save', title: 'Dosyayı kaydet', enabled: hasWorkspace, hint: 'Ctrl+S', run: () => void saveRef.current() },
+      { id: 'settings', title: 'Ayarları aç', enabled: true, run: () => setShowSettings(true) },
       {
         id: 'theme',
-        title: 'Toggle light/dark theme',
+        title: 'Açık/koyu temayı değiştir',
         enabled: true,
         run: () => setSettings((s) => ({ ...s, theme: theme === 'dark' ? 'light' : 'dark' })),
       },
@@ -301,54 +376,48 @@ export function App() {
     <div className="app">
       {!desktop && (
         <div className="banner" role="alert">
-          Running in a plain browser: file access is unavailable. Use the desktop app.
+          Tarayıcıda çalışıyor: dosya erişimi yok. Masaüstü uygulamasını kullanın.
         </div>
       )}
       <div className="body">
-        <nav className="activity" aria-label="Sections">
-          <button type="button" className="act active" aria-current="page" title="Explorer">
-            Explorer
+        <nav className="activity" aria-label="Bölümler">
+          <button type="button" className="act active" aria-current="page" title="Proje dosyaları">
+            Dosyalar
           </button>
-          {PLANNED.map((p) => (
-            <button key={p.label} type="button" className="act" disabled title={`Not available yet (${p.milestone})`}>
-              {p.label}
-              <small>{p.milestone}</small>
-            </button>
-          ))}
-          <button type="button" className="act" onClick={openBuild} disabled={!desktop} title={desktop ? 'Build with xtool' : 'Desktop app only'}>
-            Build (xtool)
-            <small>M2</small>
+          <button type="button" className="act" onClick={openBuild} disabled={!desktop} title={desktop ? 'xtool ile derle' : 'Yalnızca masaüstü uygulaması'}>
+            Derle
+            <small>xtool</small>
           </button>
-          <button type="button" className="act" onClick={openDevices} disabled={!desktop} title={desktop ? 'Connected iPhones and signing status' : 'Desktop app only'}>
-            Devices
-            <small>M4</small>
+          <button type="button" className="act" onClick={openDevices} disabled={!desktop} title={desktop ? 'Bağlı iPhone\'lar ve imza durumu' : 'Yalnızca masaüstü uygulaması'}>
+            Cihazlar
+            <small>iPhone</small>
           </button>
-          <button type="button" className="act" onClick={() => setChatOpen(true)} disabled={!desktop} title={desktop ? 'AI assistant' : 'Desktop app only'}>
-            AI Chat
-            <small>M3</small>
+          <button type="button" className="act" onClick={() => setChatOpen(true)} disabled={!desktop} title={desktop ? 'Yapay zekâ asistanı' : 'Yalnızca masaüstü uygulaması'}>
+            Yapay zekâ
+            <small>Claude · OpenAI · Ollama</small>
           </button>
           <button type="button" className="act" onClick={() => setPanel('asr')}>
-            App Store Readiness
-            <small>static checks</small>
+            App Store hazırlığı
+            <small>kaynak denetimi</small>
           </button>
           <button type="button" className="act" onClick={() => setPanel('msec')}>
-            Security Center
-            <small>static checks</small>
+            Güvenlik merkezi
+            <small>kaynak denetimi</small>
           </button>
           <button type="button" className="act bottom" onClick={() => setShowSettings(true)}>
-            Settings
+            Ayarlar
           </button>
         </nav>
 
-        <aside className="sidebar" aria-label="Explorer">
+        <aside className="sidebar" aria-label="Dosya gezgini">
           <div className="side-head">
-            <strong>{state.workspace ? state.workspace.split('/').pop() : 'Explorer'}</strong>
+            <strong>{state.workspace ? state.workspace.split('/').pop() : 'Dosyalar'}</strong>
             <span>
               <button type="button" onClick={() => void openFolder()} disabled={!desktop}>
-                Open folder
+                Klasör aç
               </button>
               <button type="button" onClick={() => setNewName('')} disabled={!hasWorkspace}>
-                New file
+                Yeni dosya
               </button>
             </span>
           </div>
@@ -363,8 +432,8 @@ export function App() {
               <input
                 autoFocus
                 value={newName}
-                placeholder="path/relative/to/folder.swift"
-                aria-label="New file path"
+                placeholder="Sources/Uygulama/Ekran.swift"
+                aria-label="Yeni dosya yolu"
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Escape' && setNewName(null)}
               />
@@ -379,7 +448,7 @@ export function App() {
               onError={fail}
             />
           ) : (
-            <p className="muted pad">Open a folder to start. SwiftPM project creation arrives with xtool support (M2).</p>
+            <p className="muted pad">Başlamak için bir klasör açın.</p>
           )}
         </aside>
 
@@ -387,11 +456,25 @@ export function App() {
           {notice && (
             <div className="notice" role="alert">
               {notice}
-              <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss">
+              <button type="button" onClick={() => setNotice(null)} aria-label="Kapat">
                 ×
               </button>
             </div>
           )}
+          {state.tabs.length === 0 ? (
+            <WelcomeScreen
+              desktop={desktop}
+              workspace={state.workspace}
+              xtoolFound={xtoolInfo ? xtoolInfo.found : null}
+              aiProviderLabel={PROVIDER_LABELS[ai.settings.provider] ?? ai.settings.provider}
+              aiReady={ai.needsKey ? ai.keyStored : true}
+              onOpenFolder={() => void openFolder()}
+              onNewFile={() => setNewName('')}
+              onOpenAi={() => setChatOpen(true)}
+              onOpenBuild={openBuild}
+              onOpenAppStore={() => setPanel('asr')}
+            />
+          ) : (
           <EditorPane
             tabs={state.tabs}
             active={state.active}
@@ -402,6 +485,7 @@ export function App() {
             onChange={(path, content) => dispatch({ type: 'edit', path, content })}
             onSave={() => void saveRef.current()}
           />
+          )}
           {devicesOpen && (
             <div className="bp-dock">
               <DevicesPanel
@@ -417,10 +501,12 @@ export function App() {
                 onSelect={setSelectedUdid}
                 onRefresh={() => void refreshDevices()}
                 onRunOnDevice={(udid, configuration) => {
+                  setDevicesOpen(false);
                   setBuildOpen(true);
                   void runXtool('run-device', { configuration, udid: udid ?? undefined });
                 }}
                 onLaunch={(udid, bundleId) => {
+                  setDevicesOpen(false);
                   setBuildOpen(true);
                   void runXtool('launch', { bundleId, udid: udid ?? undefined });
                 }}
@@ -430,9 +516,9 @@ export function App() {
           )}
           {buildOpen && ai.repairAvailable && (
             <div className="notice" role="status">
-              The build failed. The AI can propose a minimal fix; you review it before anything is written.
+              Derleme başarısız oldu. Yapay zekâ en küçük düzeltmeyi önerebilir; hiçbir şey yazılmadan önce siz incelersiniz.
               <button type="button" onClick={ai.repair}>
-                Ask AI to fix ({ai.repairAttempt + 1}/3)
+                Yapay zekâdan düzeltmesini iste ({ai.repairAttempt + 1}/3)
               </button>
             </div>
           )}
@@ -458,7 +544,7 @@ export function App() {
           )}
         </main>
         {chatOpen && (
-          <aside className="ai-dock" aria-label="AI assistant">
+          <aside className="ai-dock" aria-label="Yapay zekâ asistanı">
             <ChatPanel
               state={ai.chat}
               settings={ai.settings}
@@ -487,9 +573,22 @@ export function App() {
         )}
       </div>
       <footer className="status">
-        <span>{state.workspace ?? 'No folder open'}</span>
-        <span>Ctrl+Shift+P: commands · Ctrl+S: save</span>
+        <span>{state.workspace ?? 'Klasör açık değil'}</span>
+        <span>Ctrl+Shift+P: komutlar · Ctrl+S: kaydet</span>
       </footer>
+      {closePrompt && (
+        <CloseGuardDialog
+          dirty={dirtyTabs(state.tabs)}
+          busy={closeBusy}
+          error={closeError}
+          onSaveAndClose={() => void saveAndClose()}
+          onDiscardAndClose={discardAndClose}
+          onCancel={() => {
+            setClosePrompt(false);
+            setCloseError(null);
+          }}
+        />
+      )}
       {showSettings && <SettingsDialog settings={settings} onChange={setSettings} onClose={() => setShowSettings(false)} />}
       {panel && (
         <PolicyPanel

@@ -4,7 +4,7 @@ import type { ProjectFile } from '../policy/types';
 import type { Diagnostic } from '../xtool/types';
 import { approvedChanges, chatReducer, initialChatState, type ChatState } from './chatState';
 import { applyBlockedReason, filesForRepair, findingsForChanges, MAX_REPAIR_ATTEMPTS, prepareContext, toPending } from './engine';
-import { buildGenerationMessages, buildRepairMessages } from './prompts';
+import { buildGenerationMessages, buildPlanMessages, buildRepairMessages } from './prompts';
 import { parseProposedChanges } from './protocol';
 import { loadAiSettings, saveAiSettings, type AiSettings } from './settings';
 import { loadConversation, saveConversation } from './storage';
@@ -32,7 +32,7 @@ export function useAi(params: Params) {
   const [models, setModels] = useState<string[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [modelsError, setModelsError] = useState<string | null>(null);
-  const [contextSummary, setContextSummary] = useState('not built yet');
+  const [contextSummary, setContextSummary] = useState('henüz hazırlanmadı');
   const [applying, setApplying] = useState(false);
   const [repairAttempt, setRepairAttempt] = useState(0);
   const lastGoal = useRef('');
@@ -165,7 +165,7 @@ export function useAi(params: Params) {
     async (text: string, files: ProjectFile[]) => {
       const parsed = parseProposedChanges(text);
       if (parsed.problems.length > 0) {
-        dispatch({ type: 'note', text: `Ignored by validation: ${parsed.problems.join('; ')}` });
+        dispatch({ type: 'note', text: `Doğrulama tarafından yok sayıldı: ${parsed.problems.join('; ')}` });
       }
       if (parsed.changes.length === 0) return;
       const originals: Record<string, string | null> = {};
@@ -182,7 +182,7 @@ export function useAi(params: Params) {
   );
 
   const send = useCallback(
-    async (userText: string, mode: 'chat' | 'generate') => {
+    async (userText: string, mode: 'chat' | 'generate' | 'plan') => {
       if (!workspace) return;
       lastGoal.current = userText;
       if (mode === 'generate') setRepairAttempt(0);
@@ -202,13 +202,20 @@ export function useAi(params: Params) {
         const scan = await ipc.scanWorkspace();
         const ctx = prepareContext({ files: scan.files, openPaths, activePath, settings });
         setContextSummary(ctx.summary);
-        const messages = buildGenerationMessages({
-          userRequest: userText,
-          projectContext: ctx.projectContext,
-          policyContext: ctx.policyContext,
-          history,
-          mode,
-        });
+        const messages =
+          mode === 'plan'
+            ? buildPlanMessages({
+                userRequest: userText,
+                projectContext: ctx.projectContext,
+                policyContext: ctx.policyContext,
+              })
+            : buildGenerationMessages({
+                userRequest: userText,
+                projectContext: ctx.projectContext,
+                policyContext: ctx.policyContext,
+                history,
+                mode,
+              });
         const answer = await stream(messages);
         if (answer !== null && mode === 'generate') await reviewProposal(answer, scan.files);
       } catch (e) {
@@ -222,7 +229,7 @@ export function useAi(params: Params) {
     if (!workspace || repairAttempt >= MAX_REPAIR_ATTEMPTS) return;
     const attempt = repairAttempt + 1;
     setRepairAttempt(attempt);
-    dispatch({ type: 'userMessage', text: `Fix the build errors (attempt ${attempt}/${MAX_REPAIR_ATTEMPTS}).` });
+    dispatch({ type: 'userMessage', text: `Derleme hatalarını düzelt (deneme ${attempt}/${MAX_REPAIR_ATTEMPTS}).` });
     dispatch({ type: 'clearPending' });
     try {
       const scan = await ipc.scanWorkspace();
@@ -263,7 +270,7 @@ export function useAi(params: Params) {
         dispatch({ type: 'appliedOne', path: change.path });
       }
     } catch (e) {
-      dispatch({ type: 'assistantError', message: `Could not write all files: ${String(e)}` });
+      dispatch({ type: 'assistantError', message: `Tüm dosyalar yazılamadı: ${String(e)}` });
     } finally {
       setApplying(false);
       if (written.length > 0) onApplied(written);
@@ -288,7 +295,7 @@ export function useAi(params: Params) {
     setKey,
     deleteKey,
     refreshModels: () => void refreshModels(),
-    send: (text: string, mode: 'chat' | 'generate') => void send(text, mode),
+    send: (text: string, mode: 'chat' | 'generate' | 'plan') => void send(text, mode),
     repair: () => void repair(),
     stop,
     decide: (path: string, decision: 'approved' | 'rejected') => dispatch({ type: 'decide', path, decision }),

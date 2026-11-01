@@ -24,11 +24,11 @@ export function CommandPalette({ commands, onClose }: { commands: Command[]; onC
 
   return (
     <div className="overlay" onMouseDown={onClose}>
-      <div className="dialog palette" role="dialog" aria-label="Command palette" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="dialog palette" role="dialog" aria-label="Komut paleti" onMouseDown={(e) => e.stopPropagation()}>
         <input
           ref={input}
           value={query}
-          placeholder="Type a command…"
+          placeholder="Komut ara…"
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Escape') onClose();
@@ -51,7 +51,7 @@ export function CommandPalette({ commands, onClose }: { commands: Command[]; onC
               </button>
             </li>
           ))}
-          {shown.length === 0 && <li className="tree-note">No matching command.</li>}
+          {shown.length === 0 && <li className="tree-note">Eşleşen komut yok.</li>}
         </ul>
       </div>
     </div>

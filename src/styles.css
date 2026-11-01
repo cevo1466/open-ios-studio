@@ -44,6 +44,7 @@ input, select { background: var(--bg); border: 1px solid var(--border); border-r
 .status { display: flex; justify-content: space-between; gap: 12px; padding: 3px 10px; background: var(--accent); color: #fff; font-size: 12px; }
 .overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); display: flex; align-items: flex-start; justify-content: center; padding-top: 12vh; }
 .dialog { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; width: 440px; display: flex; flex-direction: column; gap: 12px; }
+.dialog .row { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
 .dialog label { display: flex; flex-direction: column; gap: 4px; }
 .palette ul { list-style: none; margin: 0; padding: 0; max-height: 280px; overflow: auto; }
 .palette li button { width: 100%; text-align: left; border: 0; background: transparent; display: flex; justify-content: space-between; }
