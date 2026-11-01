@@ -57,7 +57,10 @@ mod tests {
         assert_eq!(reveal_target(&app, false).expect("self"), app);
         assert_eq!(reveal_target(&app, true).expect("parent"), root.path());
         assert_eq!(reveal_target(&file, false).expect("file"), root.path());
-        assert_eq!(reveal_target(&file, true).expect("file parent"), root.path());
+        assert_eq!(
+            reveal_target(&file, true).expect("file parent"),
+            root.path()
+        );
     }
 
     #[test]
