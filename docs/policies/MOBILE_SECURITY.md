@@ -24,8 +24,8 @@ This catalog (`policies/mobile-security.rules.json`, policy version 2026.10.0) d
 | MSEC-014 | Mobile Binary Secret Exposure (MASVS-STORAGE) | always | critical | PARTIAL |
 | MSEC-015 | Code Hardening (MASVS-RESILIENCE) | always | info | MANUAL_ONLY |
 | MSEC-016 | Secure Token Storage (MASVS-STORAGE) | all: hasAuthTokens | high | PARTIAL |
-| MSEC-017 | Backup Data Protection (MASVS-STORAGE) | all: processesPersonalData | medium | NOT_IMPLEMENTED |
-| MSEC-018 | Deep Link Validation (MASVS-PLATFORM) | all: hasDeepLinks | medium | NOT_IMPLEMENTED |
+| MSEC-017 | Backup Data Protection (MASVS-STORAGE) | all: processesPersonalData | medium | PARTIAL |
+| MSEC-018 | Deep Link Validation (MASVS-PLATFORM) | all: hasDeepLinks | medium | PARTIAL |
 | MSEC-019 | TLS & Certificate Validation (MASVS-NETWORK) | any: usesExternalApis, hasBackend | critical | PARTIAL |
 | MSEC-020 | Least Privilege (MASVS-PLATFORM) | always | medium | NOT_IMPLEMENTED |
 | MSEC-021 | Environment File Protection | always | high | PARTIAL |
