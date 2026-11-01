@@ -36,7 +36,10 @@ pub enum PtyKind {
 /// and readline mis-handle multi-byte input (Turkish ç ğ ı ö ş ü) in the C/POSIX locale. A locale
 /// that already names UTF-8 is left alone; a missing or non-UTF-8 one becomes `C.UTF-8`, which
 /// glibc ships on every Debian/Ubuntu/Mint install.
-pub fn utf8_locale_env(lang: Option<&str>, lc_all: Option<&str>) -> Vec<(&'static str, &'static str)> {
+pub fn utf8_locale_env(
+    lang: Option<&str>,
+    lc_all: Option<&str>,
+) -> Vec<(&'static str, &'static str)> {
     let effective = [lc_all, lang]
         .into_iter()
         .flatten()
