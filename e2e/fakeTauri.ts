@@ -84,6 +84,12 @@ export async function installFakeTauri(page: Page): Promise<void> {
       secret_status: () => false,
       ai_list_models: () => [],
       ai_cancel: () => null,
+      cli_status: () => ({ installed: true, loggedIn: false, detail: 'Not logged in' }),
+      cli_login_terminal: () => 'xterm',
+      pty_open: () => 1,
+      pty_write: () => null,
+      pty_resize: () => null,
+      pty_close: () => null,
     };
 
     w.__TAURI_INTERNALS__ = {

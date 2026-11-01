@@ -16,7 +16,7 @@ const KEY = 'open-ios-studio.ai.v1';
 
 export const defaultAiSettings: AiSettings = {
   provider: 'anthropic',
-  models: { anthropic: '', openai: '', ollama: '' },
+  models: { anthropic: '', openai: '', ollama: '', 'claude-cli': '', 'codex-cli': '' },
   maxContextTokens: 24000,
   notes: '',
 };

@@ -1,5 +1,7 @@
 mod ai;
+mod cli_ai;
 mod fs_engine;
+mod pty;
 mod runner;
 mod secrets;
 mod xtool;
@@ -20,6 +22,8 @@ struct AppState {
     run: Mutex<Option<runner::CancelToken>>,
     /// Cancel handle of the AI request in progress, if any (one at a time).
     ai_run: Mutex<Option<runner::CancelToken>>,
+    /// Embedded terminal sessions (ADR-0009).
+    pty: pty::PtyState,
 }
 
 #[derive(Debug, Serialize)]
@@ -294,6 +298,93 @@ fn ai_cancel(state: State<'_, AppState>) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+async fn cli_status(provider: cli_ai::CliKind) -> Result<cli_ai::CliStatus, String> {
+    Ok(cli_ai::status(provider).await)
+}
+
+/// Opens the system terminal on the CLI's fixed login command. Returns the terminal's name.
+#[tauri::command]
+fn cli_login_terminal(provider: cli_ai::CliKind) -> Result<String, String> {
+    cli_ai::open_login_terminal(provider)
+}
+
+#[tauri::command]
+async fn cli_stream(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    request: cli_ai::CliChatRequest,
+    on_event: Channel<ai::AiEvent>,
+) -> Result<(), String> {
+    let cancel = runner::CancelToken::new();
+    {
+        let mut slot = state
+            .ai_run
+            .lock()
+            .map_err(|_| "internal state error".to_owned())?;
+        if slot.is_some() {
+            return Err("Another AI request is still active.".to_owned());
+        }
+        *slot = Some(cancel.clone());
+    }
+
+    let sender = on_event.clone();
+    let result = cli_ai::stream_cli(&request, &cancel, |event| {
+        let _ = sender.send(event);
+    })
+    .await;
+
+    if let Ok(mut slot) = app.state::<AppState>().ai_run.lock() {
+        *slot = None;
+    }
+    if let Err(message) = result {
+        let _ = on_event.send(ai::AiEvent::Error {
+            message,
+            status: None,
+        });
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn pty_open(
+    state: State<'_, AppState>,
+    kind: pty::PtyKind,
+    rows: u16,
+    cols: u16,
+    on_event: Channel<pty::PtyEvent>,
+) -> Result<u32, String> {
+    let cwd = {
+        let guard = state
+            .workspace
+            .lock()
+            .map_err(|_| "internal state error".to_owned())?;
+        guard
+            .as_ref()
+            .map(|ws| ws.root().to_path_buf())
+            .or_else(|| std::env::var_os("HOME").map(std::path::PathBuf::from))
+            .unwrap_or_else(std::env::temp_dir)
+    };
+    state.pty.open(kind, rows, cols, cwd, move |event| {
+        let _ = on_event.send(event);
+    })
+}
+
+#[tauri::command]
+fn pty_write(state: State<'_, AppState>, id: u32, data: String) -> Result<(), String> {
+    state.pty.write(id, &data)
+}
+
+#[tauri::command]
+fn pty_resize(state: State<'_, AppState>, id: u32, rows: u16, cols: u16) -> Result<(), String> {
+    state.pty.resize(id, rows, cols)
+}
+
+#[tauri::command]
+fn pty_close(state: State<'_, AppState>, id: u32) -> Result<(), String> {
+    state.pty.close(id)
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -315,7 +406,14 @@ pub fn run() {
             secret_status,
             ai_list_models,
             ai_stream,
-            ai_cancel
+            ai_cancel,
+            cli_status,
+            cli_login_terminal,
+            cli_stream,
+            pty_open,
+            pty_write,
+            pty_resize,
+            pty_close
         ])
         .run(tauri::generate_context!())
         .expect("error while running Open iOS Studio");

@@ -4,8 +4,23 @@
  * them but never read them. The webview names a provider, Rust builds the HTTP request.
  */
 
-export type ProviderId = 'anthropic' | 'openai' | 'ollama';
-export const PROVIDERS: ProviderId[] = ['anthropic', 'openai', 'ollama'];
+export type ProviderId = 'anthropic' | 'openai' | 'ollama' | 'claude-cli' | 'codex-cli';
+export const PROVIDERS: ProviderId[] = ['anthropic', 'openai', 'ollama', 'claude-cli', 'codex-cli'];
+
+/** Providers that run the official CLI with the user's subscription login (ADR-0008). */
+export type CliProviderId = 'claude-cli' | 'codex-cli';
+
+/** Login state reported by Rust (`cli_status`). `loggedIn` is null when it could not be determined. */
+export interface CliStatus {
+  installed: boolean;
+  loggedIn: boolean | null;
+  detail: string;
+}
+
+/** Embedded terminal session kinds (ADR-0009). Argument vectors are fixed in Rust. */
+export type PtyKind = 'claude-login' | 'codex-login' | 'user-shell';
+
+export type PtyEvent = { kind: 'data'; text: string } | { kind: 'exit'; code: number | null };
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';

@@ -3,6 +3,9 @@
 All notable changes are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project follows [Semantic Versioning](https://semver.org/) (pre-1.0: anything may change).
 
 ## [Unreleased]
+### Added
+- Subscription providers: Claude (abonelik) and Codex (ChatGPT aboneliği) through the official CLIs, no API key (ADR-0008).
+- Embedded terminal with CLI login shortcuts and a user shell (ADR-0009).
 
 ## [0.1.1] - 2026-11-01
 

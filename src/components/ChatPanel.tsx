@@ -1,7 +1,8 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { ChatState } from '../ai/chatState';
 import { MAX_NOTES_CHARS, type AiSettings } from '../ai/settings';
-import { PROVIDERS, type ProviderId } from '../ai/types';
+import { CLI_BADGE_TEXT, CLI_COMMAND, cliBadge, cliBlockedReason, looksLikeApiKeyLogin } from '../ai/cli';
+import { PROVIDERS, type CliProviderId, type CliStatus, type ProviderId } from '../ai/types';
 import { ChangeReview } from './ChangeReview';
 import '../ai-panel.css';
 
@@ -28,6 +29,13 @@ export interface ChatPanelProps {
   applying: boolean;
   applyBlockedReason: string | null;
   keyringError: string | null;
+  /** Non-null when the selected provider is a subscription CLI (ADR-0008). */
+  cliProvider: CliProviderId | null;
+  cliStatus: CliStatus | null;
+  cliError: string | null;
+  onRefreshCli(): void;
+  onLoginEmbedded(): void;
+  onLoginSystem(): void;
   onClose(): void;
 }
 
@@ -37,7 +45,13 @@ const EXAMPLES = [
   'Sayaç uygulaması için bir ViewModel ekle',
 ];
 
-const LABELS: Record<ProviderId, string> = { anthropic: 'Anthropic', openai: 'OpenAI', ollama: 'Ollama (yerel)' };
+const LABELS: Record<ProviderId, string> = {
+  anthropic: 'Anthropic (API anahtarı)',
+  openai: 'OpenAI (API anahtarı)',
+  ollama: 'Ollama (yerel)',
+  'claude-cli': 'Claude (abonelik, CLI)',
+  'codex-cli': 'Codex (ChatGPT aboneliği, CLI)',
+};
 
 export function ChatPanel(props: ChatPanelProps) {
   const { state, settings, keyStored, models, hasWorkspace } = props;
@@ -52,6 +66,7 @@ export function ChatPanel(props: ChatPanelProps) {
   const streaming = state.status === 'streaming';
   let blocked: string | null = null;
   if (!hasWorkspace) blocked = 'Önce bir çalışma klasörü açın.';
+  else if (props.cliProvider) blocked = cliBlockedReason(props.cliProvider, props.cliStatus);
   else if (!model.trim()) blocked = 'Önce bir model seçin veya yazın.';
   else if (keyStored === false) blocked = 'Önce bu sağlayıcı için bir API anahtarı kaydedin.';
   else if (streaming) blocked = 'Bir yanıt zaten geliyor.';
@@ -109,7 +124,7 @@ export function ChatPanel(props: ChatPanelProps) {
         </button>
       </div>
 
-      {keyStored !== true && (
+      {keyStored !== true && !props.cliProvider && (
         <details className="ai-help" open={keyStored === false}>
           <summary>Nasıl bağlanırım?</summary>
           <ul>
@@ -124,8 +139,8 @@ export function ChatPanel(props: ChatPanelProps) {
             </li>
           </ul>
           <p>
-            Not: Claude Code veya Codex CLI aboneliği (ChatGPT / Claude aboneliği) API anahtarı yerine geçmez. Studio bu CLI araçlarını çalıştırmaz; doğrudan
-            sağlayıcının API'sine bağlanır.
+            API anahtarı istemiyorsanız sağlayıcı olarak <strong>Claude (abonelik, CLI)</strong> veya <strong>Codex (ChatGPT aboneliği, CLI)</strong> seçin:
+            Studio resmi <code>claude</code> / <code>codex</code> komutlarını çalıştırır ve aboneliğinizle giriş yapmanızı sağlar.
           </p>
           <p>Anahtarınız işletim sisteminin anahtarlığında (keyring) saklanır; Studio'nun dosyalarına yazılmaz.</p>
         </details>
@@ -152,7 +167,7 @@ export function ChatPanel(props: ChatPanelProps) {
               list="ai-models"
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              placeholder="Model adını yazın veya listeden seçin"
+              placeholder={props.cliProvider ? 'Boş bırakın: CLI varsayılan modeli kullanılır' : 'Model adını yazın veya listeden seçin'}
               spellCheck={false}
               autoComplete="off"
               className="ai-grow"
@@ -162,7 +177,7 @@ export function ChatPanel(props: ChatPanelProps) {
                 <option key={m} value={m} />
               ))}
             </datalist>
-            <button type="button" onClick={props.onRefreshModels} disabled={props.modelsLoading} aria-label="Model listesini yenile">
+            <button type="button" onClick={props.onRefreshModels} disabled={props.modelsLoading || !!props.cliProvider} aria-label="Model listesini yenile" title={props.cliProvider ? 'CLI sağlayıcılarda model listesi yok' : undefined}>
               {props.modelsLoading ? 'Yükleniyor...' : 'Yenile'}
             </button>
           </div>
@@ -173,7 +188,37 @@ export function ChatPanel(props: ChatPanelProps) {
           </p>
         )}
 
-        {keyStored === null ? (
+        {props.cliProvider ? (
+          <div className="ai-field" aria-live="polite">
+            <span className="ai-note">
+              Abonelik girişi: <strong>{CLI_BADGE_TEXT[cliBadge(props.cliStatus)]}</strong>
+              {props.cliStatus?.detail ? ` — ${props.cliStatus.detail}` : ''}
+            </span>
+            {looksLikeApiKeyLogin(props.cliStatus) && (
+              <p className="ai-warn">Bu CLI bir API anahtarıyla giriş yapmış görünüyor; kullanım API üzerinden faturalanır. Abonelikle girmek için yeniden giriş yapın.</p>
+            )}
+            <div className="ai-row">
+              <button type="button" onClick={props.onLoginEmbedded} disabled={props.cliStatus?.installed === false}>
+                Gömülü terminalde giriş yap
+              </button>
+              <button type="button" onClick={props.onLoginSystem} disabled={props.cliStatus?.installed === false}>
+                Sistem terminalinde aç
+              </button>
+              <button type="button" onClick={props.onRefreshCli}>
+                Durumu yenile
+              </button>
+            </div>
+            <span className="ai-note">
+              Komut: <code>{CLI_COMMAND[props.cliProvider]}</code>. Giriş bittikten sonra &quot;Durumu yenile&quot;ye basın. Studio oturum belgelerinizi okumaz; yalnızca
+              CLI&apos;ı çalıştırır. Abonelik kullanım limitleri geçerlidir.
+            </span>
+            {props.cliError && (
+              <p className="ai-error" role="alert">
+                {props.cliError}
+              </p>
+            )}
+          </div>
+        ) : keyStored === null ? (
           <p className="ai-note">Yerel model, API anahtarı gerekmez; yalnızca 127.0.0.1:11434 adresine bağlanır.</p>
         ) : (
           <div className="ai-field">

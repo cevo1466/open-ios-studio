@@ -1,5 +1,12 @@
 # Status
 
+## Subscription providers + embedded terminal (branch `feature/subscription-cli-providers`)
+- New providers "Claude (abonelik)" and "Codex (ChatGPT aboneliği)" run the official `claude` / `codex` CLIs with the user's own login (ADR-0008); no API key needed. Login status badge, "Gömülü terminalde giriş yap", "Sistem terminalinde aç", "Durumu yenile".
+- Embedded terminal (xterm.js + Rust PTY, ADR-0009) in the bottom dock; activity-bar "Terminal" opens the user's shell on explicit click.
+- Tests: Vitest (cli helpers, settings), Rust unit tests for argument building, event parsing, status parsing, terminal argv, UTF-8 splitting and a PTY shell round trip; E2E mock updated.
+- NOT VERIFIED: a real subscription call, `claude`/`codex` JSON event shapes against the installed CLI versions (parsers follow the documented stream-json / `--json` events), the PTY and terminal launch on a real Linux desktop. Rust was not compiled on the dev host; CI is the first compile.
+- `Cargo.lock` is not regenerated on the dev host (no Rust); CI resolves `portable-pty` and a follow-up commit should add the lockfile.
+
 ## Released
 **v0.1.0 (pre-release)**: https://github.com/cevo1466/open-ios-studio/releases/tag/v0.1.0 — `Open-iOS-Studio_0.1.0_amd64.deb`, `Open-iOS-Studio_0.1.0_amd64.AppImage`, `SHA256SUMS.txt` (checksums re-verified after downloading the published assets). Published by `release.yml` after verify and bundle jobs passed.
 **NOT VERIFIED:** that the app window opens on a real Linux desktop (no display in CI or on the dev host). Please try the DEB/AppImage on Linux Mint and report.

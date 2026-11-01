@@ -32,3 +32,6 @@ Device discovery, signing flow, install/launch, test results. Device tests `BLOC
 
 ## M5 — Open Source Release ☑ (v0.1.0 pre-release published)
 Release workflow (tag-triggered, owner-approved), checksums, contributor guide, SECURITY.md, versioning, release notes, README for Linux Mint.
+
+## Subscription providers + embedded terminal ◐ (PR pending CI)
+- ADR-0008/0009. Real subscription call and desktop terminal launch NOT VERIFIED until run on Linux Mint.
