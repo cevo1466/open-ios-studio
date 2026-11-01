@@ -1,5 +1,8 @@
 # Status
 
+## v0.1.8 (pre-release): Claude Code starts without permission prompts by default (PR #37, ADR-0012)
+- Checkbox "İzin sormadan çalış" (on by default, owner decision) adds `--dangerously-skip-permissions`; terminal header shows the state. NOT VERIFIED on a real desktop.
+
 ## v0.1.7 (pre-release): chat vs Claude Code roles made clear (PR #35)
 - Right panel is "Hızlı sohbet"; the terminal session says "tam ajan" and warns when model/effort changed. OPEN: Claude Code's own banner showed "medium effort" with High selected; not verified whether `--effort` is applied.
 

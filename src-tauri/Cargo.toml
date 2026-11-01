@@ -1,6 +1,6 @@
 [package]
 name = "open-ios-studio"
-version = "0.1.7"
+version = "0.1.8"
 description = "AI-assisted iOS development environment built on xtool"
 license = "MIT"
 edition = "2021"

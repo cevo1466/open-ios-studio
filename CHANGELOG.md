@@ -4,6 +4,8 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-11-01
+
 ### Changed
 - "Claude Code'u projeyle aç" now starts without permission prompts by default (`--dangerously-skip-permissions`), with a visible checkbox and warning in the AI panel to turn it off and a notice in the terminal header (ADR-0012).
 
@@ -98,7 +100,8 @@ First pre-release.
 - Packages are not code-signed.
 - No Apple SDK is bundled; xtool, a Swift toolchain and an Apple account are required on the user's side.
 
-[Unreleased]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.7...HEAD
+[Unreleased]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.8...HEAD
+[0.1.8]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.4...v0.1.5
