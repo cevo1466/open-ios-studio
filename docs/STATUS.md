@@ -1,5 +1,8 @@
 # Status
 
+## v0.1.6 (pre-release): remote website for Claude Code (PR #33, ADR-0011)
+- Optional SFTP/FTPS/FTP details are handed to one Claude Code terminal session through environment variables; Claude studies the live site read-only. NOT VERIFIED: a real connection to a real server; lftp/sshpass must be installed by the user.
+
 ## v0.1.5 (pre-release): chat column fix, model/effort pickers, Claude Code with project context, themes, Files panel
 - Owner screenshots from Linux Mint showed the chat column ignoring its width (missing `.ai-dock` CSS) — fixed, with an E2E check on the real width.
 - Model/effort pickers (Claude: Sonnet/Opus/Haiku + effort; Codex: effort + custom model). Rust validates the effort against an allow-list per CLI before it reaches an argument vector.

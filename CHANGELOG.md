@@ -4,6 +4,8 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-11-01
+
 ### Added
 - Optional remote website (SFTP / FTPS / FTP) for "Claude Code'u projeyle aç": the details go to that terminal session only (environment variables, never to disk), and Claude Code studies the live site's structure and responsive design read-only to build the mobile app (ADR-0011).
 
@@ -88,7 +90,8 @@ First pre-release.
 - Packages are not code-signed.
 - No Apple SDK is bundled; xtool, a Swift toolchain and an Apple account are required on the user's side.
 
-[Unreleased]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.2...v0.1.3
