@@ -4,6 +4,9 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+### Changed
+- The right panel is now labelled "Hızlı sohbet" (suggests files, you approve, runs no commands) and points to Claude Code for the full agent; the Claude Code terminal says it is the full agent, shows the requested model/effort and warns when the settings changed since the session started.
+
 ## [0.1.6] - 2026-11-01
 
 ### Added
