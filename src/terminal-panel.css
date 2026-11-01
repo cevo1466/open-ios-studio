@@ -1,7 +1,7 @@
 .term-panel { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; background: #14161a; }
 :root[data-theme='light'] .term-panel { background: #ffffff; }
 .term-head { display: flex; align-items: center; gap: 10px; padding: 2px 10px; border-bottom: 1px solid var(--border); background: var(--bg2); font-size: 12px; }
-.term-head strong { font-weight: 600; }
+.term-head strong { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .term-head .term-state { color: var(--muted); flex: 1; }
 .term-head button { padding: 0 8px; font-size: 11px; }
 .term-host { flex: 1; min-height: 0; min-width: 0; padding: 4px 8px; overflow: hidden; }

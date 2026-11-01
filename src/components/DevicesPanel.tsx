@@ -17,7 +17,7 @@ export interface DevicesPanelProps {
   onRefresh(): void;
   onRunOnDevice(udid: string | null, configuration: 'debug' | 'release'): void;
   onLaunch(udid: string | null, bundleId: string): void;
-  onClose(): void;
+  onClose?(): void;
 }
 
 const BUNDLE_ID_RE = /^[A-Za-z0-9][A-Za-z0-9.-]{0,154}$/;
@@ -62,12 +62,13 @@ export function DevicesPanel(props: DevicesPanelProps) {
 
   return (
     <section className="dp-panel" aria-label="Cihazlar paneli">
-      <div className="dp-head">
-        <h2>Cihazlar</h2>
-        <button type="button" onClick={props.onClose} aria-label="Cihazlar panelini kapat">
-          Kapat
-        </button>
-      </div>
+      {props.onClose && (
+        <div className="dp-head">
+          <button type="button" onClick={props.onClose} aria-label="Cihazlar panelini kapat">
+            Kapat
+          </button>
+        </div>
+      )}
 
       <div className={`dp-banner dp-banner-${status.kind}`} role="status">
         <div className="dp-banner-title">{status.title}</div>

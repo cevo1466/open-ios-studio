@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-export type BottomTabId = 'terminal' | 'build' | 'devices';
+export type BottomTabId = 'output' | 'problems' | 'terminal' | 'devicelog';
 
 export interface BottomTab {
   id: BottomTabId;
@@ -23,7 +23,7 @@ interface Props {
 }
 
 /**
- * One tabbed panel system for Terminal, Build output and Devices. Every tab stays mounted and the
+ * One tabbed panel system for build output, problems, the terminal and device logs. Every tab stays mounted and the
  * inactive ones are hidden, so switching never kills a running terminal session.
  */
 export function BottomPanel({ tabs, active, maximized, onSelect, onCloseTab, onToggleMaximize, onHide }: Props) {

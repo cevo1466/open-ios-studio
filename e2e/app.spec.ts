@@ -2,6 +2,8 @@ import { expect, test, type Page } from '@playwright/test';
 import { fsWrites, installFakeTauri, ipcCalls } from './fakeTauri';
 
 test.use({ colorScheme: 'light' });
+// Monaco and the fake backend are slow on small machines.
+test.setTimeout(90_000);
 
 async function openWorkspace(page: Page) {
   await page.goto('/');
@@ -111,7 +113,7 @@ test.describe('with fake desktop backend', () => {
 test('welcome guide is shown and has no disabled placeholder sections', async ({ page }) => {
   await installFakeTauri(page);
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /hoş geldiniz/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Open iOS Studio', level: 1 })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Search|^Source Control/ })).toHaveCount(0);
 });
 

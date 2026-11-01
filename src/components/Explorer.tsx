@@ -68,9 +68,7 @@ function Level({ dir, depth, refreshKey, activePath, revealArtifacts, onOpen, on
       {atRoot && parts.artifacts.length > 0 && (
         <li className="tree-group" role="none">
           <button type="button" className="tree-group-head" aria-expanded={artifactsOpen} onClick={() => setArtifactsOpen((v) => !v)}>
-            <span aria-hidden="true" className="tree-icon">
-              {artifactsOpen ? '▾' : '▸'}
-            </span>
+            <span aria-hidden="true" className={`tree-chev${artifactsOpen ? ' open' : ''}`} />
             Build çıktıları
             <span className="tree-count">{parts.artifacts.length}</span>
           </button>
@@ -108,9 +106,7 @@ function Node({ entry, depth, ...rest }: { entry: Entry; depth: number } & Omit<
         onClick={toggle}
         title={bundle ? 'Uygulama paketi (derleme çıktısı)' : undefined}
       >
-        <span aria-hidden="true" className="tree-icon">
-          {expandable ? (open ? '▾' : '▸') : bundle ? '◈' : '·'}
-        </span>
+        <span aria-hidden="true" className={expandable ? `tree-chev${open ? ' open' : ''}` : bundle ? 'tree-bundle' : 'tree-dot'} />
         {entry.name}
       </button>
       {expandable && open && (
