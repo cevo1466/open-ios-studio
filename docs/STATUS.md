@@ -1,6 +1,6 @@
 # Status
 
-## UX overhaul (branch `feature/ux-overhaul`, ADR-0010)
+## v0.1.4 (pre-release): UX overhaul + resizable panels (PRs #26, #27, ADR-0010)
 - Side panel shows one module (Dosyalar / Derle / Cihazlar / Yapay zekâ); bottom panel tabs Çıktı, Sorunlar, Terminal, Cihaz günlükleri; right panel is the chat only and closed by default; status bar with project, xtool, Swift, device, AI session and problem counts.
 - File tree: build artifacts in a collapsed "Build çıktıları" group, hidden noise opt-in, project files first. `.app`/binary files open an info card (file manager actions through `reveal_path`), never the text editor.
 - Derle view: compact summary, "Derle ve Yükle" primary action, stage list (estimated from the log), success/failure summary with details one click away.
