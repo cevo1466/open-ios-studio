@@ -104,6 +104,10 @@ fn extra_bin_dirs() -> Vec<PathBuf> {
     if let Some(home) = std::env::var_os("HOME") {
         let home = PathBuf::from(home);
         dirs.push(home.join(".local/bin"));
+        // swiftly (the Swift toolchain installer) keeps its proxies here; a desktop-launched app
+        // does not inherit the shell PATH that points at them.
+        dirs.push(home.join(".local/share/swiftly/bin"));
+        dirs.push(home.join(".swiftly/bin"));
         dirs.push(home.join(".npm-global/bin"));
         dirs.push(home.join(".claude/local"));
     }
@@ -137,7 +141,8 @@ pub fn find_program(name: &str) -> Option<PathBuf> {
         .find(|p| is_executable_file(p))
 }
 
-fn child_path() -> Option<OsString> {
+/// `PATH` widened with the usual per-user tool directories.
+pub fn child_path() -> Option<OsString> {
     std::env::join_paths(search_dirs()).ok()
 }
 
@@ -986,6 +991,16 @@ mod tests {
         for name in ENV_ALLOW_LIST {
             assert!(!name.contains("API_KEY"), "{name}");
         }
+    }
+
+    #[test]
+    fn search_dirs_include_swiftly_and_local_bin() {
+        if std::env::var_os("HOME").is_none() {
+            return;
+        }
+        let dirs = search_dirs();
+        assert!(dirs.iter().any(|d| d.ends_with(".local/share/swiftly/bin")));
+        assert!(dirs.iter().any(|d| d.ends_with(".local/bin")));
     }
 
     #[test]
