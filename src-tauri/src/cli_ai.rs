@@ -446,7 +446,9 @@ impl CliParser {
                 let s = stderr.trim();
                 (!s.is_empty()).then(|| s.to_owned())
             })
-            .unwrap_or_else(|| "The CLI ended without an answer. Check that you are logged in.".to_owned());
+            .unwrap_or_else(|| {
+                "The CLI ended without an answer. Check that you are logged in.".to_owned()
+            });
         self.fail(&detail, &mut out);
         out
     }
@@ -796,7 +798,12 @@ mod tests {
 
     #[test]
     fn prompt_has_system_first_and_roles() {
-        let p = flatten_prompt(&[msg("system", "RULES"), msg("user", "hi"), msg("assistant", "yo"), msg("user", "go")]);
+        let p = flatten_prompt(&[
+            msg("system", "RULES"),
+            msg("user", "hi"),
+            msg("assistant", "yo"),
+            msg("user", "go"),
+        ]);
         assert!(p.starts_with("# Instructions\nRULES"));
         assert!(p.contains("User:\nhi"));
         assert!(p.contains("Assistant:\nyo"));
@@ -835,7 +842,12 @@ mod tests {
     fn claude_without_partials_uses_result_text() {
         let mut p = CliParser::new(CliKind::Claude);
         let ev = p.feed_line(r#"{"type":"result","is_error":false,"result":"Whole"}"#);
-        assert_eq!(ev[0], AiEvent::Delta { text: "Whole".into() });
+        assert_eq!(
+            ev[0],
+            AiEvent::Delta {
+                text: "Whole".into()
+            }
+        );
         assert!(matches!(ev[1], AiEvent::Done { .. }));
     }
 
@@ -850,7 +862,9 @@ mod tests {
                 status: None
             }]
         );
-        assert!(p.feed_line(r#"{"type":"result","is_error":false,"result":"x"}"#).is_empty());
+        assert!(p
+            .feed_line(r#"{"type":"result","is_error":false,"result":"x"}"#)
+            .is_empty());
     }
 
     #[test]
@@ -868,7 +882,9 @@ mod tests {
         assert_eq!(
             events,
             vec![
-                AiEvent::Delta { text: "Answer".into() },
+                AiEvent::Delta {
+                    text: "Answer".into()
+                },
                 AiEvent::Done {
                     stop_reason: None,
                     input_tokens: Some(9),
@@ -881,7 +897,9 @@ mod tests {
     #[test]
     fn codex_turn_failed_and_transient_error() {
         let mut p = CliParser::new(CliKind::Codex);
-        assert!(p.feed_line(r#"{"type":"error","message":"reconnecting"}"#).is_empty());
+        assert!(p
+            .feed_line(r#"{"type":"error","message":"reconnecting"}"#)
+            .is_empty());
         let ev = p.feed_line(r#"{"type":"turn.failed","error":{"message":"boom"}}"#);
         assert_eq!(
             ev,
@@ -924,7 +942,10 @@ mod tests {
 
     #[test]
     fn claude_status_parsing() {
-        let (ok, d) = parse_claude_status(r#"{"loggedIn":true,"authMethod":"claude.ai","subscriptionType":"max"}"#).expect("parse");
+        let (ok, d) = parse_claude_status(
+            r#"{"loggedIn":true,"authMethod":"claude.ai","subscriptionType":"max"}"#,
+        )
+        .expect("parse");
         assert!(ok);
         assert_eq!(d, "Logged in (claude.ai, max)");
         let (ok, _) = parse_claude_status(r#"{"loggedIn":false}"#).expect("parse");
@@ -934,7 +955,10 @@ mod tests {
 
     #[test]
     fn codex_status_parsing() {
-        assert_eq!(parse_codex_status(true, "Logged in using ChatGPT\n"), (true, "Logged in using ChatGPT".to_owned()));
+        assert_eq!(
+            parse_codex_status(true, "Logged in using ChatGPT\n"),
+            (true, "Logged in using ChatGPT".to_owned())
+        );
         assert!(!parse_codex_status(false, "Not logged in").0);
         assert!(!parse_codex_status(true, "").0);
     }
@@ -942,9 +966,18 @@ mod tests {
     #[test]
     fn terminal_argument_shapes() {
         let args = vec!["auth".to_owned(), "login".to_owned()];
-        assert_eq!(terminal_args("gnome-terminal", "/x/claude", &args), ["--", "/x/claude", "auth", "login"]);
-        assert_eq!(terminal_args("xterm", "/x/claude", &args), ["-e", "/x/claude", "auth", "login"]);
-        assert_eq!(terminal_args("kitty", "/x/claude", &args), ["/x/claude", "auth", "login"]);
+        assert_eq!(
+            terminal_args("gnome-terminal", "/x/claude", &args),
+            ["--", "/x/claude", "auth", "login"]
+        );
+        assert_eq!(
+            terminal_args("xterm", "/x/claude", &args),
+            ["-e", "/x/claude", "auth", "login"]
+        );
+        assert_eq!(
+            terminal_args("kitty", "/x/claude", &args),
+            ["/x/claude", "auth", "login"]
+        );
         assert_eq!(terminal_args("xfce4-terminal", "/x/claude", &args)[0], "-x");
     }
 
