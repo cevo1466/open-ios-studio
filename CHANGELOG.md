@@ -4,6 +4,15 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+### Added
+- Resizable side, bottom and AI panels with persisted sizes, a tabbed bottom panel (Çıktı, Sorunlar, Terminal, Cihaz günlükleri) and a status bar.
+- Side panel per module (Dosyalar, Derle, Cihazlar, Yapay zekâ); the chat is a separate right panel, closed by default.
+- "Derle ve Yükle" primary action, estimated stage list and short success/failure summaries.
+- Info card for `.app` packages and binary files with file-manager actions.
+
+### Changed
+- File tree hides build artifacts in a collapsed group and pins project files; welcome screen is a four-card guide.
+
 ## [0.1.3] - 2026-11-01
 
 ### Fixed

@@ -3,7 +3,14 @@ import { CommandPalette, type Command } from './components/CommandPalette';
 import { EditorPane } from './components/EditorPane';
 import { Explorer } from './components/Explorer';
 import { useAi } from './ai/useAi';
-import { BuildPanel } from './components/BuildPanel';
+import { BuildSidebar } from './components/BuildSidebar';
+import { LogView } from './components/LogView';
+import { ProblemsList } from './components/ProblemsList';
+import { ActivityBar, type SidebarView } from './components/ActivityBar';
+import { StatusBar } from './components/StatusBar';
+import { AiSettingsPanel, PROVIDER_LABELS } from './components/AiSettingsPanel';
+import { sessionState } from './ai/readiness';
+import { canRunOnDevice } from './xtool/deviceView';
 import { TERMINAL_TITLES, TerminalPanel } from './components/TerminalPanel';
 import { BottomPanel, type BottomTab, type BottomTabId } from './layout/BottomPanel';
 import { Splitter } from './layout/Splitter';
@@ -16,6 +23,8 @@ import { DevicesPanel } from './components/DevicesPanel';
 import { AppStoreReadiness, SecurityCenter } from './components/PolicyPanels';
 import { CloseGuardDialog } from './components/CloseGuard';
 import { WelcomeScreen } from './components/WelcomeScreen';
+import { BinaryCard } from './components/BinaryCard';
+import { classifyPath, isNotTextError, type FileKind } from './files/kind';
 import { SettingsDialog } from './components/SettingsDialog';
 import { dirtyTabs, saveAllDirty } from './state/closeGuard';
 import { inDesktopApp, ipc } from './ipc';
@@ -24,15 +33,14 @@ import { analyzeProject } from './policy';
 import type { EvaluationReport } from './policy/types';
 import { initialState, isDirty, reducer } from './state/store';
 import { buildReducer, initialBuildState } from './xtool/buildState';
-import { buildOutcome, compatibility, parseAuthStatus, parseDevices, parseDiagnostics, parseSwiftVersion, parseXtoolVersion, redactLine } from './xtool/parse';
+import { compatibility, parseAuthStatus, parseDevices, parseDiagnostics, parseSwiftVersion, parseXtoolVersion, redactLine } from './xtool/parse';
 import type { Device, RunEvent, XtoolInfo, XtoolOp, XtoolRunArgs } from './xtool/types';
 
-const PROVIDER_LABELS: Record<string, string> = {
-  anthropic: 'Claude (Anthropic API)',
-  openai: 'OpenAI (API)',
-  ollama: 'Ollama (yerel)',
-  'claude-cli': 'Claude (abonelik)',
-  'codex-cli': 'Codex (ChatGPT aboneliği)',
+const SIDEBAR_TITLES: Record<SidebarView, string> = {
+  files: 'Dosyalar',
+  build: 'Derle',
+  devices: 'Cihazlar',
+  ai: 'Yapay zekâ',
 };
 
 export function App() {
@@ -48,10 +56,15 @@ export function App() {
   const [report, setReport] = useState<EvaluationReport | null>(null);
   const [analysing, setAnalysing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  /** Output and Problems tabs are shown once something ran or the user asked for the output. */
   const [buildOpen, setBuildOpen] = useState(false);
+  const [deviceLogOpen, setDeviceLogOpen] = useState(false);
+  const [view, setView] = useState<SidebarView>('files');
+  const [binary, setBinary] = useState<{ path: string; kind: Exclude<FileKind, 'text'>; error: string | null } | null>(null);
+  const [revealArtifacts, setRevealArtifacts] = useState(0);
   const [terminal, setTerminal] = useState<{ kind: PtyKind; key: number } | null>(null);
   const [layout, setLayout] = useState<LayoutState>(loadLayout);
-  const [bottomActive, setBottomActive] = useState<BottomTabId>('terminal');
+  const [bottomActive, setBottomActive] = useState<BottomTabId>('output');
   const [bottomHidden, setBottomHidden] = useState(false);
   const [bottomMaximized, setBottomMaximized] = useState(false);
   const appRef = useRef<HTMLDivElement>(null);
@@ -71,9 +84,10 @@ export function App() {
     showBottom('terminal');
   };
   const [build, buildDispatch] = useReducer(buildReducer, initialBuildState);
+  /** Build + install + launch on a device keeps its own log, shown as "Cihaz günlükleri". */
+  const [deviceRun, deviceDispatch] = useReducer(buildReducer, initialBuildState);
   const [xtoolInfo, setXtoolInfo] = useState<XtoolInfo | null>(null);
   const [xtoolLoading, setXtoolLoading] = useState(false);
-  const [devicesOpen, setDevicesOpen] = useState(false);
   const [devices, setDevices] = useState<Device[] | null>(null);
   const [authText, setAuthText] = useState<string | null>(null);
   const [authLoggedIn, setAuthLoggedIn] = useState<boolean | null>(null);
@@ -113,6 +127,13 @@ export function App() {
 
   const openFile = useCallback(
     async (path: string) => {
+      const kind = classifyPath(path);
+      if (kind !== 'text') {
+        // Build output and binaries never go to the text editor.
+        setBinary({ path, kind, error: null });
+        return;
+      }
+      setBinary(null);
       if (state.tabs.some((t) => t.path === path)) {
         dispatch({ type: 'activate', path });
         return;
@@ -121,7 +142,8 @@ export function App() {
         dispatch({ type: 'open', path, content: await ipc.readFile(path) });
         setNotice(null);
       } catch (e) {
-        fail(`Dosya açılamadı (${path}): ${String(e)}`);
+        if (isNotTextError(String(e))) setBinary({ path, kind: 'binary', error: null });
+        else fail(`Dosya açılamadı (${path}): ${String(e)}`);
       }
     },
     [state.tabs, fail],
@@ -170,9 +192,14 @@ export function App() {
 
   const runXtool = useCallback(
     async (op: XtoolOp, args: XtoolRunArgs) => {
-      buildDispatch({ type: 'start', op });
+      const onDevice = op === 'run-device' || op === 'launch';
+      const dispatchRun = onDevice ? deviceDispatch : buildDispatch;
+      dispatchRun({ type: 'start', op });
+      if (onDevice) setDeviceLogOpen(true);
+      else setBuildOpen(true);
+      showBottom(onDevice ? 'devicelog' : 'output');
       const onEvent = (event: RunEvent) =>
-        buildDispatch({ type: 'event', event: event.kind === 'line' ? { ...event, text: redactLine(event.text) } : event });
+        dispatchRun({ type: 'event', event: event.kind === 'line' ? { ...event, text: redactLine(event.text) } : event });
       try {
         await ipc.xtoolRun(op, args, onEvent);
         if (op === 'new') setRefreshKey((k) => k + 1);
@@ -181,7 +208,7 @@ export function App() {
         onEvent({ kind: 'exit', code: null, cancelled: false, timedOut: false, droppedLines: 0 });
       }
     },
-    [],
+    [showBottom],
   );
 
   /** Run a short xtool operation and return its output without touching the build log. */
@@ -225,11 +252,9 @@ export function App() {
   }, [state.workspace, xtoolInfo, collectXtool]);
 
   const openDevices = useCallback(() => {
-    setBuildOpen(false);
-    setDevicesOpen(true);
-    showBottom('devices');
+    setView('devices');
     void refreshDevices();
-  }, [refreshDevices, showBottom]);
+  }, [refreshDevices]);
 
   useEffect(() => {
     if (!desktop) return;
@@ -242,19 +267,13 @@ export function App() {
   }, [desktop]);
 
   const openBuild = useCallback(() => {
-    setDevicesOpen(false);
-    setBuildOpen(true);
-    showBottom('build');
+    setView('build');
     if (xtoolInfo === null) void detectXtool();
-  }, [xtoolInfo, detectXtool, showBottom]);
+    void refreshDevices();
+  }, [xtoolInfo, detectXtool, refreshDevices]);
 
   const diagnostics = useMemo(() => parseDiagnostics(build.lines.map((l) => l.text)), [build.lines]);
   const parsedVersion = parseXtoolVersion(xtoolInfo?.versionOutput ?? '');
-  const outcomeLabel = useMemo(() => {
-    if (!build.outcome) return null;
-    const o = buildOutcome(build.outcome, diagnostics);
-    return `${o.status.replace('_', ' ')} · ${o.errorCount} error(s), ${o.warningCount} warning(s)`;
-  }, [build.outcome, diagnostics]);
 
   const [chatOpen, setChatOpen] = useState(false);
   const buildFailed = build.outcome !== null && build.outcome.code !== 0;
@@ -415,7 +434,44 @@ export function App() {
 
   const errorCount = diagnostics.filter((d) => d.severity === 'error').length;
   const warningCount = diagnostics.filter((d) => d.severity === 'warning').length;
+  const anyRunning = build.running || deviceRun.running;
+  const selectedDevice = devices?.find((d) => d.udid === selectedUdid) ?? (devices && devices.length === 1 ? devices[0] : null);
+  const installCheck = canRunOnDevice({
+    xtoolFound: xtoolInfo?.found === true,
+    hasWorkspace,
+    running: anyRunning,
+    authLoggedIn,
+    devices,
+    selectedUdid,
+  });
+  const showOutput = () => showBottom(deviceRun.op !== null && deviceRun.nextId >= build.nextId ? 'devicelog' : 'output');
+  const session = sessionState({ provider: ai.settings.provider, keyStored: ai.keyStored, cliStatus: ai.cliStatus });
+
+  // Bottom panel tabs, in a fixed order: Çıktı, Sorunlar, Terminal, Cihaz günlükleri.
   const bottomTabs: BottomTab[] = [];
+  if (buildOpen) {
+    bottomTabs.push({
+      id: 'output',
+      label: 'Çıktı',
+      badge: build.running ? 'çalışıyor' : undefined,
+      tone: build.running ? 'busy' : undefined,
+      content: (
+        <LogView
+          state={build}
+          emptyText="Henüz çıktı yok. Derle bölümünden “Derle ve Yükle” ya da “Yalnızca derle”ye basın."
+          onClear={() => buildDispatch({ type: 'clear' })}
+          onCancel={() => void ipc.xtoolCancel()}
+        />
+      ),
+    });
+    bottomTabs.push({
+      id: 'problems',
+      label: 'Sorunlar',
+      badge: errorCount > 0 ? `${errorCount} hata` : warningCount > 0 ? `${warningCount} uyarı` : undefined,
+      tone: errorCount > 0 ? 'error' : warningCount > 0 ? 'warn' : undefined,
+      content: <ProblemsList diagnostics={diagnostics} onOpenFile={(path) => void openFile(path)} />,
+    });
+  }
   if (terminal) {
     bottomTabs.push({
       id: 'terminal',
@@ -434,62 +490,18 @@ export function App() {
       ),
     });
   }
-  if (buildOpen) {
+  if (deviceLogOpen && deviceRun.op !== null) {
     bottomTabs.push({
-      id: 'build',
-      label: 'Derleme',
-      badge: build.running ? 'çalışıyor' : errorCount > 0 ? `${errorCount} hata` : warningCount > 0 ? `${warningCount} uyarı` : undefined,
-      tone: build.running ? 'busy' : errorCount > 0 ? 'error' : warningCount > 0 ? 'warn' : undefined,
+      id: 'devicelog',
+      label: 'Cihaz günlükleri',
+      badge: deviceRun.running ? 'çalışıyor' : undefined,
+      tone: deviceRun.running ? 'busy' : undefined,
       content: (
-        <BuildPanel
-          info={xtoolInfo}
-          infoLoading={xtoolLoading}
-          compatibility={compatibility(parsedVersion)}
-          versionLabel={parsedVersion.value ?? (xtoolInfo?.versionOutput ?? null)}
-          swiftLabel={parseSwiftVersion(xtoolInfo?.swiftVersionOutput ?? '')}
-          hasWorkspace={hasWorkspace}
-          state={build}
-          diagnostics={diagnostics}
-          outcomeLabel={outcomeLabel}
-          onRedetect={() => void detectXtool()}
-          onRun={(op, args) => void runXtool(op, args)}
+        <LogView
+          state={deviceRun}
+          emptyText="Henüz cihaz işlemi yok."
+          onClear={() => deviceDispatch({ type: 'clear' })}
           onCancel={() => void ipc.xtoolCancel()}
-          onClose={() => setBuildOpen(false)}
-          onOpenFile={(path) => void openFile(path)}
-        />
-      ),
-    });
-  }
-  if (devicesOpen) {
-    bottomTabs.push({
-      id: 'devices',
-      label: 'Cihazlar',
-      content: (
-        <DevicesPanel
-          xtoolFound={xtoolInfo?.found === true}
-          devices={devices}
-          authText={authText}
-          authLoggedIn={authLoggedIn}
-          loading={devicesLoading}
-          error={devicesError}
-          hasWorkspace={hasWorkspace}
-          running={build.running}
-          selectedUdid={selectedUdid}
-          onSelect={setSelectedUdid}
-          onRefresh={() => void refreshDevices()}
-          onRunOnDevice={(udid, configuration) => {
-            setDevicesOpen(false);
-            setBuildOpen(true);
-            showBottom('build');
-            void runXtool('run-device', { configuration, udid: udid ?? undefined });
-          }}
-          onLaunch={(udid, bundleId) => {
-            setDevicesOpen(false);
-            setBuildOpen(true);
-            showBottom('build');
-            void runXtool('launch', { bundleId, udid: udid ?? undefined });
-          }}
-          onClose={() => setDevicesOpen(false)}
         />
       ),
     });
@@ -519,85 +531,140 @@ export function App() {
         </div>
       )}
       <div className="body">
-        <nav className="activity" aria-label="Bölümler">
-          <button type="button" className="act active" aria-current="page" title="Proje dosyaları">
-            Dosyalar
-          </button>
-          <button type="button" className="act" onClick={openBuild} disabled={!desktop} title={desktop ? 'xtool ile derle' : 'Yalnızca masaüstü uygulaması'}>
-            Derle
-            <small>xtool</small>
-          </button>
-          <button type="button" className="act" onClick={openDevices} disabled={!desktop} title={desktop ? 'Bağlı iPhone\'lar ve imza durumu' : 'Yalnızca masaüstü uygulaması'}>
-            Cihazlar
-            <small>iPhone</small>
-          </button>
-          <button type="button" className="act" onClick={() => setChatOpen(true)} disabled={!desktop} title={desktop ? 'Yapay zekâ asistanı' : 'Yalnızca masaüstü uygulaması'}>
-            Yapay zekâ
-            <small>Claude · Codex · OpenAI · Ollama</small>
-          </button>
-          <button type="button" className="act" onClick={() => openTerminal('user-shell')} disabled={!desktop} title={desktop ? 'Gömülü terminal' : 'Yalnızca masaüstü uygulaması'}>
-            Terminal
-            <small>kendi kabuğunuz</small>
-          </button>
-          <button type="button" className="act" onClick={() => setPanel('asr')}>
-            App Store hazırlığı
-            <small>kaynak denetimi</small>
-          </button>
-          <button type="button" className="act" onClick={() => setPanel('msec')}>
-            Güvenlik merkezi
-            <small>kaynak denetimi</small>
-          </button>
-          <button type="button" className="act bottom" onClick={() => setShowSettings(true)}>
-            Ayarlar
-          </button>
-        </nav>
+        <ActivityBar
+          view={view}
+          desktop={desktop}
+          terminalOpen={terminal !== null && bottomVisible && activeBottom === 'terminal'}
+          onView={(v) => {
+            if (v === 'build') openBuild();
+            else if (v === 'devices') openDevices();
+            else if (v === 'ai') {
+              setView('ai');
+              setChatOpen(true);
+            } else setView('files');
+          }}
+          onTerminal={() => openTerminal('user-shell')}
+          onStore={() => setPanel('asr')}
+          onSecurity={() => setPanel('msec')}
+          onSettings={() => setShowSettings(true)}
+        />
 
-        <aside className="sidebar" aria-label="Dosya gezgini">
-          <div className="side-head">
-            <strong>{state.workspace ? state.workspace.split('/').pop() : 'Dosyalar'}</strong>
-            <span>
-              <button type="button" onClick={() => void openFolder()} disabled={!desktop}>
-                Klasör aç
-              </button>
-              <button type="button" onClick={() => setNewName('')} disabled={!hasWorkspace}>
-                Yeni dosya
-              </button>
-            </span>
-          </div>
-          {newName !== null && (
-            <form
-              className="new-file"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void createFile(newName);
-              }}
-            >
-              <input
-                autoFocus
-                value={newName}
-                placeholder="Sources/Uygulama/Ekran.swift"
-                aria-label="Yeni dosya yolu"
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Escape' && setNewName(null)}
+        <aside className="sidebar" aria-label={SIDEBAR_TITLES[view]}>
+          <div className="side-title">{SIDEBAR_TITLES[view]}</div>
+          {view === 'files' && (
+            <>
+            <div className="side-head">
+              {state.workspace && <strong>{state.workspace.split('/').pop()}</strong>}
+              <span>
+                <button type="button" onClick={() => void openFolder()} disabled={!desktop}>
+                  Klasör aç
+                </button>
+                <button type="button" onClick={() => setNewName('')} disabled={!hasWorkspace}>
+                  Yeni dosya
+                </button>
+              </span>
+            </div>
+            {newName !== null && (
+              <form
+                className="new-file"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void createFile(newName);
+                }}
+              >
+                <input
+                  autoFocus
+                  value={newName}
+                  placeholder="Sources/Uygulama/Ekran.swift"
+                  aria-label="Yeni dosya yolu"
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Escape' && setNewName(null)}
+                />
+              </form>
+            )}
+            {state.workspace ? (
+              <Explorer
+                root={state.workspace}
+                refreshKey={refreshKey}
+                activePath={binary ? binary.path : state.active}
+                revealArtifacts={revealArtifacts}
+                onOpen={(p) => void openFile(p)}
+                onError={fail}
               />
-            </form>
+            ) : (
+              <p className="muted pad">Başlamak için bir klasör açın.</p>
+            )}
+            </>
           )}
-          {state.workspace ? (
-            <Explorer
-              root={state.workspace}
-              refreshKey={refreshKey}
-              activePath={state.active}
-              onOpen={(p) => void openFile(p)}
-              onError={fail}
+          {view === 'build' && (
+            <BuildSidebar
+              info={xtoolInfo}
+              infoLoading={xtoolLoading}
+              compatibility={compatibility(parsedVersion)}
+              versionLabel={parsedVersion.value ?? (xtoolInfo?.versionOutput ?? null)}
+              swiftLabel={parseSwiftVersion(xtoolInfo?.swiftVersionOutput ?? '')}
+              hasWorkspace={hasWorkspace}
+              build={build}
+              deviceRun={deviceRun}
+              diagnostics={diagnostics}
+              deviceName={selectedDevice?.name ?? null}
+              installBlocked={installCheck.reason}
+              onRedetect={() => void detectXtool()}
+              onRun={(op, args) => void runXtool(op, args)}
+              onInstall={(configuration) => void runXtool('run-device', { configuration, udid: selectedUdid ?? undefined })}
+              onCancel={() => void ipc.xtoolCancel()}
+              onClear={() => {
+                buildDispatch({ type: 'clear' });
+                deviceDispatch({ type: 'clear' });
+              }}
+              onShowOutput={showOutput}
+              onShowDevices={openDevices}
             />
-          ) : (
-            <p className="muted pad">Başlamak için bir klasör açın.</p>
+          )}
+          {view === 'devices' && (
+            <DevicesPanel
+              xtoolFound={xtoolInfo?.found === true}
+              devices={devices}
+              authText={authText}
+              authLoggedIn={authLoggedIn}
+              loading={devicesLoading}
+              error={devicesError}
+              hasWorkspace={hasWorkspace}
+              running={anyRunning}
+              selectedUdid={selectedUdid}
+              onSelect={setSelectedUdid}
+              onRefresh={() => void refreshDevices()}
+              onRunOnDevice={(udid, configuration) => void runXtool('run-device', { configuration, udid: udid ?? undefined })}
+              onLaunch={(udid, bundleId) => void runXtool('launch', { bundleId, udid: udid ?? undefined })}
+            />
+          )}
+          {view === 'ai' && (
+            <AiSettingsPanel
+              settings={ai.settings}
+              keyStored={ai.keyStored}
+              keyringError={ai.keyringError}
+              models={ai.models}
+              modelsLoading={ai.modelsLoading}
+              modelsError={ai.modelsError}
+              cliProvider={ai.cliProvider}
+              cliStatus={ai.cliStatus}
+              cliError={ai.cliError}
+              chatOpen={chatOpen}
+              onSettings={ai.setSettings}
+              onSetKey={ai.setKey}
+              onDeleteKey={ai.deleteKey}
+              onRefreshModels={ai.refreshModels}
+              onRefreshCli={ai.refreshCli}
+              onLoginEmbedded={() => ai.cliProvider && openTerminal(CLI_TERMINAL_KIND[ai.cliProvider])}
+              onLoginSystem={ai.openSystemLogin}
+              onOpenChat={() => setChatOpen(true)}
+            />
           )}
         </aside>
         <Splitter
           orientation="vertical"
           direction={1}
-          label="Dosya gezgini genişliği"
+          label="Kenar paneli genişliği"
           value={layout.sidebarWidth}
           min={SIDEBAR_MIN}
           max={SIDEBAR_MAX}
@@ -619,7 +686,17 @@ export function App() {
               </button>
             </div>
           )}
-          {state.tabs.length === 0 ? (
+          {binary ? (
+            <BinaryCard
+              path={binary.path}
+              kind={binary.kind}
+              error={binary.error}
+              onRevealSelf={() => void ipc.revealPath(binary.path, false).catch((e: unknown) => setBinary({ ...binary, error: String(e) }))}
+              onRevealParent={() => void ipc.revealPath(binary.path, true).catch((e: unknown) => setBinary({ ...binary, error: String(e) }))}
+              onShowArtifacts={() => setRevealArtifacts((n) => n + 1)}
+              onClose={() => setBinary(null)}
+            />
+          ) : state.tabs.length === 0 ? (
             <WelcomeScreen
               desktop={desktop}
               workspace={state.workspace}
@@ -628,7 +705,10 @@ export function App() {
               aiReady={ai.cliProvider ? (ai.cliStatus ? ai.cliStatus.loggedIn : null) : ai.needsKey ? ai.keyStored : true}
               onOpenFolder={() => void openFolder()}
               onNewFile={() => setNewName('')}
-              onOpenAi={() => setChatOpen(true)}
+              onOpenAi={() => {
+                setView('ai');
+                setChatOpen(true);
+              }}
               onOpenBuild={openBuild}
               onOpenAppStore={() => setPanel('asr')}
             />
@@ -681,8 +761,8 @@ export function App() {
                     if (id === 'terminal') {
                       setTerminal(null);
                       ai.refreshCli();
-                    } else if (id === 'build') setBuildOpen(false);
-                    else setDevicesOpen(false);
+                    } else if (id === 'devicelog') setDeviceLogOpen(false);
+                    else setBuildOpen(false);
                   }}
                   onToggleMaximize={() => setBottomMaximized((m) => !m)}
                   onHide={() => setBottomHidden(true)}
@@ -708,21 +788,15 @@ export function App() {
           />
         )}
         {chatOpen && (
-          <aside className="ai-dock" aria-label="Yapay zekâ asistanı">
+          <div className="ai-dock">
             <ChatPanel
               state={ai.chat}
               settings={ai.settings}
               keyStored={ai.keyStored}
-              models={ai.models}
-              modelsLoading={ai.modelsLoading}
-              modelsError={ai.modelsError}
+              cliStatus={ai.cliStatus}
               contextSummary={ai.contextSummary}
               hasWorkspace={hasWorkspace}
               theme={theme}
-              onSettings={ai.setSettings}
-              onSetKey={ai.setKey}
-              onDeleteKey={ai.deleteKey}
-              onRefreshModels={ai.refreshModels}
               onSend={ai.send}
               onStop={ai.stop}
               onDecide={ai.decide}
@@ -730,29 +804,31 @@ export function App() {
               onApply={ai.apply}
               applying={ai.applying}
               applyBlockedReason={ai.applyBlockedReason}
-              keyringError={ai.keyringError}
-              cliProvider={ai.cliProvider}
-              cliStatus={ai.cliStatus}
-              cliError={ai.cliError}
-              onRefreshCli={ai.refreshCli}
-              onLoginEmbedded={() => ai.cliProvider && openTerminal(CLI_TERMINAL_KIND[ai.cliProvider])}
-              onLoginSystem={ai.openSystemLogin}
+              onOpenSettings={() => setView('ai')}
               onClose={() => setChatOpen(false)}
             />
-          </aside>
+          </div>
         )}
       </div>
-      <footer className="status">
-        <span>{state.workspace ?? 'Klasör açık değil'}</span>
-        <span className="status-right">
-          {bottomTabs.length > 0 && (
-            <button type="button" className="status-btn" onClick={() => toggleBottomRef.current()} aria-pressed={bottomVisible}>
-              {bottomVisible ? 'Paneli gizle' : 'Paneli göster'}
-            </button>
-          )}
-          Ctrl+Shift+P: komutlar · Ctrl+J: panel · Ctrl+S: kaydet
-        </span>
-      </footer>
+      <StatusBar
+        workspace={state.workspace}
+        xtool={{ found: xtoolInfo ? xtoolInfo.found : null, version: parsedVersion.value }}
+        swift={parseSwiftVersion(xtoolInfo?.swiftVersionOutput ?? '')}
+        device={selectedDevice?.name ?? null}
+        ai={{ label: PROVIDER_LABELS[ai.settings.provider], state: session.label, tone: session.tone }}
+        errors={errorCount}
+        warnings={warningCount}
+        panelAvailable={bottomTabs.length > 0}
+        panelVisible={bottomVisible}
+        onXtool={openBuild}
+        onDevice={openDevices}
+        onAi={() => setView('ai')}
+        onProblems={() => {
+          setBuildOpen(true);
+          showBottom('problems');
+        }}
+        onTogglePanel={() => toggleBottomRef.current()}
+      />
       {closePrompt && (
         <CloseGuardDialog
           dirty={dirtyTabs(state.tabs)}

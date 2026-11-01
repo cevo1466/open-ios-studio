@@ -1,4 +1,4 @@
-.dp-panel { display: flex; flex-direction: column; gap: 10px; padding: 10px 14px; background: var(--bg2); height: 100%; min-height: 0; overflow: auto; }
+.dp-panel { display: flex; flex-direction: column; gap: 10px; padding: 4px 12px 16px; }
 .dp-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
 .dp-head h2 { margin: 0; font-size: 1rem; position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .dp-banner { padding: 10px 14px; line-height: 1.5; overflow-wrap: anywhere; border-radius: 4px; background: var(--bg3); border: 1px solid var(--border); }

@@ -1,0 +1,8 @@
+.bin-card { flex: 1; display: grid; place-items: center; padding: var(--s-6, 24px); min-height: 0; overflow: auto; }
+.bin-box { max-width: 520px; display: flex; flex-direction: column; gap: 10px; padding: 20px 22px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg2); }
+.bin-box h2 { margin: 0; font-size: 15px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; word-break: break-all; }
+.bin-kind { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--bg3); color: var(--muted); }
+.bin-box p { margin: 0; line-height: 1.5; color: var(--muted); }
+.bin-path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; word-break: break-all; }
+.bin-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.bin-error { color: var(--danger-fg) !important; background: var(--danger-bg); padding: 6px 10px; border-radius: 4px; }

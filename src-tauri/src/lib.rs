@@ -2,6 +2,7 @@ mod ai;
 mod cli_ai;
 mod fs_engine;
 mod pty;
+mod reveal;
 mod runner;
 mod secrets;
 mod xtool;
@@ -307,6 +308,14 @@ fn ai_cancel(state: State<'_, AppState>) -> Result<(), String> {
     Ok(())
 }
 
+/// Opens the item's folder (or its containing folder) in the system file manager.
+#[tauri::command]
+fn reveal_path(state: State<'_, AppState>, path: String, parent: bool) -> Result<(), String> {
+    let abs = with_workspace(&state, |ws| ws.resolve(&path))?;
+    let dir = reveal::reveal_target(&abs, parent)?;
+    reveal::open_in_file_manager(&dir)
+}
+
 #[tauri::command]
 async fn cli_status(provider: cli_ai::CliKind) -> Result<cli_ai::CliStatus, String> {
     Ok(cli_ai::status(provider).await)
@@ -416,6 +425,7 @@ pub fn run() {
             ai_list_models,
             ai_stream,
             ai_cancel,
+            reveal_path,
             cli_status,
             cli_login_terminal,
             cli_stream,

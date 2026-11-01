@@ -9,7 +9,7 @@ const bottom = (page: Page) => page.locator('.bottom-panel');
 const height = async (page: Page) => (await bottom(page).boundingBox())!.height;
 const closes = async (page: Page) => (await ipcCalls(page)).filter((c) => c.cmd === 'pty_close').length;
 const splitterBottom = (page: Page) => page.getByRole('separator', { name: 'Alt panel yüksekliği' });
-const splitterSide = (page: Page) => page.getByRole('separator', { name: 'Dosya gezgini genişliği' });
+const splitterSide = (page: Page) => page.getByRole('separator', { name: 'Kenar paneli genişliği' });
 
 async function openTerminal(page: Page) {
   await page.goto('/');
@@ -163,8 +163,10 @@ test.describe('resizable IDE layout', () => {
   test('tabs share one panel and switching does not close the terminal', async ({ page }) => {
     await openTerminal(page);
     const closesBefore = await closes(page);
-    await page.locator('.activity').getByRole('button', { name: /^Derle/ }).click();
-    await expect(page.getByRole('tab', { name: /Derleme/ })).toHaveAttribute('aria-selected', 'true');
+    // The status bar problem counter opens the Output/Problems tabs next to the terminal.
+    await page.getByRole('button', { name: /hata/ }).click();
+    await expect(page.getByRole('tab', { name: /Sorunlar/ })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('tab', { name: /Çıktı/ })).toBeVisible();
     await expect(page.getByRole('tab', { name: /Terminal/ })).toBeVisible();
     expect(await closes(page)).toBe(closesBefore);
     await page.getByRole('tab', { name: /Terminal/ }).click();

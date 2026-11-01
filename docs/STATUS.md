@@ -1,5 +1,12 @@
 # Status
 
+## UX overhaul (branch `feature/ux-overhaul`, ADR-0010)
+- Side panel shows one module (Dosyalar / Derle / Cihazlar / Yapay zekâ); bottom panel tabs Çıktı, Sorunlar, Terminal, Cihaz günlükleri; right panel is the chat only and closed by default; status bar with project, xtool, Swift, device, AI session and problem counts.
+- File tree: build artifacts in a collapsed "Build çıktıları" group, hidden noise opt-in, project files first. `.app`/binary files open an info card (file manager actions through `reveal_path`), never the text editor.
+- Derle view: compact summary, "Derle ve Yükle" primary action, stage list (estimated from the log), success/failure summary with details one click away.
+- Welcome screen: four status cards; the next step is the primary button.
+- Tests: Vitest (files, stages, summary, readiness, layout), 36 Playwright scenarios (layout drags, files, information architecture). NOT VERIFIED: WebKitGTK rendering on a real desktop, `xdg-open` on Linux Mint, real xtool progress text vs the stage keywords.
+
 ## v0.1.3 (pre-release): swift/xtool discovery fix (PR #24)
 - The desktop-launched app now finds swift (swiftly) and xtool outside the session PATH. First real owner run on Linux Mint 22.3: window, embedded terminal and Claude CLI inside it confirmed from a screenshot; a real xtool build is NOT VERIFIED yet.
 
