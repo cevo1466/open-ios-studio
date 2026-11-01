@@ -488,13 +488,17 @@ export function App() {
     terminal?.kind === 'claude-code'
       ? {
           summary: describeChoice('claude-cli', terminal.options?.model ?? '', terminal.options?.effort ?? '') || 'varsayılan model',
-          stale: (terminal.options?.model ?? '') !== ai.settings.models['claude-cli'] || (terminal.options?.effort ?? '') !== ai.settings.efforts['claude-cli'],
+          bypass: terminal.options?.skipPermissions === true,
+          stale:
+            (terminal.options?.model ?? '') !== ai.settings.models['claude-cli'] ||
+            (terminal.options?.effort ?? '') !== ai.settings.efforts['claude-cli'] ||
+            (terminal.options?.skipPermissions === true) !== ai.settings.skipPermissions,
           // The remote site (and its password) is not kept for a restart: the form has to be filled again.
           restart: () => openClaudeCode(),
         }
       : undefined;
   function openClaudeCode(remote?: RemoteSite) {
-    openTerminal('claude-code', { model: ai.settings.models['claude-cli'], effort: ai.settings.efforts['claude-cli'], remote });
+    openTerminal('claude-code', { model: ai.settings.models['claude-cli'], effort: ai.settings.efforts['claude-cli'], skipPermissions: ai.settings.skipPermissions, remote });
   }
   if (terminal) {
     bottomTabs.push({

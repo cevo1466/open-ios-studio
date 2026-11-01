@@ -161,6 +161,13 @@ export function AiSettingsPanel(props: AiSettingsPanelProps) {
               <button type="button" className="wide" onClick={openClaudeCode} disabled={props.cliStatus?.installed === false}>
                 {remoteReady ? "Claude Code'u bu projede ve uzak siteyle aç" : "Claude Code'u bu projede aç"}
               </button>
+              <label className="ai-check">
+                <input type="checkbox" checked={settings.skipPermissions} onChange={(e) => props.onSettings({ ...settings, skipPermissions: e.target.checked })} />
+                <span>İzin sormadan çalış (bypass permissions)</span>
+              </label>
+              {settings.skipPermissions && (
+                <p className="ai-warn">Claude Code dosya yazma ve komut çalıştırma için sizden onay istemez. Yalnızca güvendiğiniz projelerde ve sitelerde kullanın; kapatmak için kutuyu kaldırın.</p>
+              )}
               <p className="ai-note">Gömülü terminalde, proje klasöründe ve seçtiğiniz model/eforla başlar. Claude proje türünü ve xtool'u önceden bilir.</p>
               <details className="ai-info remote-site">
                 <summary>Uzak site (FTP / SSH) · isteğe bağlı</summary>
@@ -192,7 +199,7 @@ export function AiSettingsPanel(props: AiSettingsPanelProps) {
                   <span>Şifre</span>
                   <input type="password" aria-label="Uzak şifre" value={remote.password} onChange={(e) => setRemoteField({ password: e.target.value })} autoComplete="off" />
                 </label>
-                <p className="ai-note">Bilgiler yalnızca açılan terminal oturumuna verilir; dosyaya veya günlüğe yazılmaz, oturum kapanınca kaybolur. Claude bağlanırken bu bilgilere erişir. Gereken araçlar: <code>sudo apt install lftp sshpass</code>. Claude komutları çalıştırmadan önce size sorar.</p>
+                <p className="ai-note">Bilgiler yalnızca açılan terminal oturumuna verilir; dosyaya veya günlüğe yazılmaz, oturum kapanınca kaybolur. Claude bağlanırken bu bilgilere erişir. Gereken araçlar: <code>sudo apt install lftp sshpass</code>. {settings.skipPermissions ? 'İzin sormadan çalış açık: Claude bağlanma komutlarını sormadan çalıştırır.' : 'Claude komutları çalıştırmadan önce size sorar.'}</p>
               </details>
             </div>
           )}

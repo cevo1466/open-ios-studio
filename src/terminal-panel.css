@@ -10,3 +10,4 @@
 .term-head .term-claude:hover:not(:disabled) { background: var(--accent-strong); border-color: var(--accent-strong); }
 .term-head .term-role { color: var(--fg); font-size: 11.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .term-stale { margin: 0; padding: 4px 10px; font-size: 12px; background: var(--warn-bg); color: var(--fg); border-bottom: 1px solid var(--warn); }
+.term-head .term-bypass { color: var(--warn); }

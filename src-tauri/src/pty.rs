@@ -38,6 +38,8 @@ pub enum PtyKind {
 pub struct PtyOptions {
     pub model: String,
     pub effort: String,
+    /// Start Claude Code without permission prompts (`--dangerously-skip-permissions`). Off unless asked.
+    pub skip_permissions: bool,
     /// Optional live website the user wants Claude Code to study (read-only by instruction).
     pub remote: Option<RemoteSite>,
 }
@@ -241,6 +243,9 @@ pub fn command_for(kind: PtyKind, options: &PtyOptions) -> Result<(PathBuf, Vec<
                 args.push(model.to_owned());
             }
             args.extend(effort_args(CliKind::Claude, &options.effort));
+            if options.skip_permissions {
+                args.push("--dangerously-skip-permissions".to_owned());
+            }
             Ok((program, args))
         }
     }
@@ -403,6 +408,14 @@ mod tests {
         let k: PtyKind = serde_json::from_str("\"claude-login\"").expect("kind");
         assert_eq!(k, PtyKind::ClaudeLogin);
         assert!(serde_json::from_str::<PtyKind>("\"rm -rf\"").is_err());
+    }
+
+    #[test]
+    fn skip_permissions_is_off_unless_requested() {
+        let o: PtyOptions = serde_json::from_str("{}").expect("defaults");
+        assert!(!o.skip_permissions);
+        let on: PtyOptions = serde_json::from_str("{\"skipPermissions\":true}").expect("opt in");
+        assert!(on.skip_permissions);
     }
 
     #[test]

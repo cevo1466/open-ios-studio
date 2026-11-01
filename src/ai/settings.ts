@@ -7,6 +7,8 @@ export interface AiSettings {
   models: Record<ProviderId, string>;
   /** Reasoning effort per provider ("" = CLI default). Only the CLI providers use it. */
   efforts: Record<ProviderId, string>;
+  /** Claude Code terminal sessions start without permission prompts. On by default (owner decision, ADR-0012). */
+  skipPermissions: boolean;
   maxContextTokens: number;
   /** Free-form project notes sent as context. */
   notes: string;
@@ -21,6 +23,7 @@ export const defaultAiSettings: AiSettings = {
   provider: 'anthropic',
   models: { anthropic: '', openai: '', ollama: '', 'claude-cli': '', 'codex-cli': '' },
   efforts: { anthropic: '', openai: '', ollama: '', 'claude-cli': '', 'codex-cli': '' },
+  skipPermissions: true,
   maxContextTokens: 24000,
   notes: '',
 };
@@ -53,10 +56,11 @@ export function parseAiSettings(raw: string | null): AiSettings {
         if (typeof x === 'string' && isKnownEffort(x)) efforts[p] = x;
       }
     }
+    const skipPermissions = typeof o.skipPermissions === 'boolean' ? o.skipPermissions : defaultAiSettings.skipPermissions;
     const maxContextTokens =
       typeof o.maxContextTokens === 'number' ? clampContextTokens(o.maxContextTokens) : defaultAiSettings.maxContextTokens;
     const notes = typeof o.notes === 'string' ? o.notes.slice(0, MAX_NOTES_CHARS) : '';
-    return { provider, models, efforts, maxContextTokens, notes };
+    return { provider, models, efforts, skipPermissions, maxContextTokens, notes };
   } catch {
     return defaultAiSettings;
   }
@@ -77,6 +81,7 @@ export function saveAiSettings(s: AiSettings): void {
       provider: s.provider,
       models: s.models,
       efforts: s.efforts,
+      skipPermissions: s.skipPermissions,
       maxContextTokens: clampContextTokens(s.maxContextTokens),
       notes: s.notes.slice(0, MAX_NOTES_CHARS),
     };

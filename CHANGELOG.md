@@ -4,6 +4,9 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+### Changed
+- "Claude Code'u projeyle aç" now starts without permission prompts by default (`--dangerously-skip-permissions`), with a visible checkbox and warning in the AI panel to turn it off and a notice in the terminal header (ADR-0012).
+
 ## [0.1.7] - 2026-11-01
 
 ### Changed

@@ -27,6 +27,11 @@ describe('ai settings', () => {
     expect(s.efforts['codex-cli']).toBe('');
     expect(s.efforts.openai).toBe('');
   });
+  it('skips permission prompts by default and keeps an explicit choice', () => {
+    expect(defaultAiSettings.skipPermissions).toBe(true);
+    expect(parseAiSettings(JSON.stringify({ skipPermissions: false })).skipPermissions).toBe(false);
+    expect(parseAiSettings(JSON.stringify({ skipPermissions: 'no' })).skipPermissions).toBe(true);
+  });
   it('clamps tokens and caps notes', () => {
     expect(parseAiSettings(JSON.stringify({ maxContextTokens: 1 })).maxContextTokens).toBe(4000);
     expect(parseAiSettings(JSON.stringify({ maxContextTokens: 9e9 })).maxContextTokens).toBe(120000);
