@@ -3,9 +3,17 @@
 All notable changes are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project follows [Semantic Versioning](https://semver.org/) (pre-1.0: anything may change).
 
 ## [Unreleased]
+
+## [0.1.2] - 2026-11-01
+
 ### Added
 - Subscription providers: Claude (abonelik) and Codex (ChatGPT aboneliği) through the official CLIs, no API key (ADR-0008).
 - Embedded terminal with CLI login shortcuts and a user shell (ADR-0009).
+
+### Known limitations
+- A real subscription call (Claude/Codex CLI) and the embedded/system terminal on a real Linux desktop are not verified.
+- The CLI event formats are parsed from documented JSON events and covered by unit tests only.
+- Subscription usage limits apply; CLI cold start is slower than a direct API call.
 
 ## [0.1.1] - 2026-11-01
 
@@ -47,5 +55,7 @@ First pre-release.
 - Packages are not code-signed.
 - No Apple SDK is bundled; xtool, a Swift toolchain and an Apple account are required on the user's side.
 
-[Unreleased]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/cevo1466/open-ios-studio/releases/tag/v0.1.0

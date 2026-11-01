@@ -18,13 +18,13 @@ Download the files from the latest [GitHub Release](https://github.com/cevo1466/
 DEB:
 ```bash
 cd ~/Downloads
-sudo apt install ./Open-iOS-Studio_0.1.1_amd64.deb
+sudo apt install ./Open-iOS-Studio_0.1.2_amd64.deb
 ```
 AppImage:
 ```bash
 cd ~/Downloads
-chmod +x Open-iOS-Studio_0.1.1_amd64.AppImage
-./Open-iOS-Studio_0.1.1_amd64.AppImage
+chmod +x Open-iOS-Studio_0.1.2_amd64.AppImage
+./Open-iOS-Studio_0.1.2_amd64.AppImage
 ```
 Verify downloads with `sha256sum -c --ignore-missing SHA256SUMS.txt`. Release asset names use hyphens (GitHub replaces spaces).
 
