@@ -14,7 +14,9 @@ use std::sync::Mutex;
 use portable_pty::{native_pty_system, ChildKiller, CommandBuilder, MasterPty, PtySize};
 use serde::{Deserialize, Serialize};
 
-use crate::cli_ai::{effort_args, env_pairs, find_program, validate_effort, validate_model, CliKind};
+use crate::cli_ai::{
+    effort_args, env_pairs, find_program, validate_effort, validate_model, CliKind,
+};
 
 const MAX_SESSIONS: usize = 4;
 const MIN_DIM: u16 = 2;
@@ -132,7 +134,10 @@ pub fn command_for(kind: PtyKind, options: &PtyOptions) -> Result<(PathBuf, Vec<
             validate_model(&options.model)?;
             validate_effort(CliKind::Claude, &options.effort)?;
             let (program, _) = cli(CliKind::Claude)?;
-            let mut args = vec!["--append-system-prompt".to_owned(), STUDIO_CONTEXT.to_owned()];
+            let mut args = vec![
+                "--append-system-prompt".to_owned(),
+                STUDIO_CONTEXT.to_owned(),
+            ];
             let model = options.model.trim();
             if !model.is_empty() {
                 args.push("--model".to_owned());
@@ -304,9 +309,15 @@ mod tests {
     fn claude_code_kind_and_options_are_validated() {
         let k: PtyKind = serde_json::from_str("\"claude-code\"").expect("kind");
         assert_eq!(k, PtyKind::ClaudeCode);
-        let bad_model = PtyOptions { model: "--x".into(), effort: String::new() };
+        let bad_model = PtyOptions {
+            model: "--x".into(),
+            effort: String::new(),
+        };
         assert!(command_for(PtyKind::ClaudeCode, &bad_model).is_err());
-        let bad_effort = PtyOptions { model: String::new(), effort: "extreme".into() };
+        let bad_effort = PtyOptions {
+            model: String::new(),
+            effort: "extreme".into(),
+        };
         assert!(command_for(PtyKind::ClaudeCode, &bad_effort).is_err());
         let o: PtyOptions = serde_json::from_str("{}").expect("defaults");
         assert!(o.model.is_empty() && o.effort.is_empty());
@@ -324,9 +335,16 @@ mod tests {
         let state = PtyState::default();
         let (tx, rx) = mpsc::channel();
         let id = state
-            .open(PtyKind::UserShell, &PtyOptions::default(), 24, 80, std::env::temp_dir(), move |e| {
-                let _ = tx.send(e);
-            })
+            .open(
+                PtyKind::UserShell,
+                &PtyOptions::default(),
+                24,
+                80,
+                std::env::temp_dir(),
+                move |e| {
+                    let _ = tx.send(e);
+                },
+            )
             .expect("open");
         state.write(id, "echo ois-pty-ok\nexit\n").expect("write");
         let mut text = String::new();

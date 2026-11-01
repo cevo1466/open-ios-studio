@@ -210,7 +210,10 @@ pub fn validate_effort(kind: CliKind, effort: &str) -> Result<(), String> {
     if allowed.contains(&e) {
         Ok(())
     } else {
-        Err(format!("Unsupported effort level `{e}` for {}.", kind.program()))
+        Err(format!(
+            "Unsupported effort level `{e}` for {}.",
+            kind.program()
+        ))
     }
 }
 
@@ -835,7 +838,9 @@ mod tests {
         let c = build_args(CliKind::Claude, "opus", "high");
         assert!(c.windows(2).any(|w| w == ["--effort", "high"]));
         let x = build_args(CliKind::Codex, "", "medium");
-        assert!(x.windows(2).any(|w| w == ["-c", "model_reasoning_effort=\"medium\""]));
+        assert!(x
+            .windows(2)
+            .any(|w| w == ["-c", "model_reasoning_effort=\"medium\""]));
         assert_eq!(x.last().map(String::as_str), Some("-"));
         assert!(!build_args(CliKind::Claude, "", "").contains(&"--effort".to_owned()));
     }
