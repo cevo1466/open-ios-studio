@@ -1,0 +1,53 @@
+/* Resizable splitters, tabbed bottom panel and drag-state helpers. */
+.app { --sidebar-w: 260px; --bottom-h: 300px; --ai-w: 380px; }
+
+.splitter { flex: none; position: relative; z-index: 6; background: var(--border); touch-action: none; transition: background 0.12s, box-shadow 0.12s; }
+.splitter::after { content: ''; position: absolute; }
+.splitter-h { height: 1px; cursor: ns-resize; }
+.splitter-h::after { left: 0; right: 0; top: -3px; bottom: -3px; }
+.splitter-v { width: 1px; cursor: ew-resize; }
+.splitter-v::after { top: 0; bottom: 0; left: -3px; right: -3px; }
+.splitter:hover, .splitter.active { background: var(--accent); }
+.splitter-h:hover, .splitter-h.active { box-shadow: 0 0 0 1px var(--accent); }
+.splitter-v:hover, .splitter-v.active { box-shadow: 0 0 0 1px var(--accent); }
+.splitter:focus-visible { outline: none; background: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+
+/* While dragging: no text selection, one cursor everywhere. */
+html.is-resizing, html.is-resizing * { user-select: none !important; -webkit-user-select: none !important; }
+html.is-resizing-ns, html.is-resizing-ns * { cursor: ns-resize !important; }
+html.is-resizing-ew, html.is-resizing-ew * { cursor: ew-resize !important; }
+
+.bottom-panel { flex: none; height: var(--bottom-h); min-height: 150px; max-height: 75%; display: flex; flex-direction: column; background: var(--bg); min-width: 0; }
+.bottom-panel[hidden] { display: none; }
+.main.bottom-max .editor-region { display: none; }
+.main.bottom-max .bottom-panel { flex: 1; height: auto; max-height: none; }
+
+.bottom-head { flex: none; display: flex; align-items: stretch; justify-content: space-between; gap: 8px; min-height: 30px; background: var(--bg2); border-bottom: 1px solid var(--border); }
+.bottom-tabs { display: flex; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.btab { display: flex; align-items: center; position: relative; transition: background 0.12s; }
+.btab:hover { background: var(--bg3); }
+.btab > button { border: 0; border-radius: 0; background: transparent; padding: 0 10px; height: 100%; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.btab.active > button { color: var(--fg); }
+.btab.active { box-shadow: inset 0 -2px 0 var(--accent); }
+.btab .btab-close { padding: 0 6px; margin-right: 2px; font-size: 14px; opacity: 0; }
+.btab:hover .btab-close, .btab.active .btab-close, .btab .btab-close:focus-visible { opacity: 1; }
+.btab-badge { font-size: 10px; letter-spacing: 0; text-transform: none; font-weight: 600; padding: 0 6px; border-radius: 8px; background: var(--bg3); color: var(--fg); }
+.btab-badge.error { background: var(--danger-bg); color: var(--danger-fg); }
+.btab-badge.warn { background: #5a4500; color: #ffe08a; }
+.btab-badge.busy { background: var(--accent); color: #fff; animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.55; } }
+.bottom-actions { display: flex; align-items: center; gap: 4px; padding-right: 6px; flex: none; }
+.icon-btn { background: transparent; border-color: transparent; padding: 2px 8px; font-size: 11px; color: var(--muted); }
+.icon-btn:hover:not(:disabled) { color: var(--fg); background: var(--bg3); border-color: transparent; }
+
+.bottom-body { flex: 1; min-height: 0; position: relative; }
+.bottom-pane { position: absolute; inset: 0; display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+.bottom-pane[hidden] { display: none; }
+.bottom-pane > * { flex: 1; min-height: 0; min-width: 0; }
+
+* { scrollbar-width: thin; scrollbar-color: var(--bg3) transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  .splitter, .btab, button, .tab { transition: none; }
+  .btab-badge.busy { animation: none; }
+}

@@ -1,6 +1,6 @@
-.dp-panel { display: flex; flex-direction: column; gap: 14px; padding: 14px 18px; background: var(--bg2); border-top: 1px solid var(--border); height: 100%; min-height: 0; overflow: auto; }
-.dp-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
-.dp-head h2 { margin: 0; font-size: 1rem; }
+.dp-panel { display: flex; flex-direction: column; gap: 10px; padding: 10px 14px; background: var(--bg2); height: 100%; min-height: 0; overflow: auto; }
+.dp-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.dp-head h2 { margin: 0; font-size: 1rem; position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .dp-banner { padding: 10px 14px; line-height: 1.5; overflow-wrap: anywhere; border-radius: 4px; background: var(--bg3); border: 1px solid var(--border); }
 .dp-banner-error, .dp-banner-xtool-missing, .dp-banner-not-signed-in { background: var(--danger-bg); color: var(--danger-fg); }
 .dp-banner-ready { border-color: var(--accent); }

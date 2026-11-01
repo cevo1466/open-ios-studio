@@ -1,6 +1,6 @@
-.bp-panel { display: flex; flex-direction: column; gap: 14px; padding: 14px 18px; background: var(--bg2); border-top: 1px solid var(--border); height: 100%; min-height: 0; overflow: hidden; }
-.bp-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
-.bp-head h2 { margin: 0; font-size: 1rem; }
+.bp-panel { display: flex; flex-direction: column; gap: 10px; padding: 10px 14px; background: var(--bg2); height: 100%; min-height: 0; overflow: auto; }
+.bp-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.bp-head h2 { margin: 0; font-size: 1rem; position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .bp-status { display: flex; flex-direction: column; gap: 8px; font-size: 0.9em; line-height: 1.5; overflow-wrap: anywhere; }
 .bp-status dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; }
 .bp-status dt { color: var(--muted); }
@@ -15,7 +15,7 @@
 .bp-tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--border); }
 .bp-tab { background: transparent; border-color: transparent; border-radius: 4px 4px 0 0; }
 .bp-tab[aria-selected='true'] { background: var(--bg); border-color: var(--border); font-weight: 600; }
-.bp-body { flex: 1; min-height: 80px; overflow: auto; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; }
+.bp-body { flex: 1; min-height: 120px; overflow: auto; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; }
 .bp-log { margin: 0; padding: 10px 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; }
 .bp-line-stderr { color: var(--danger-fg); background: var(--danger-bg); display: block; }
 .bp-line-stdout { display: block; }

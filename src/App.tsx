@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from 'react';
 import { CommandPalette, type Command } from './components/CommandPalette';
 import { EditorPane } from './components/EditorPane';
 import { Explorer } from './components/Explorer';
 import { useAi } from './ai/useAi';
 import { BuildPanel } from './components/BuildPanel';
-import { TerminalPanel } from './components/TerminalPanel';
+import { TERMINAL_TITLES, TerminalPanel } from './components/TerminalPanel';
+import { BottomPanel, type BottomTab, type BottomTabId } from './layout/BottomPanel';
+import { Splitter } from './layout/Splitter';
+import './layout/layout.css';
+import { AI_DEFAULT, AI_MAX, AI_MIN, BOTTOM_DEFAULT, BOTTOM_MIN, SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN, bottomMax, loadLayout, saveLayout, type LayoutState } from './layout/layout';
 import { CLI_TERMINAL_KIND } from './ai/cli';
 import type { PtyKind } from './ai/types';
 import { ChatPanel } from './components/ChatPanel';
@@ -46,7 +50,26 @@ export function App() {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [buildOpen, setBuildOpen] = useState(false);
   const [terminal, setTerminal] = useState<{ kind: PtyKind; key: number } | null>(null);
-  const openTerminal = (kind: PtyKind) => setTerminal((t) => ({ kind, key: (t?.key ?? 0) + 1 }));
+  const [layout, setLayout] = useState<LayoutState>(loadLayout);
+  const [bottomActive, setBottomActive] = useState<BottomTabId>('terminal');
+  const [bottomHidden, setBottomHidden] = useState(false);
+  const [bottomMaximized, setBottomMaximized] = useState(false);
+  const appRef = useRef<HTMLDivElement>(null);
+  const mainRef = useRef<HTMLElement>(null);
+
+  useEffect(() => saveLayout(layout), [layout]);
+  const commitLayout = useCallback((patch: Partial<LayoutState>) => setLayout((l) => ({ ...l, ...patch })), []);
+  /** Live drag: set the CSS variable directly so the app does not re-render on every pointer move. */
+  const liveVar = useCallback((name: string, value: number) => appRef.current?.style.setProperty(name, `${value}px`), []);
+  const showBottom = useCallback((id: BottomTabId) => {
+    setBottomActive(id);
+    setBottomHidden(false);
+  }, []);
+  const openTerminal = (kind: PtyKind) => {
+    // The plain shell is reused if it is already running; login commands always start fresh.
+    setTerminal((t) => (kind === 'user-shell' && t?.kind === 'user-shell' ? t : { kind, key: (t?.key ?? 0) + 1 }));
+    showBottom('terminal');
+  };
   const [build, buildDispatch] = useReducer(buildReducer, initialBuildState);
   const [xtoolInfo, setXtoolInfo] = useState<XtoolInfo | null>(null);
   const [xtoolLoading, setXtoolLoading] = useState(false);
@@ -204,8 +227,9 @@ export function App() {
   const openDevices = useCallback(() => {
     setBuildOpen(false);
     setDevicesOpen(true);
+    showBottom('devices');
     void refreshDevices();
-  }, [refreshDevices]);
+  }, [refreshDevices, showBottom]);
 
   useEffect(() => {
     if (!desktop) return;
@@ -220,8 +244,9 @@ export function App() {
   const openBuild = useCallback(() => {
     setDevicesOpen(false);
     setBuildOpen(true);
+    showBottom('build');
     if (xtoolInfo === null) void detectXtool();
-  }, [xtoolInfo, detectXtool]);
+  }, [xtoolInfo, detectXtool, showBottom]);
 
   const diagnostics = useMemo(() => parseDiagnostics(build.lines.map((l) => l.text)), [build.lines]);
   const parsedVersion = parseXtoolVersion(xtoolInfo?.versionOutput ?? '');
@@ -258,6 +283,7 @@ export function App() {
     onApplied: (paths) => void onApplied(paths),
   });
 
+  const toggleBottomRef = useRef<() => void>(() => undefined);
   const saveRef = useRef(save);
   useEffect(() => {
     saveRef.current = save;
@@ -360,6 +386,9 @@ export function App() {
       } else if (mod && e.key.toLowerCase() === 's') {
         e.preventDefault();
         void saveRef.current();
+      } else if (mod && !e.shiftKey && e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        toggleBottomRef.current();
       }
     };
     window.addEventListener('keydown', handler);
@@ -373,6 +402,7 @@ export function App() {
       { id: 'new', title: 'Yeni dosya…', enabled: hasWorkspace, run: () => setNewName('') },
       { id: 'save', title: 'Dosyayı kaydet', enabled: hasWorkspace, hint: 'Ctrl+S', run: () => void saveRef.current() },
       { id: 'settings', title: 'Ayarları aç', enabled: true, run: () => setShowSettings(true) },
+      { id: 'panel', title: 'Alt paneli göster/gizle', enabled: desktop, hint: 'Ctrl+J', run: () => toggleBottomRef.current() },
       {
         id: 'theme',
         title: 'Açık/koyu temayı değiştir',
@@ -383,8 +413,106 @@ export function App() {
     [desktop, hasWorkspace, openFolder, theme],
   );
 
+  const errorCount = diagnostics.filter((d) => d.severity === 'error').length;
+  const warningCount = diagnostics.filter((d) => d.severity === 'warning').length;
+  const bottomTabs: BottomTab[] = [];
+  if (terminal) {
+    bottomTabs.push({
+      id: 'terminal',
+      label: TERMINAL_TITLES[terminal.kind],
+      content: (
+        <TerminalPanel
+          kind={terminal.kind}
+          runKey={terminal.key}
+          theme={theme}
+          onExit={() => ai.refreshCli()}
+          onClose={() => {
+            setTerminal(null);
+            ai.refreshCli();
+          }}
+        />
+      ),
+    });
+  }
+  if (buildOpen) {
+    bottomTabs.push({
+      id: 'build',
+      label: 'Derleme',
+      badge: build.running ? 'çalışıyor' : errorCount > 0 ? `${errorCount} hata` : warningCount > 0 ? `${warningCount} uyarı` : undefined,
+      tone: build.running ? 'busy' : errorCount > 0 ? 'error' : warningCount > 0 ? 'warn' : undefined,
+      content: (
+        <BuildPanel
+          info={xtoolInfo}
+          infoLoading={xtoolLoading}
+          compatibility={compatibility(parsedVersion)}
+          versionLabel={parsedVersion.value ?? (xtoolInfo?.versionOutput ?? null)}
+          swiftLabel={parseSwiftVersion(xtoolInfo?.swiftVersionOutput ?? '')}
+          hasWorkspace={hasWorkspace}
+          state={build}
+          diagnostics={diagnostics}
+          outcomeLabel={outcomeLabel}
+          onRedetect={() => void detectXtool()}
+          onRun={(op, args) => void runXtool(op, args)}
+          onCancel={() => void ipc.xtoolCancel()}
+          onClose={() => setBuildOpen(false)}
+          onOpenFile={(path) => void openFile(path)}
+        />
+      ),
+    });
+  }
+  if (devicesOpen) {
+    bottomTabs.push({
+      id: 'devices',
+      label: 'Cihazlar',
+      content: (
+        <DevicesPanel
+          xtoolFound={xtoolInfo?.found === true}
+          devices={devices}
+          authText={authText}
+          authLoggedIn={authLoggedIn}
+          loading={devicesLoading}
+          error={devicesError}
+          hasWorkspace={hasWorkspace}
+          running={build.running}
+          selectedUdid={selectedUdid}
+          onSelect={setSelectedUdid}
+          onRefresh={() => void refreshDevices()}
+          onRunOnDevice={(udid, configuration) => {
+            setDevicesOpen(false);
+            setBuildOpen(true);
+            showBottom('build');
+            void runXtool('run-device', { configuration, udid: udid ?? undefined });
+          }}
+          onLaunch={(udid, bundleId) => {
+            setDevicesOpen(false);
+            setBuildOpen(true);
+            showBottom('build');
+            void runXtool('launch', { bundleId, udid: udid ?? undefined });
+          }}
+          onClose={() => setDevicesOpen(false)}
+        />
+      ),
+    });
+  }
+  const activeBottom: BottomTabId | undefined = bottomTabs.some((t) => t.id === bottomActive) ? bottomActive : bottomTabs[0]?.id;
+  const bottomVisible = bottomTabs.length > 0 && !bottomHidden;
+  useEffect(() => {
+    toggleBottomRef.current = () => {
+      if (bottomTabs.length === 0) {
+        if (desktop) openTerminal('user-shell');
+        return;
+      }
+      setBottomHidden((h) => !h);
+    };
+  });
+  const layoutVars = {
+    '--sidebar-w': `${layout.sidebarWidth}px`,
+    '--bottom-h': `${layout.bottomHeight}px`,
+    '--ai-w': `${layout.aiWidth}px`,
+  } as CSSProperties;
+
   return (
-    <div className="app">
+    <div className="app" ref={appRef} style={layoutVars}>
       {!desktop && (
         <div className="banner" role="alert">
           Tarayıcıda çalışıyor: dosya erişimi yok. Masaüstü uygulamasını kullanın.
@@ -466,8 +594,23 @@ export function App() {
             <p className="muted pad">Başlamak için bir klasör açın.</p>
           )}
         </aside>
+        <Splitter
+          orientation="vertical"
+          direction={1}
+          label="Dosya gezgini genişliği"
+          value={layout.sidebarWidth}
+          min={SIDEBAR_MIN}
+          max={SIDEBAR_MAX}
+          onLive={(v) => liveVar('--sidebar-w', v)}
+          onCommit={(v) => commitLayout({ sidebarWidth: v })}
+          onReset={() => {
+            liveVar('--sidebar-w', SIDEBAR_DEFAULT);
+            commitLayout({ sidebarWidth: SIDEBAR_DEFAULT });
+          }}
+        />
 
-        <main className="main">
+        <main className={`main${bottomVisible && bottomMaximized ? ' bottom-max' : ''}`} ref={mainRef}>
+          <div className="editor-region">
           {notice && (
             <div className="notice" role="alert">
               {notice}
@@ -501,34 +644,7 @@ export function App() {
             onSave={() => void saveRef.current()}
           />
           )}
-          {devicesOpen && (
-            <div className="bp-dock">
-              <DevicesPanel
-                xtoolFound={xtoolInfo?.found === true}
-                devices={devices}
-                authText={authText}
-                authLoggedIn={authLoggedIn}
-                loading={devicesLoading}
-                error={devicesError}
-                hasWorkspace={hasWorkspace}
-                running={build.running}
-                selectedUdid={selectedUdid}
-                onSelect={setSelectedUdid}
-                onRefresh={() => void refreshDevices()}
-                onRunOnDevice={(udid, configuration) => {
-                  setDevicesOpen(false);
-                  setBuildOpen(true);
-                  void runXtool('run-device', { configuration, udid: udid ?? undefined });
-                }}
-                onLaunch={(udid, bundleId) => {
-                  setDevicesOpen(false);
-                  setBuildOpen(true);
-                  void runXtool('launch', { bundleId, udid: udid ?? undefined });
-                }}
-                onClose={() => setDevicesOpen(false)}
-              />
-            </div>
-          )}
+          </div>
           {buildOpen && ai.repairAvailable && (
             <div className="notice" role="status">
               Derleme başarısız oldu. Yapay zekâ en küçük düzeltmeyi önerebilir; hiçbir şey yazılmadan önce siz incelersiniz.
@@ -537,41 +653,60 @@ export function App() {
               </button>
             </div>
           )}
-          {buildOpen && (
-            <div className="bp-dock">
-              <BuildPanel
-                info={xtoolInfo}
-                infoLoading={xtoolLoading}
-                compatibility={compatibility(parsedVersion)}
-                versionLabel={parsedVersion.value ?? (xtoolInfo?.versionOutput ?? null)}
-                swiftLabel={parseSwiftVersion(xtoolInfo?.swiftVersionOutput ?? '')}
-                hasWorkspace={hasWorkspace}
-                state={build}
-                diagnostics={diagnostics}
-                outcomeLabel={outcomeLabel}
-                onRedetect={() => void detectXtool()}
-                onRun={(op, args) => void runXtool(op, args)}
-                onCancel={() => void ipc.xtoolCancel()}
-                onClose={() => setBuildOpen(false)}
-                onOpenFile={(path) => void openFile(path)}
-              />
-            </div>
-          )}
-          {terminal && (
-            <div className="term-dock">
-              <TerminalPanel
-                kind={terminal.kind}
-                runKey={terminal.key}
-                theme={theme}
-                onExit={() => ai.refreshCli()}
-                onClose={() => {
-                  setTerminal(null);
-                  ai.refreshCli();
-                }}
-              />
-            </div>
+          {bottomTabs.length > 0 && activeBottom && (
+            <>
+              {bottomVisible && !bottomMaximized && (
+                <Splitter
+                  orientation="horizontal"
+                  direction={-1}
+                  label="Alt panel yüksekliği"
+                  value={layout.bottomHeight}
+                  min={BOTTOM_MIN}
+                  max={() => bottomMax(mainRef.current?.clientHeight ?? window.innerHeight)}
+                  onLive={(v) => liveVar('--bottom-h', v)}
+                  onCommit={(v) => commitLayout({ bottomHeight: v })}
+                  onReset={() => {
+                    liveVar('--bottom-h', BOTTOM_DEFAULT);
+                    commitLayout({ bottomHeight: BOTTOM_DEFAULT });
+                  }}
+                />
+              )}
+              <section className="bottom-panel" hidden={!bottomVisible} aria-label="Alt panel">
+                <BottomPanel
+                  tabs={bottomTabs}
+                  active={activeBottom}
+                  maximized={bottomMaximized}
+                  onSelect={setBottomActive}
+                  onCloseTab={(id) => {
+                    if (id === 'terminal') {
+                      setTerminal(null);
+                      ai.refreshCli();
+                    } else if (id === 'build') setBuildOpen(false);
+                    else setDevicesOpen(false);
+                  }}
+                  onToggleMaximize={() => setBottomMaximized((m) => !m)}
+                  onHide={() => setBottomHidden(true)}
+                />
+              </section>
+            </>
           )}
         </main>
+        {chatOpen && (
+          <Splitter
+            orientation="vertical"
+            direction={-1}
+            label="Yapay zekâ paneli genişliği"
+            value={layout.aiWidth}
+            min={AI_MIN}
+            max={AI_MAX}
+            onLive={(v) => liveVar('--ai-w', v)}
+            onCommit={(v) => commitLayout({ aiWidth: v })}
+            onReset={() => {
+              liveVar('--ai-w', AI_DEFAULT);
+              commitLayout({ aiWidth: AI_DEFAULT });
+            }}
+          />
+        )}
         {chatOpen && (
           <aside className="ai-dock" aria-label="Yapay zekâ asistanı">
             <ChatPanel
@@ -609,7 +744,14 @@ export function App() {
       </div>
       <footer className="status">
         <span>{state.workspace ?? 'Klasör açık değil'}</span>
-        <span>Ctrl+Shift+P: komutlar · Ctrl+S: kaydet</span>
+        <span className="status-right">
+          {bottomTabs.length > 0 && (
+            <button type="button" className="status-btn" onClick={() => toggleBottomRef.current()} aria-pressed={bottomVisible}>
+              {bottomVisible ? 'Paneli gizle' : 'Paneli göster'}
+            </button>
+          )}
+          Ctrl+Shift+P: komutlar · Ctrl+J: panel · Ctrl+S: kaydet
+        </span>
       </footer>
       {closePrompt && (
         <CloseGuardDialog
