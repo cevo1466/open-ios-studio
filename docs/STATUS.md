@@ -1,6 +1,6 @@
 # Status
 
-## Subscription providers + embedded terminal (branch `feature/subscription-cli-providers`)
+## v0.1.2 (pre-release candidate): subscription providers + embedded terminal (merged, PR #22)
 - New providers "Claude (abonelik)" and "Codex (ChatGPT aboneliği)" run the official `claude` / `codex` CLIs with the user's own login (ADR-0008); no API key needed. Login status badge, "Gömülü terminalde giriş yap", "Sistem terminalinde aç", "Durumu yenile".
 - Embedded terminal (xterm.js + Rust PTY, ADR-0009) in the bottom dock; activity-bar "Terminal" opens the user's shell on explicit click.
 - Tests: Vitest (cli helpers, settings), Rust unit tests for argument building, event parsing, status parsing, terminal argv, UTF-8 splitting and a PTY shell round trip; E2E mock updated.
