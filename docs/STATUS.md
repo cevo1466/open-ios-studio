@@ -1,5 +1,8 @@
 # Status
 
+## v0.1.3 (pre-release): swift/xtool discovery fix (PR #24)
+- The desktop-launched app now finds swift (swiftly) and xtool outside the session PATH. First real owner run on Linux Mint 22.3: window, embedded terminal and Claude CLI inside it confirmed from a screenshot; a real xtool build is NOT VERIFIED yet.
+
 ## v0.1.2 (pre-release candidate): subscription providers + embedded terminal (merged, PR #22)
 - New providers "Claude (abonelik)" and "Codex (ChatGPT aboneliği)" run the official `claude` / `codex` CLIs with the user's own login (ADR-0008); no API key needed. Login status badge, "Gömülü terminalde giriş yap", "Sistem terminalinde aç", "Durumu yenile".
 - Embedded terminal (xterm.js + Rust PTY, ADR-0009) in the bottom dock; activity-bar "Terminal" opens the user's shell on explicit click.

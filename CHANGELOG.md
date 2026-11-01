@@ -3,6 +3,9 @@
 All notable changes are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project follows [Semantic Versioning](https://semver.org/) (pre-1.0: anything may change).
 
 ## [Unreleased]
+
+## [0.1.3] - 2026-11-01
+
 ### Fixed
 - swift and xtool are found in swiftly and other per-user directories even when the app is launched from the desktop menu (PATH was too narrow); builds pass the same PATH to xtool.
 
@@ -57,7 +60,8 @@ First pre-release.
 - Packages are not code-signed.
 - No Apple SDK is bundled; xtool, a Swift toolchain and an Apple account are required on the user's side.
 
-[Unreleased]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/cevo1466/open-ios-studio/releases/tag/v0.1.0
