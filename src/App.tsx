@@ -484,6 +484,15 @@ export function App() {
     });
   }
   const claudeCodeLabel = `Claude Code'u projeyle aç (${describeChoice('claude-cli', ai.settings.models['claude-cli'], ai.settings.efforts['claude-cli']) || 'varsayılan model'})`;
+  const claudeSession =
+    terminal?.kind === 'claude-code'
+      ? {
+          summary: describeChoice('claude-cli', terminal.options?.model ?? '', terminal.options?.effort ?? '') || 'varsayılan model',
+          stale: (terminal.options?.model ?? '') !== ai.settings.models['claude-cli'] || (terminal.options?.effort ?? '') !== ai.settings.efforts['claude-cli'],
+          // The remote site (and its password) is not kept for a restart: the form has to be filled again.
+          restart: () => openClaudeCode(),
+        }
+      : undefined;
   function openClaudeCode(remote?: RemoteSite) {
     openTerminal('claude-code', { model: ai.settings.models['claude-cli'], effort: ai.settings.efforts['claude-cli'], remote });
   }
@@ -496,6 +505,7 @@ export function App() {
           kind={terminal.kind}
           options={terminal.options}
           onStartClaudeCode={terminal.kind === 'user-shell' ? { label: claudeCodeLabel, run: () => openClaudeCode() } : undefined}
+          session={terminal.kind === 'claude-code' ? claudeSession : undefined}
           runKey={terminal.key}
           theme={theme}
           onExit={() => ai.refreshCli()}
@@ -844,6 +854,7 @@ export function App() {
               applying={ai.applying}
               applyBlockedReason={ai.applyBlockedReason}
               onSettings={ai.setSettings}
+              onOpenClaudeCode={() => openClaudeCode()}
               onOpenSettings={() => setView('ai')}
               onClose={() => setChatOpen(false)}
             />

@@ -122,4 +122,31 @@ test.describe('AI chat column, model and effort', () => {
     const open = (await ipcCalls(page)).filter((c) => c.cmd === 'pty_open').at(-1)!;
     expect((open.args.options as { remote?: unknown }).remote).toBeUndefined();
   });
+
+  test('the chat says what it is and points to Claude Code for the full agent', async ({ page }) => {
+    await page.goto('/');
+    await useClaude(page);
+    const chat = page.getByRole('complementary', { name: 'Yapay zekâ asistanı' });
+    await expect(chat.getByRole('heading', { name: 'Hızlı sohbet' })).toBeVisible();
+    await expect(chat.getByText(/Komut çalıştırmaz/)).toBeVisible();
+    await chat.getByRole('button', { name: "Claude Code'u kullanın" }).click();
+    await expect.poll(async () => (await ipcCalls(page)).some((c) => c.cmd === 'pty_open' && c.args.kind === 'claude-code')).toBe(true);
+  });
+
+  test('the Claude Code terminal says it is the full agent and warns when the settings changed', async ({ page }) => {
+    await page.goto('/');
+    await useClaude(page);
+    await page.locator('.ais').getByLabel('Model', { exact: true }).selectOption('sonnet');
+    await page.locator('.ais').getByLabel('Efor', { exact: true }).selectOption('high');
+    await page.getByRole('button', { name: "Claude Code'u bu projede aç" }).click();
+    const panel = page.getByRole('region', { name: 'Claude Code' });
+    await expect(panel.locator('.term-role')).toContainText('tam ajan');
+    await expect(panel.locator('.term-role')).toContainText('istenen: Sonnet · Yüksek');
+    await expect(panel.locator('.term-stale')).toHaveCount(0);
+    await page.locator('.ais').getByLabel('Efor', { exact: true }).selectOption('max');
+    await expect(panel.locator('.term-stale')).toContainText('yeniden başlatın');
+    await panel.getByRole('button', { name: 'Yeni ayarla yeniden başlat' }).click();
+    await expect(panel.locator('.term-stale')).toHaveCount(0);
+    await expect(panel.locator('.term-role')).toContainText('Sonnet · Maksimum');
+  });
 });

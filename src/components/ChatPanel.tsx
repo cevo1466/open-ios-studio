@@ -25,6 +25,8 @@ export interface ChatPanelProps {
   applying: boolean;
   applyBlockedReason: string | null;
   onSettings(next: AiSettings): void;
+  /** Opens Claude Code (full agent) in the embedded terminal. */
+  onOpenClaudeCode(): void;
   onOpenSettings(): void;
   onClose(): void;
 }
@@ -78,7 +80,8 @@ export function ChatPanel(props: ChatPanelProps) {
     <aside className="ai-panel" aria-label="Yapay zekâ asistanı">
       <header className="ai-head">
         <div className="ai-head-main">
-          <h2>Yapay zekâ</h2>
+          <h2>Hızlı sohbet</h2>
+          <p className="ai-role">Soru sorar, dosya önerir; siz farkı onaylamadan hiçbir şey yazılmaz. Komut çalıştırmaz.</p>
           <button type="button" className="ai-chip" onClick={props.onOpenSettings} title="Sağlayıcı ve model ayarlarını aç">
             <span className={`sb-dot sb-${session.tone === 'warn' ? 'warn' : session.tone === 'ok' ? 'ok' : 'unknown'}`} aria-hidden="true" />
             {PROVIDER_LABELS[settings.provider]}
@@ -89,6 +92,16 @@ export function ChatPanel(props: ChatPanelProps) {
           Kapat
         </button>
       </header>
+
+      {settings.provider === 'claude-cli' && props.cliStatus?.installed !== false && (
+        <p className="ai-agent-hint">
+          Projeyi baştan sona geliştirmek, komut çalıştırmak veya siteye bağlanmak için{' '}
+          <button type="button" className="tree-link" onClick={props.onOpenClaudeCode}>
+            Claude Code'u kullanın
+          </button>{' '}
+          (terminalde çalışan tam ajan).
+        </p>
+      )}
 
       {blocked && hasWorkspace && (
         <p className="ai-callout">

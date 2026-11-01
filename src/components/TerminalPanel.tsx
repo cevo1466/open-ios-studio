@@ -25,6 +25,8 @@ interface Props {
   onClose(): void;
   /** Shown on a plain shell: starts Claude Code with the project context instead. */
   onStartClaudeCode?: { label: string; run(): void };
+  /** A `claude-code` session only: what was asked for, and a warning when the settings changed since. */
+  session?: { summary: string; stale: boolean; restart(): void };
 }
 
 type Phase = 'starting' | 'running' | 'exited' | 'error';
@@ -34,7 +36,7 @@ type Phase = 'starting' | 'running' | 'exited' | 'error';
  * Embedded terminal (ADR-0009). Everything typed here goes to the PTY of the session this panel
  * opened; nothing else in the app writes to it. Closing the panel kills the session.
  */
-export function TerminalPanel({ kind, options, runKey, theme, onExit, onClose, onStartClaudeCode }: Props) {
+export function TerminalPanel({ kind, options, runKey, theme, onExit, onClose, onStartClaudeCode, session }: Props) {
   const colors = useThemeDef(theme).terminal;
   const host = useRef<HTMLDivElement>(null);
   const onExitRef = useRef(onExit);
@@ -129,6 +131,12 @@ export function TerminalPanel({ kind, options, runKey, theme, onExit, onClose, o
     <section className="term-panel" aria-label={TERMINAL_TITLES[kind]} style={{ background: colors.background }}>
       <div className="term-head">
         <strong>{TERMINAL_TITLES[kind]}</strong>
+        {kind === 'claude-code' && (
+          <span className="term-role">
+            Claude Code · tam ajan: dosyaları okur, komut çalıştırır, her adımda izin sorar
+            {session?.summary ? ` · istenen: ${session.summary}` : ''}
+          </span>
+        )}
         <span className="term-state" aria-live="polite">
           {label}
         </span>
@@ -141,6 +149,14 @@ export function TerminalPanel({ kind, options, runKey, theme, onExit, onClose, o
           Kapat
         </button>
       </div>
+      {session?.stale && (
+        <p className="term-stale" role="status">
+          Model veya efor ayarı bu oturumdan sonra değişti. Yeni ayar için oturumu yeniden başlatın.{' '}
+          <button type="button" className="tree-link" onClick={session.restart}>
+            Yeni ayarla yeniden başlat
+          </button>
+        </p>
+      )}
       {error && (
         <p className="term-error" role="alert">
           {error}
