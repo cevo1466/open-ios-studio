@@ -1,5 +1,8 @@
 # Status
 
+## v0.1.7 (pre-release): chat vs Claude Code roles made clear (PR #35)
+- Right panel is "Hızlı sohbet"; the terminal session says "tam ajan" and warns when model/effort changed. OPEN: Claude Code's own banner showed "medium effort" with High selected; not verified whether `--effort` is applied.
+
 ## v0.1.6 (pre-release): remote website for Claude Code (PR #33, ADR-0011)
 - Optional SFTP/FTPS/FTP details are handed to one Claude Code terminal session through environment variables; Claude studies the live site read-only. NOT VERIFIED: a real connection to a real server; lftp/sshpass must be installed by the user.
 

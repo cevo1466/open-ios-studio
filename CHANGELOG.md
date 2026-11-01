@@ -4,6 +4,8 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-11-01
+
 ### Changed
 - The right panel is now labelled "Hızlı sohbet" (suggests files, you approve, runs no commands) and points to Claude Code for the full agent; the Claude Code terminal says it is the full agent, shows the requested model/effort and warns when the settings changed since the session started.
 
@@ -93,7 +95,8 @@ First pre-release.
 - Packages are not code-signed.
 - No Apple SDK is bundled; xtool, a Swift toolchain and an Apple account are required on the user's side.
 
-[Unreleased]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.6...HEAD
+[Unreleased]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.7...HEAD
+[0.1.7]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.3...v0.1.4
