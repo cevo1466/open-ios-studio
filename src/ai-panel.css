@@ -64,3 +64,7 @@
 .model-picker.compact .mp-field select { flex: 1; }
 .ai-composer-label { font-size: 12px; font-weight: 600; }
 .ai-composer textarea { min-height: 72px; }
+
+.remote-site { display: flex; flex-direction: column; gap: 8px; }
+.remote-site .ai-field { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--muted); }
+.remote-site .remote-port { width: 72px; flex: none; }

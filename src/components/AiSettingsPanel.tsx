@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { CLI_BADGE_TEXT, CLI_COMMAND, cliBadge, looksLikeApiKeyLogin } from '../ai/cli';
 import { sessionState } from '../ai/readiness';
 import { MAX_NOTES_CHARS, type AiSettings } from '../ai/settings';
-import { PROVIDERS, type CliProviderId, type CliStatus, type ProviderId } from '../ai/types';
+import { PROVIDERS, type CliProviderId, type CliStatus, type ProviderId, type RemoteProtocol, type RemoteSite } from '../ai/types';
 import { modelChoices } from '../ai/models';
 import { ModelPicker } from './ModelPicker';
 import '../ai-panel.css';
@@ -34,7 +34,7 @@ export interface AiSettingsPanelProps {
   onLoginEmbedded(): void;
   onLoginSystem(): void;
   /** Opens an interactive Claude Code session in the embedded terminal, in the project, with studio context. */
-  onOpenClaudeCode(): void;
+  onOpenClaudeCode(remote?: RemoteSite): void;
   onOpenChat(): void;
 }
 
@@ -43,6 +43,19 @@ export function AiSettingsPanel(props: AiSettingsPanelProps) {
   const { settings, keyStored, cliProvider } = props;
   const [keyInput, setKeyInput] = useState('');
   const [keyBusy, setKeyBusy] = useState(false);
+  const [remote, setRemote] = useState<{ protocol: RemoteProtocol; host: string; port: string; user: string; password: string }>({ protocol: 'sftp', host: '', port: '', user: '', password: '' });
+  const remoteReady = remote.host.trim() !== '' && remote.user.trim() !== '';
+  const setRemoteField = (patch: Partial<typeof remote>) => setRemote((r) => ({ ...r, ...patch }));
+  const openClaudeCode = () => {
+    if (!remoteReady) {
+      props.onOpenClaudeCode();
+      return;
+    }
+    const port = Number.parseInt(remote.port, 10);
+    props.onOpenClaudeCode({ protocol: remote.protocol, host: remote.host.trim(), port: Number.isFinite(port) && port > 0 && port < 65536 ? port : 0, user: remote.user.trim(), password: remote.password });
+    // The password is only needed to start the session; do not keep it in the form.
+    setRemote((r) => ({ ...r, password: '' }));
+  };
   const model = settings.models[settings.provider];
   const session = sessionState({ provider: settings.provider, keyStored, cliStatus: props.cliStatus });
 
@@ -145,10 +158,42 @@ export function AiSettingsPanel(props: AiSettingsPanelProps) {
           )}
           {cliProvider === 'claude-cli' && (
             <div className="ai-field">
-              <button type="button" className="wide" onClick={props.onOpenClaudeCode} disabled={props.cliStatus?.installed === false}>
-                Claude Code'u bu projede aç
+              <button type="button" className="wide" onClick={openClaudeCode} disabled={props.cliStatus?.installed === false}>
+                {remoteReady ? "Claude Code'u bu projede ve uzak siteyle aç" : "Claude Code'u bu projede aç"}
               </button>
               <p className="ai-note">Gömülü terminalde, proje klasöründe ve seçtiğiniz model/eforla başlar. Claude proje türünü ve xtool'u önceden bilir.</p>
+              <details className="ai-info remote-site">
+                <summary>Uzak site (FTP / SSH) · isteğe bağlı</summary>
+                <p className="ai-note">Canlı sitenizin bilgilerini verirseniz Claude bağlanıp site yapısını ve mobil (responsive) tasarımı inceler, uygulamayı ona göre yazar. Yalnızca okur; değiştirmesini siz istemedikçe sitede bir şey yapmaz.</p>
+                <label className="ai-field">
+                  <span>Bağlantı türü</span>
+                  <select value={remote.protocol} onChange={(e) => setRemoteField({ protocol: e.target.value as RemoteProtocol })}>
+                    <option value="sftp">SFTP / SSH (önerilen)</option>
+                    <option value="ftps">FTPS (şifreli FTP)</option>
+                    <option value="ftp">FTP (şifresiz)</option>
+                  </select>
+                </label>
+                {remote.protocol === 'ftp' && <p className="ai-warn">Düz FTP şifrenizi şifrelemeden gönderir. Sunucunuz destekliyorsa SFTP veya FTPS seçin.</p>}
+                <div className="ai-row">
+                  <label className="ai-field ai-grow">
+                    <span>Sunucu</span>
+                    <input type="text" aria-label="Uzak sunucu" value={remote.host} onChange={(e) => setRemoteField({ host: e.target.value })} placeholder="ftp.siteniz.com" spellCheck={false} autoComplete="off" />
+                  </label>
+                  <label className="ai-field remote-port">
+                    <span>Port</span>
+                    <input type="text" inputMode="numeric" aria-label="Uzak port" value={remote.port} onChange={(e) => setRemoteField({ port: e.target.value.replace(/\D/g, '').slice(0, 5) })} placeholder={remote.protocol === 'sftp' ? '22' : '21'} autoComplete="off" />
+                  </label>
+                </div>
+                <label className="ai-field">
+                  <span>Kullanıcı adı</span>
+                  <input type="text" aria-label="Uzak kullanıcı adı" value={remote.user} onChange={(e) => setRemoteField({ user: e.target.value })} spellCheck={false} autoComplete="off" />
+                </label>
+                <label className="ai-field">
+                  <span>Şifre</span>
+                  <input type="password" aria-label="Uzak şifre" value={remote.password} onChange={(e) => setRemoteField({ password: e.target.value })} autoComplete="off" />
+                </label>
+                <p className="ai-note">Bilgiler yalnızca açılan terminal oturumuna verilir; dosyaya veya günlüğe yazılmaz, oturum kapanınca kaybolur. Claude bağlanırken bu bilgilere erişir. Gereken araçlar: <code>sudo apt install lftp sshpass</code>. Claude komutları çalıştırmadan önce size sorar.</p>
+              </details>
             </div>
           )}
         </div>

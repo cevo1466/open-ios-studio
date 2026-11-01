@@ -90,4 +90,36 @@ test.describe('AI chat column, model and effort', () => {
     await start.click();
     await expect.poll(async () => (await ipcCalls(page)).some((c) => c.cmd === 'pty_open' && c.args.kind === 'claude-code')).toBe(true);
   });
+
+  test('a remote site is handed to the Claude Code session, not shown or stored', async ({ page }) => {
+    await page.goto('/');
+    await useClaude(page);
+    const form = page.locator('details.remote-site');
+    await form.locator('summary').click();
+    await form.getByLabel('Uzak sunucu').fill('ftp.zetapilates.com');
+    await form.getByLabel('Uzak kullanıcı adı').fill('melih');
+    await form.getByLabel('Uzak şifre').fill('s3cret-pass');
+    await expect(page.getByRole('button', { name: "Claude Code'u bu projede ve uzak siteyle aç" })).toBeVisible();
+    await page.getByRole('button', { name: "Claude Code'u bu projede ve uzak siteyle aç" }).click();
+    await expect.poll(async () => (await ipcCalls(page)).some((c) => c.cmd === 'pty_open' && c.args.kind === 'claude-code')).toBe(true);
+    const open = (await ipcCalls(page)).filter((c) => c.cmd === 'pty_open').at(-1)!;
+    expect(open.args.options).toMatchObject({ remote: { protocol: 'sftp', host: 'ftp.zetapilates.com', port: 0, user: 'melih', password: 's3cret-pass' } });
+    // The form forgets the password; nothing is written to browser storage.
+    await expect(form.getByLabel('Uzak şifre')).toHaveValue('');
+    const stored = await page.evaluate(() => JSON.stringify({ ...localStorage }));
+    expect(stored).not.toContain('s3cret-pass');
+  });
+
+  test('plain FTP shows a warning and an empty form opens a plain Claude Code session', async ({ page }) => {
+    await page.goto('/');
+    await useClaude(page);
+    const form = page.locator('details.remote-site');
+    await form.locator('summary').click();
+    await form.getByRole('combobox').selectOption('ftp');
+    await expect(form.getByText(/Düz FTP şifrenizi şifrelemeden gönderir/)).toBeVisible();
+    await page.getByRole('button', { name: "Claude Code'u bu projede aç" }).click();
+    await expect.poll(async () => (await ipcCalls(page)).some((c) => c.cmd === 'pty_open' && c.args.kind === 'claude-code')).toBe(true);
+    const open = (await ipcCalls(page)).filter((c) => c.cmd === 'pty_open').at(-1)!;
+    expect((open.args.options as { remote?: unknown }).remote).toBeUndefined();
+  });
 });

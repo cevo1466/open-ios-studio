@@ -21,7 +21,7 @@ import './layout/layout.css';
 import { AI_DEFAULT, AI_MAX, AI_MIN, BOTTOM_DEFAULT, BOTTOM_MIN, SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN, bottomMax, loadLayout, saveLayout, type LayoutState } from './layout/layout';
 import { CLI_TERMINAL_KIND } from './ai/cli';
 import { describeChoice } from './ai/models';
-import type { PtyKind, PtyOptions } from './ai/types';
+import type { PtyKind, PtyOptions, RemoteSite } from './ai/types';
 import { ChatPanel } from './components/ChatPanel';
 import { DevicesPanel } from './components/DevicesPanel';
 import { AppStoreReadiness, SecurityCenter } from './components/PolicyPanels';
@@ -484,8 +484,8 @@ export function App() {
     });
   }
   const claudeCodeLabel = `Claude Code'u projeyle aç (${describeChoice('claude-cli', ai.settings.models['claude-cli'], ai.settings.efforts['claude-cli']) || 'varsayılan model'})`;
-  function openClaudeCode() {
-    openTerminal('claude-code', { model: ai.settings.models['claude-cli'], effort: ai.settings.efforts['claude-cli'] });
+  function openClaudeCode(remote?: RemoteSite) {
+    openTerminal('claude-code', { model: ai.settings.models['claude-cli'], effort: ai.settings.efforts['claude-cli'], remote });
   }
   if (terminal) {
     bottomTabs.push({
@@ -495,7 +495,7 @@ export function App() {
         <TerminalPanel
           kind={terminal.kind}
           options={terminal.options}
-          onStartClaudeCode={terminal.kind === 'user-shell' ? { label: claudeCodeLabel, run: openClaudeCode } : undefined}
+          onStartClaudeCode={terminal.kind === 'user-shell' ? { label: claudeCodeLabel, run: () => openClaudeCode() } : undefined}
           runKey={terminal.key}
           theme={theme}
           onExit={() => ai.refreshCli()}

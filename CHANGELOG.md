@@ -4,6 +4,9 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+### Added
+- Optional remote website (SFTP / FTPS / FTP) for "Claude Code'u projeyle aç": the details go to that terminal session only (environment variables, never to disk), and Claude Code studies the live site's structure and responsive design read-only to build the mobile app (ADR-0011).
+
 ## [0.1.5] - 2026-11-01
 
 ### Added

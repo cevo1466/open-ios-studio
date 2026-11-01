@@ -24,6 +24,19 @@ export type PtyKind = 'claude-login' | 'codex-login' | 'user-shell' | 'claude-co
 export interface PtyOptions {
   model: string;
   effort: string;
+  /** Live website Claude Code may study. Handed to that one session only; never stored. */
+  remote?: RemoteSite;
+}
+
+export type RemoteProtocol = 'sftp' | 'ftp' | 'ftps';
+
+export interface RemoteSite {
+  protocol: RemoteProtocol;
+  host: string;
+  /** 0 = default port of the protocol. */
+  port: number;
+  user: string;
+  password: string;
 }
 
 export type PtyEvent = { kind: 'data'; text: string } | { kind: 'exit'; code: number | null };
