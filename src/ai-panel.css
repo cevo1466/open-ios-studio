@@ -38,3 +38,12 @@
 .ai-finding { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; font-size: 0.9em; }
 .ai-finding-critical { background: var(--danger-bg); color: var(--danger-fg); padding: 2px 6px; border-radius: 4px; font-weight: 600; }
 .ai-diff { border: 1px solid var(--border); }
+.ai-field { display: flex; flex-direction: column; gap: 4px; }
+.ai-field select, .ai-field input { width: 100%; box-sizing: border-box; }
+.ai-field .ai-row input { width: auto; }
+.ai-help { font-size: 0.85em; border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; background: var(--bg); }
+.ai-help summary { cursor: pointer; font-weight: 600; }
+.ai-help ul { margin: 6px 0; padding-left: 18px; }
+.ai-help p { margin: 4px 0; }
+.ai-examples { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.ai-example { text-align: left; }

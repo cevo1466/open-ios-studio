@@ -71,6 +71,15 @@ export async function installFakeTauri(page: Page): Promise<void> {
         skipped: 0,
       }),
       xtool_detect: () => ({ found: false, path: null, versionOutput: null, swiftVersionOutput: null, error: null }),
+      'plugin:event|listen': (a) => {
+        if (a.event === 'tauri://close-requested') w.__closeHandler = a.handler;
+        return nextId++;
+      },
+      'plugin:event|unlisten': () => null,
+      'plugin:window|destroy': () => {
+        w.__destroyed = true;
+        return null;
+      },
       xtool_cancel: () => null,
       secret_status: () => false,
       ai_list_models: () => [],
@@ -100,6 +109,14 @@ export async function installFakeTauri(page: Page): Promise<void> {
         callbacks.delete(id);
       },
       convertFileSrc: (p: string) => p,
+      metadata: {
+        currentWindow: { label: 'main' },
+        currentWebview: { windowLabel: 'main', label: 'main' },
+      },
+    };
+    w.__requestClose = () => {
+      const id = w.__closeHandler as number;
+      callbacks.get(id)?.({ event: 'tauri://close-requested', id: 1, payload: null });
     };
   });
 }

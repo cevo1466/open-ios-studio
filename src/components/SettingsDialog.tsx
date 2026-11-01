@@ -12,21 +12,21 @@ export function SettingsDialog({ settings, onChange, onClose }: Props) {
       <div
         className="dialog"
         role="dialog"
-        aria-label="Settings"
+        aria-label="Ayarlar"
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.key === 'Escape' && onClose()}
       >
-        <h2>Settings</h2>
+        <h2>Ayarlar</h2>
         <label>
-          Theme
+          Tema
           <select value={settings.theme} onChange={(e) => onChange({ ...settings, theme: e.target.value as ThemeChoice })}>
-            <option value="system">Follow system</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
+            <option value="system">Sistem</option>
+            <option value="light">Açık</option>
+            <option value="dark">Koyu</option>
           </select>
         </label>
         <label>
-          Editor font size
+          Yazı boyutu
           <input
             type="number"
             min={10}
@@ -35,9 +35,9 @@ export function SettingsDialog({ settings, onChange, onClose }: Props) {
             onChange={(e) => onChange({ ...settings, fontSize: Number(e.target.value) || settings.fontSize })}
           />
         </label>
-        <p className="muted">Settings are stored locally in this app. No API keys or credentials are stored here.</p>
+        <p className="muted">Ayarlar bu uygulamada yerel olarak saklanır. Burada API anahtarı veya kimlik bilgisi saklanmaz.</p>
         <button type="button" onClick={onClose}>
-          Close
+          Kapat
         </button>
       </div>
     </div>

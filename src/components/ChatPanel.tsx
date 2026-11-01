@@ -20,7 +20,7 @@ export interface ChatPanelProps {
   onSetKey(key: string): Promise<void>;
   onDeleteKey(): Promise<void>;
   onRefreshModels(): void;
-  onSend(text: string, mode: 'chat' | 'generate'): void;
+  onSend(text: string, mode: 'chat' | 'generate' | 'plan'): void;
   onStop(): void;
   onDecide(path: string, d: 'approved' | 'rejected'): void;
   onDecideAll(d: 'approved' | 'rejected'): void;
@@ -31,7 +31,13 @@ export interface ChatPanelProps {
   onClose(): void;
 }
 
-const LABELS: Record<ProviderId, string> = { anthropic: 'Anthropic', openai: 'OpenAI', ollama: 'Ollama (local)' };
+const EXAMPLES = [
+  'Giriş ekranı olan bir SwiftUI uygulaması oluştur',
+  'Bu projedeki derleme hatalarını açıkla',
+  'Sayaç uygulaması için bir ViewModel ekle',
+];
+
+const LABELS: Record<ProviderId, string> = { anthropic: 'Anthropic', openai: 'OpenAI', ollama: 'Ollama (yerel)' };
 
 export function ChatPanel(props: ChatPanelProps) {
   const { state, settings, keyStored, models, hasWorkspace } = props;
@@ -45,10 +51,10 @@ export function ChatPanel(props: ChatPanelProps) {
   const model = settings.models[settings.provider];
   const streaming = state.status === 'streaming';
   let blocked: string | null = null;
-  if (!hasWorkspace) blocked = 'Open a workspace folder first.';
-  else if (!model.trim()) blocked = 'Choose or type a model first.';
-  else if (keyStored === false) blocked = 'Save an API key for this provider first.';
-  else if (streaming) blocked = 'A response is already streaming.';
+  if (!hasWorkspace) blocked = 'Önce bir çalışma klasörü açın.';
+  else if (!model.trim()) blocked = 'Önce bir model seçin veya yazın.';
+  else if (keyStored === false) blocked = 'Önce bu sağlayıcı için bir API anahtarı kaydedin.';
+  else if (streaming) blocked = 'Bir yanıt zaten geliyor.';
   const canSend = !blocked && draft.trim().length > 0;
 
   const onScroll = () => {
@@ -61,7 +67,7 @@ export function ChatPanel(props: ChatPanelProps) {
     if (el && stick.current) el.scrollTop = el.scrollHeight;
   }, [state.messages.length, lastLen]);
 
-  const send = (mode: 'chat' | 'generate') => {
+  const send = (mode: 'chat' | 'generate' | 'plan') => {
     if (!canSend) return;
     props.onSend(draft.trim(), mode);
     setDraft('');
@@ -95,46 +101,71 @@ export function ChatPanel(props: ChatPanelProps) {
 
   const u = state.usage;
   return (
-    <aside className="ai-panel" aria-label="AI assistant">
+    <aside className="ai-panel" aria-label="Yapay zekâ asistanı">
       <div className="ai-head">
-        <h2>AI</h2>
-        <button type="button" onClick={props.onClose} aria-label="Close AI panel">
-          Close
+        <h2>Yapay Zekâ</h2>
+        <button type="button" onClick={props.onClose} aria-label="Yapay zekâ panelini kapat">
+          Kapat
         </button>
       </div>
 
+      {keyStored !== true && (
+        <details className="ai-help" open={keyStored === false}>
+          <summary>Nasıl bağlanırım?</summary>
+          <ul>
+            <li>
+              <strong>Claude:</strong> console.anthropic.com adresinden bir Anthropic API anahtarı alın.
+            </li>
+            <li>
+              <strong>OpenAI / Codex:</strong> platform.openai.com adresinden bir OpenAI API anahtarı alın.
+            </li>
+            <li>
+              <strong>Ollama:</strong> yerel çalışır, anahtar gerekmez (http://localhost:11434, yalnızca yerel adres).
+            </li>
+          </ul>
+          <p>
+            Not: Claude Code veya Codex CLI aboneliği (ChatGPT / Claude aboneliği) API anahtarı yerine geçmez. Studio bu CLI araçlarını çalıştırmaz; doğrudan
+            sağlayıcının API'sine bağlanır.
+          </p>
+          <p>Anahtarınız işletim sisteminin anahtarlığında (keyring) saklanır; Studio'nun dosyalarına yazılmaz.</p>
+        </details>
+      )}
+
       <div className="ai-config">
-        <div className="ai-row">
-          <label>
-            Provider{' '}
-            <select value={settings.provider} onChange={(e) => setProvider(e.target.value as ProviderId)}>
-              {PROVIDERS.map((p) => (
-                <option key={p} value={p}>
-                  {LABELS[p]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="ai-grow">
-            Model{' '}
+        <label className="ai-field">
+          <span>Sağlayıcı</span>
+          <select value={settings.provider} onChange={(e) => setProvider(e.target.value as ProviderId)}>
+            {PROVIDERS.map((p) => (
+              <option key={p} value={p}>
+                {LABELS[p]}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className="ai-field">
+          <label htmlFor="ai-model-input">Model</label>
+          <div className="ai-row">
             <input
+              id="ai-model-input"
               type="text"
               list="ai-models"
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              placeholder="Type or pick a model id"
+              placeholder="Model adını yazın veya listeden seçin"
               spellCheck={false}
               autoComplete="off"
+              className="ai-grow"
             />
-          </label>
-          <datalist id="ai-models">
-            {models.map((m) => (
-              <option key={m} value={m} />
-            ))}
-          </datalist>
-          <button type="button" onClick={props.onRefreshModels} disabled={props.modelsLoading} aria-label="Refresh model list">
-            {props.modelsLoading ? 'Loading...' : 'Refresh'}
-          </button>
+            <datalist id="ai-models">
+              {models.map((m) => (
+                <option key={m} value={m} />
+              ))}
+            </datalist>
+            <button type="button" onClick={props.onRefreshModels} disabled={props.modelsLoading} aria-label="Model listesini yenile">
+              {props.modelsLoading ? 'Yükleniyor...' : 'Yenile'}
+            </button>
+          </div>
         </div>
         {props.modelsError && (
           <p className="ai-error" role="alert">
@@ -143,28 +174,29 @@ export function ChatPanel(props: ChatPanelProps) {
         )}
 
         {keyStored === null ? (
-          <p className="ai-note">Local model, no API key; connects to 127.0.0.1:11434 only.</p>
+          <p className="ai-note">Yerel model, API anahtarı gerekmez; yalnızca 127.0.0.1:11434 adresine bağlanır.</p>
         ) : (
-          <div className="ai-row">
+          <div className="ai-field">
             <span className="ai-note" aria-live="polite">
-              API key: {keyStored ? 'stored in the OS keyring' : 'not set'}
+              API anahtarı: {keyStored ? 'işletim sistemi anahtarlığında kayıtlı' : 'ayarlanmadı'}
             </span>
             <input
               type="password"
               autoComplete="off"
               spellCheck={false}
-              aria-label="API key"
-              placeholder={keyStored ? 'Replace key' : 'Paste key'}
+              aria-label="API anahtarı"
+              placeholder={keyStored ? 'Anahtarı değiştir' : 'Anahtarı yapıştırın'}
               value={keyInput}
               onChange={(e) => setKeyInput(e.target.value)}
-              className="ai-grow"
             />
-            <button type="button" onClick={saveKey} disabled={!keyInput || keyBusy}>
-              Save key
-            </button>
-            <button type="button" onClick={removeKey} disabled={!keyStored || keyBusy}>
-              Remove key
-            </button>
+            <div className="ai-row">
+              <button type="button" onClick={saveKey} disabled={!keyInput || keyBusy}>
+                Anahtarı kaydet
+              </button>
+              <button type="button" onClick={removeKey} disabled={!keyStored || keyBusy}>
+                Anahtarı sil
+              </button>
+            </div>
           </div>
         )}
         {props.keyringError && (
@@ -174,17 +206,17 @@ export function ChatPanel(props: ChatPanelProps) {
         )}
 
         <button type="button" className="ai-link" aria-expanded={notesOpen} aria-controls="ai-notes" onClick={() => setNotesOpen(!notesOpen)}>
-          Project notes {notesOpen ? '(hide)' : '(show)'}
+          Proje notları {notesOpen ? '(gizle)' : '(göster)'}
         </button>
         {notesOpen && (
           <div id="ai-notes">
             <textarea
-              aria-label="Project notes"
+              aria-label="Proje notları"
               rows={4}
               maxLength={MAX_NOTES_CHARS}
               value={settings.notes}
               onChange={(e) => props.onSettings({ ...settings, notes: e.target.value.slice(0, MAX_NOTES_CHARS) })}
-              placeholder="Conventions or constraints sent with every request"
+              placeholder="Her istekle birlikte gönderilecek kurallar veya kısıtlar"
             />
             <span className="ai-note">
               {settings.notes.length}/{MAX_NOTES_CHARS}
@@ -193,13 +225,25 @@ export function ChatPanel(props: ChatPanelProps) {
         )}
       </div>
 
-      <p className="ai-warn">AI output is untrusted. It can only propose file changes; nothing is written until you approve.</p>
+      <p className="ai-warn">Yapay zekâ çıktısı güvenilmezdir. Yalnızca dosya değişikliği önerebilir; siz onaylayana kadar hiçbir şey yazılmaz.</p>
 
       <div className="ai-messages" ref={listRef} onScroll={onScroll} role="log" aria-live="polite" aria-label="Conversation">
-        {state.messages.length === 0 && <p className="ai-note">No messages yet. Context: {props.contextSummary}.</p>}
+        {state.messages.length === 0 && (
+          <div className="ai-examples">
+            <p className="ai-note">Henüz mesaj yok. Bağlam: {props.contextSummary}.</p>
+            <p className="ai-note">
+              <strong>Örnek istekler</strong> (tıklayınca metin kutusuna yazılır, otomatik gönderilmez):
+            </p>
+            {EXAMPLES.map((ex) => (
+              <button key={ex} type="button" className="ai-example" onClick={() => setDraft(ex)}>
+                {ex}
+              </button>
+            ))}
+          </div>
+        )}
         {state.messages.map((m) => (
           <div key={m.id} className={`ai-msg ai-msg-${m.role}`}>
-            <div className="ai-msg-role">{m.role === 'user' ? 'You' : m.role === 'assistant' ? 'Assistant' : 'Note'}</div>
+            <div className="ai-msg-role">{m.role === 'user' ? 'Siz' : m.role === 'assistant' ? 'Asistan' : 'Not'}</div>
             <div className="ai-msg-body">
               {m.content}
               {m.streaming && <span className="ai-caret" aria-hidden="true" />}
@@ -213,14 +257,14 @@ export function ChatPanel(props: ChatPanelProps) {
         ))}
         {u && (u.input !== null || u.output !== null) && (
           <div className="ai-note">
-            {u.input ?? '?'} input / {u.output ?? '?'} output tokens
+            {u.input ?? '?'} giriş / {u.output ?? '?'} çıkış token
           </div>
         )}
       </div>
 
       <div className="ai-composer">
         <textarea
-          aria-label="Message"
+          aria-label="Mesaj"
           rows={3}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -230,26 +274,29 @@ export function ChatPanel(props: ChatPanelProps) {
               send('chat');
             }
           }}
-          placeholder="Ask a question or describe files to generate (Ctrl+Enter to ask)"
+          placeholder="Bir soru sorun veya üretilecek dosyaları anlatın (sormak için Ctrl+Enter)"
         />
         <div className="ai-row">
-          <span className="ai-note ai-grow">Context: {props.contextSummary}</span>
+          <span className="ai-note ai-grow">Bağlam: {props.contextSummary}</span>
           {streaming && (
             <button type="button" onClick={props.onStop}>
-              Stop
+              Durdur
             </button>
           )}
-          <button type="button" disabled={!canSend} title={blocked ?? (draft.trim() ? undefined : 'Type a message first')} onClick={() => send('chat')}>
-            Ask
+          <button type="button" disabled={!canSend} title={blocked ?? (draft.trim() ? undefined : 'Önce bir mesaj yazın')} onClick={() => send('chat')}>
+            Sor
+          </button>
+          <button type="button" disabled={!canSend} title={blocked ?? 'Kod yazmadan, önce kısa bir adım listesi ister'} onClick={() => send('plan')}>
+            Önce plan
           </button>
           <button
             type="button"
             className="ai-primary"
             disabled={!canSend}
-            title={blocked ?? (draft.trim() ? undefined : 'Type a message first')}
+            title={blocked ?? (draft.trim() ? undefined : 'Önce bir mesaj yazın')}
             onClick={() => send('generate')}
           >
-            Generate files
+            Dosya üret
           </button>
         </div>
       </div>

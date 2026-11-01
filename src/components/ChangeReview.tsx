@@ -12,48 +12,50 @@ export interface ChangeReviewProps {
   blockedReason?: string | null;
 }
 
+const DECISION_TR: Record<PendingChange['decision'], string> = { pending: 'beklemede', approved: 'onaylandı', rejected: 'reddedildi' };
+
 export function ChangeReview({ changes, theme, onDecide, onDecideAll, onApply, applying, blockedReason }: ChangeReviewProps) {
   const approved = changes.filter((c) => c.decision === 'approved').length;
   const disabled = approved === 0 || applying || !!blockedReason;
   return (
-    <section className="ai-review" aria-label="Proposed changes">
+    <section className="ai-review" aria-label="Önerilen değişiklikler">
       <div className="ai-review-head">
-        <h3>Proposed changes ({changes.length})</h3>
+        <h3>Önerilen değişiklikler ({changes.length})</h3>
         <div className="ai-row">
           <button type="button" onClick={() => onDecideAll('approved')}>
-            Approve all
+            Tümünü onayla
           </button>
           <button type="button" onClick={() => onDecideAll('rejected')}>
-            Reject all
+            Tümünü reddet
           </button>
         </div>
       </div>
-      <p className="ai-note">Nothing is written to disk until you apply.</p>
+      <p className="ai-note">Uygulayana kadar diske hiçbir şey yazılmaz. Her dosyayı inceleyip onaylayın veya reddedin.</p>
       <ul className="ai-changes">
         {changes.map((c) => (
           <li key={c.path} className={`ai-change ai-decision-${c.decision}`}>
             <div className="ai-change-head">
               <code className="ai-path">{c.path}</code>
-              {c.original === null && <span className="ai-badge ai-badge-new">New file</span>}
-              <span className="ai-badge">{c.decision}</span>
+              {c.original === null && <span className="ai-badge ai-badge-new">Yeni dosya</span>}
+              <span className="ai-badge">{DECISION_TR[c.decision]}</span>
               <span className="ai-spacer" />
               <button type="button" aria-pressed={c.decision === 'approved'} onClick={() => onDecide(c.path, 'approved')}>
-                Approve
+                Onayla
               </button>
               <button type="button" aria-pressed={c.decision === 'rejected'} onClick={() => onDecide(c.path, 'rejected')}>
-                Reject
+                Reddet
               </button>
             </div>
             {c.findings.length > 0 && (
-              <ul className="ai-findings" aria-label={`Policy findings for ${c.path}`}>
+              <ul className="ai-findings" aria-label={`${c.path} için politika bulguları`}>
                 {c.findings.map((f, i) => (
                   <li key={i} className={f.severity === 'critical' ? 'ai-finding ai-finding-critical' : 'ai-finding'}>
                     <span className="ai-badge">{f.ruleId}</span>
-                    <span className="ai-badge ai-badge-sev">Severity: {f.severity}</span>
+                    <span className="ai-badge ai-badge-sev">Önem: {f.severity}</span>
                     <span className="ai-badge">{f.status}</span>
                     <span>
                       {f.message}
-                      {f.line !== undefined ? ` (line ${f.line})` : ''}
+                      {f.line !== undefined ? ` (satır ${f.line})` : ''}
                     </span>
                   </li>
                 ))}
@@ -77,8 +79,8 @@ export function ChangeReview({ changes, theme, onDecide, onDecideAll, onApply, a
         </p>
       )}
       <div className="ai-row">
-        <button type="button" className="ai-primary" disabled={disabled} onClick={onApply} title={blockedReason ?? (approved === 0 ? 'Approve at least one change first' : undefined)}>
-          {applying ? 'Applying...' : `Apply approved changes (${approved})`}
+        <button type="button" className="ai-primary" disabled={disabled} onClick={onApply} title={blockedReason ?? (approved === 0 ? 'Önce en az bir değişikliği onaylayın' : undefined)}>
+          {applying ? 'Uygulanıyor...' : `Onaylananları uygula (${approved})`}
         </button>
       </div>
     </section>

@@ -79,14 +79,14 @@ export function parseDiagnostics(lines: string[]): Diagnostic[] {
 }
 
 export function validateProjectName(name: string): { ok: true } | { ok: false; reason: string } {
-  if (name.length === 0) return { ok: false, reason: 'Project name must not be empty.' };
+  if (name.length === 0) return { ok: false, reason: 'Proje adı boş olamaz.' };
   if (!/^[A-Za-z_]/.test(name)) {
-    return { ok: false, reason: 'Project name must start with a letter or underscore.' };
+    return { ok: false, reason: 'Proje adı bir harf veya alt çizgi (_) ile başlamalıdır.' };
   }
   if (!/^[A-Za-z_][A-Za-z0-9_-]*$/.test(name)) {
     return {
       ok: false,
-      reason: 'Project name may only contain letters, digits, underscores and hyphens.',
+      reason: 'Proje adı yalnızca harf, rakam, alt çizgi (_) ve tire (-) içerebilir; Türkçe karakter ve boşluk kullanmayın.',
     };
   }
   return { ok: true };
@@ -136,6 +136,6 @@ export function parseDevices(output: string): Device[] {
 /** `xtool auth status` prints `Logged out` when there is no saved login; anything else is a login. */
 export function parseAuthStatus(output: string): { loggedIn: boolean; detail: string } {
   const text = stripAnsi(output).trim();
-  if (text === '') return { loggedIn: false, detail: 'No output from xtool auth status.' };
+  if (text === '') return { loggedIn: false, detail: 'xtool auth status henüz çıktı vermedi.' };
   return { loggedIn: !/^logged out\b/i.test(text), detail: text };
 }

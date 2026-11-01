@@ -44,7 +44,7 @@ describe('unverified count', () => {
   it('is NOT_VERIFIED + BLOCKED', () => {
     const c = filterByPrefix(fixture, 'ASR-').counts;
     expect(unverifiedCount(c)).toBe(2);
-    expect(unverifiedLine(c)).toBe('Unverified: 2 rules need manual review or are not implemented');
+    expect(unverifiedLine(c)).toBe('Doğrulanamayan: 2 kural elle inceleme gerektiriyor veya henüz uygulanmadı');
   });
 });
 
@@ -57,11 +57,11 @@ describe('groupBySeverity', () => {
 
 describe('securityGroup', () => {
   it('derives categories from keywords', () => {
-    expect(securityGroup({ ruleId: 'MSEC-001', name: 'Hardcoded token in source' })).toBe('Authentication & tokens');
-    expect(securityGroup({ ruleId: 'MSEC-002', name: 'AI agent tool permissions' })).toBe('AI agent security');
-    expect(securityGroup({ ruleId: 'MSEC-003', name: 'Unpinned dependencies' })).toBe('Dependencies & supply chain');
-    expect(securityGroup({ ruleId: 'MSEC-004', name: 'Secrets written to logs' })).toBe('Sensitive data exposure');
-    expect(securityGroup({ ruleId: 'MSEC-005', name: 'Zzz' })).toBe('Other');
+    expect(securityGroup({ ruleId: 'MSEC-001', name: 'Hardcoded token in source' })).toBe('Kimlik doğrulama ve token');
+    expect(securityGroup({ ruleId: 'MSEC-002', name: 'AI agent tool permissions' })).toBe('Yapay zekâ ajanı güvenliği');
+    expect(securityGroup({ ruleId: 'MSEC-003', name: 'Unpinned dependencies' })).toBe('Bağımlılıklar ve tedarik zinciri');
+    expect(securityGroup({ ruleId: 'MSEC-004', name: 'Secrets written to logs' })).toBe('Hassas veri ifşası');
+    expect(securityGroup({ ruleId: 'MSEC-005', name: 'Zzz' })).toBe('Diğer');
   });
 });
 
@@ -84,6 +84,6 @@ describe('no score', () => {
     const c = fixture.counts;
     const text = `${summaryLine(c)} ${unverifiedLine(c)}`;
     expect(text).not.toMatch(/%|score|\/\s*100/i);
-    expect(text).toContain('1 pass');
+    expect(text).toContain('1 geçti');
   });
 });

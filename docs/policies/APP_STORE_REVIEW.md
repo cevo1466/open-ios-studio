@@ -22,25 +22,25 @@ This catalog lists 24 rules (ASR-001 to ASR-024) that help Open iOS Studio proje
 | ASR-002 | Review Demo Account Availability | all: hasUserAccounts | high | MANUAL_ONLY |
 | ASR-003 | Demo Account Validation | all: hasUserAccounts | high | MANUAL_ONLY |
 | ASR-004 | Feature Discoverability | always | medium | MANUAL_ONLY |
-| ASR-005 | Privacy Policy | all: targetsAppStore | high | MANUAL_ONLY |
+| ASR-005 | Privacy Policy | all: targetsAppStore | high | PARTIAL |
 | ASR-006 | Metadata Consistency | all: targetsAppStore | medium | NOT_IMPLEMENTED |
 | ASR-007 | Support URL | all: targetsAppStore | medium | MANUAL_ONLY |
-| ASR-008 | Subscription Disclosure | all: hasSubscriptions | high | NOT_IMPLEMENTED |
-| ASR-009 | Terms of Use / EULA | all: hasSubscriptions | medium | NOT_IMPLEMENTED |
+| ASR-008 | Subscription Disclosure | all: hasSubscriptions | high | PARTIAL |
+| ASR-009 | Terms of Use / EULA | all: hasSubscriptions | medium | PARTIAL |
 | ASR-010 | Pricing Transparency | all: hasSubscriptions | high | NOT_IMPLEMENTED |
 | ASR-011 | Restore Purchases | any: hasSubscriptions, hasInAppPurchases | high | PARTIAL |
 | ASR-012 | External Payment Compliance | all: hasExternalPaymentLinks | high | MANUAL_ONLY |
 | ASR-013 | Account Deletion | all: hasUserAccounts | high | PARTIAL |
 | ASR-014 | Sign in with Apple | all: hasSocialLogin | high | PARTIAL |
 | ASR-015 | Permission Purpose Strings | any: usesCamera, usesMicrophone, usesLocation, usesPhotos | high | PARTIAL |
-| ASR-016 | App Tracking Transparency | all: usesTracking | high | NOT_IMPLEMENTED |
+| ASR-016 | App Tracking Transparency | all: usesTracking | high | PARTIAL |
 | ASR-017 | Placeholder Content | always | medium | PARTIAL |
 | ASR-018 | Screenshot Accuracy | all: targetsAppStore | medium | MANUAL_ONLY |
 | ASR-019 | Branding Consistency | always | low | PARTIAL |
 | ASR-020 | Age Rating | all: targetsAppStore | medium | MANUAL_ONLY |
 | ASR-021 | Template / Copycat Detection | always | medium | NOT_IMPLEMENTED |
 | ASR-022 | Feature Claims Verification | all: targetsAppStore | medium | NOT_IMPLEMENTED |
-| ASR-023 | Minimum App Functionality | always | high | NOT_IMPLEMENTED |
+| ASR-023 | Minimum App Functionality | always | high | PARTIAL |
 | ASR-024 | Rejection Analysis & Appeal | all: targetsAppStore | info | NOT_IMPLEMENTED |
 
 Implementation counts: MANUAL_ONLY 9, NOT_IMPLEMENTED 9, PARTIAL 6.

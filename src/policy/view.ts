@@ -3,13 +3,30 @@ import type { DetectorFinding, EvaluationReport, RuleResult, RuleStatus, Severit
 export const STATUS_ORDER: RuleStatus[] = ['FAIL', 'BLOCKED', 'WARNING', 'NOT_VERIFIED', 'PASS', 'NOT_APPLICABLE'];
 export const SEVERITY_ORDER: Severity[] = ['critical', 'high', 'medium', 'low', 'info'];
 export const SECURITY_GROUPS = [
-  'Authentication & tokens',
-  'API security',
-  'Sensitive data exposure',
-  'Dependencies & supply chain',
-  'AI agent security',
-  'Other',
+  'Kimlik doğrulama ve token',
+  'API güvenliği',
+  'Hassas veri ifşası',
+  'Bağımlılıklar ve tedarik zinciri',
+  'Yapay zekâ ajanı güvenliği',
+  'Diğer',
 ] as const;
+
+export const STATUS_LABEL: Record<RuleStatus, string> = {
+  PASS: 'Geçti',
+  FAIL: 'Başarısız',
+  WARNING: 'Uyarı',
+  NOT_APPLICABLE: 'Uygulanamaz',
+  NOT_VERIFIED: 'Doğrulanamadı',
+  BLOCKED: 'Engellendi',
+};
+
+export const SEVERITY_LABEL: Record<Severity, string> = {
+  critical: 'Kritik',
+  high: 'Yüksek',
+  medium: 'Orta',
+  low: 'Düşük',
+  info: 'Bilgi',
+};
 
 const ZERO_COUNTS: Record<RuleStatus, number> = {
   PASS: 0,
@@ -47,16 +64,16 @@ export function groupBySeverity(results: RuleResult[]): Array<{ severity: Severi
 export function securityGroup(result: Pick<RuleResult, 'ruleId' | 'name'>): string {
   const t = `${result.ruleId} ${result.name}`.toLowerCase();
   const has = (...k: string[]) => k.some((w) => t.includes(w));
-  if (has('agent', 'prompt injection', 'llm', 'mcp', ' ai ', 'ai-')) return 'AI agent security';
-  if (has('dependenc', 'supply', 'lockfile', 'package', 'sbom', 'ci ', 'workflow', 'pinned')) return 'Dependencies & supply chain';
+  if (has('agent', 'prompt injection', 'llm', 'mcp', ' ai ', 'ai-')) return 'Yapay zekâ ajanı güvenliği';
+  if (has('dependenc', 'supply', 'lockfile', 'package', 'sbom', 'ci ', 'workflow', 'pinned')) return 'Bağımlılıklar ve tedarik zinciri';
   if (has('token', 'auth', 'session', 'password', 'otp', 'jwt', 'oauth', 'login', 'role', 'admin', 'credential')) {
-    return 'Authentication & tokens';
+    return 'Kimlik doğrulama ve token';
   }
-  if (has('api', 'endpoint', 'ssrf', 'cors', 'rate', 'webview', 'deep link', 'url', 'tls', 'http')) return 'API security';
+  if (has('api', 'endpoint', 'ssrf', 'cors', 'rate', 'webview', 'deep link', 'url', 'tls', 'http')) return 'API güvenliği';
   if (has('secret', 'sensitive', 'pii', 'log', 'keychain', 'storage', 'key', 'personal', 'leak', 'exposure', 'data')) {
-    return 'Sensitive data exposure';
+    return 'Hassas veri ifşası';
   }
-  return 'Other';
+  return 'Diğer';
 }
 
 export function groupBySecurityCategory(results: RuleResult[]): Array<{ group: string; results: RuleResult[] }> {
@@ -72,11 +89,11 @@ export function unverifiedCount(counts: Record<RuleStatus, number>): number {
 
 /** Plain-text summary. Deliberately contains no score or percentage. */
 export function summaryLine(counts: Record<RuleStatus, number>): string {
-  return STATUS_ORDER.map((s) => `${counts[s]} ${s.replace('_', ' ').toLowerCase()}`).join(', ');
+  return STATUS_ORDER.map((s) => `${counts[s]} ${STATUS_LABEL[s].toLocaleLowerCase('tr')}`).join(', ');
 }
 
 export function unverifiedLine(counts: Record<RuleStatus, number>): string {
-  return `Unverified: ${unverifiedCount(counts)} rules need manual review or are not implemented`;
+  return `Doğrulanamayan: ${unverifiedCount(counts)} kural elle inceleme gerektiriyor veya henüz uygulanmadı`;
 }
 
 /** Findings sorted by file, then line (no line last), then message. Does not mutate input. */

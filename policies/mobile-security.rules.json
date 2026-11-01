@@ -500,8 +500,8 @@
       "requiresApproval": true,
       "verification": "Manual review of file storage locations and backup flags.",
       "evidence": "List of sensitive files and backup exclusion status.",
-      "implementation": "NOT_IMPLEMENTED",
-      "detectorId": null,
+      "implementation": "PARTIAL",
+      "detectorId": "MSEC-017",
       "lastVerified": null,
       "policyVersion": "2026.10.0"
     },
@@ -530,8 +530,8 @@
       "requiresApproval": true,
       "verification": "Manual review and runtime test of link handlers.",
       "evidence": "Handler code references and test results.",
-      "implementation": "NOT_IMPLEMENTED",
-      "detectorId": null,
+      "implementation": "PARTIAL",
+      "detectorId": "MSEC-018",
       "lastVerified": null,
       "policyVersion": "2026.10.0"
     },

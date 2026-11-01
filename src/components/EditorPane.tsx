@@ -52,15 +52,15 @@ export function EditorPane({ tabs, active, theme, fontSize, onActivate, onClose,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, rev]);
   return (
-    <section className="editor-pane" aria-label="Editor">
+    <section className="editor-pane" aria-label="Düzenleyici">
       <div className="tabs" role="tablist">
         {tabs.map((tab) => (
           <div key={tab.path} className={`tab${tab.path === active ? ' active' : ''}`}>
             <button type="button" role="tab" aria-selected={tab.path === active} onClick={() => onActivate(tab.path)}>
               {tab.path.split('/').pop()}
-              {isDirty(tab) && <span className="dirty" title="Unsaved changes"> ●</span>}
+              {isDirty(tab) && <span className="dirty" title="Kaydedilmemiş değişiklikler"> ●</span>}
             </button>
-            <button type="button" className="tab-close" aria-label={`Close ${tab.path}`} onClick={() => onClose(tab.path)}>
+            <button type="button" className="tab-close" aria-label={`${tab.path} sekmesini kapat`} onClick={() => onClose(tab.path)}>
               ×
             </button>
           </div>
@@ -81,8 +81,8 @@ export function EditorPane({ tabs, active, theme, fontSize, onActivate, onClose,
         />
       ) : (
         <div className="empty">
-          <h2>No file open</h2>
-          <p>Pick a file in the explorer, or create one with “New file”.</p>
+          <h2>Açık dosya yok</h2>
+          <p>Gezginden bir dosya seçin veya “Yeni dosya” ile oluşturun.</p>
         </div>
       )}
     </section>

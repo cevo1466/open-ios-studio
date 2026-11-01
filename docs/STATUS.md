@@ -30,9 +30,9 @@ Policy Engine core (branch `feature/policy-engine-core`). M0 (#1) and M1 (#13) a
 ## Policy Engine — what exists
 - Catalogs: `policies/app-store.rules.json` (ASR-001..024), `policies/mobile-security.rules.json` (MSEC-001..026), schema `policies/schema/rule.schema.json`, validated by `scripts/validate-policies.mjs` (CI job `policy`).
 - Engine (`src/policy/`): capability manifest, applicability, evaluator (PASS only when a detector ran), catalog loader, remediation flow with approval and forbidden-automatic list, AI prompt context with untrusted-data fencing.
-- Detectors: 6 App Store (ASR-011, 013, 014, 015, 017, 019) and 11 security (MSEC-012, 013, 014, 016, 019, 021, 022, 023, 024, 025, 026), all `PARTIAL` (source-level only).
+- Detectors: 11 App Store (ASR-005, 008, 009, 011, 013, 014, 015, 016, 017, 019, 023) and 13 security (MSEC-012, 013, 014, 016, 017, 018, 019, 021, 022, 023, 024, 025, 026), all `PARTIAL` (source-level heuristics only; ASR-023 never passes).
 - UI: App Store Readiness and Security Center panels in the activity bar; the Rust command `scan_workspace` feeds project files to the engine.
-- Remaining 33 rules are `MANUAL_ONLY` or `NOT_IMPLEMENTED` and always show `NOT_VERIFIED`. No score is computed.
+- Remaining 26 rules are `MANUAL_ONLY` or `NOT_IMPLEMENTED` (server behaviour, App Store Connect content, running app, human judgement) and always show `NOT_VERIFIED`. No score is computed.
 - `lastVerified` is `null` for every rule: official sources were not compared in this session; Apple guideline numbers in titles come from memory and need verification.
 
 ## Not done yet
