@@ -4,6 +4,9 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+### Fixed
+- Terminal sessions always run in a UTF-8 locale (`C.UTF-8` when the app was started without one), so Claude Code and the shell handle Turkish characters correctly.
+
 ## [0.1.8] - 2026-11-01
 
 ### Changed
