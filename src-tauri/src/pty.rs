@@ -32,6 +32,25 @@ pub enum PtyKind {
     ClaudeCode,
 }
 
+/// `LANG`/`LC_ALL` overrides that guarantee a UTF-8 locale. Terminal programs such as Claude Code
+/// and readline mis-handle multi-byte input (Turkish ç ğ ı ö ş ü) in the C/POSIX locale. A locale
+/// that already names UTF-8 is left alone; a missing or non-UTF-8 one becomes `C.UTF-8`, which
+/// glibc ships on every Debian/Ubuntu/Mint install.
+pub fn utf8_locale_env(lang: Option<&str>, lc_all: Option<&str>) -> Vec<(&'static str, &'static str)> {
+    let effective = [lc_all, lang]
+        .into_iter()
+        .flatten()
+        .map(str::trim)
+        .find(|v| !v.is_empty())
+        .unwrap_or("");
+    let lower = effective.to_ascii_lowercase();
+    if lower.contains("utf-8") || lower.contains("utf8") {
+        Vec::new()
+    } else {
+        vec![("LANG", "C.UTF-8"), ("LC_ALL", "C.UTF-8")]
+    }
+}
+
 /// Choices the user made for an interactive session. Validated before they reach an argv.
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -287,6 +306,11 @@ impl PtyState {
         }
         cmd.env("TERM", "xterm-256color");
         cmd.env("COLORTERM", "truecolor");
+        let lang = std::env::var("LANG").ok();
+        let lc_all = std::env::var("LC_ALL").ok();
+        for (name, value) in utf8_locale_env(lang.as_deref(), lc_all.as_deref()) {
+            cmd.env(name, value);
+        }
         for (name, value) in session_env(kind, options) {
             cmd.env(name, value);
         }
@@ -408,6 +432,19 @@ mod tests {
         let k: PtyKind = serde_json::from_str("\"claude-login\"").expect("kind");
         assert_eq!(k, PtyKind::ClaudeLogin);
         assert!(serde_json::from_str::<PtyKind>("\"rm -rf\"").is_err());
+    }
+
+    #[test]
+    fn terminal_locale_is_forced_to_utf8_only_when_needed() {
+        assert!(utf8_locale_env(Some("tr_TR.UTF-8"), None).is_empty());
+        assert!(utf8_locale_env(Some("en_US.utf8"), None).is_empty());
+        assert!(utf8_locale_env(Some("C"), Some("tr_TR.UTF-8")).is_empty());
+        let forced = vec![("LANG", "C.UTF-8"), ("LC_ALL", "C.UTF-8")];
+        assert_eq!(utf8_locale_env(None, None), forced);
+        assert_eq!(utf8_locale_env(Some("C"), None), forced);
+        assert_eq!(utf8_locale_env(Some("POSIX"), Some("")), forced);
+        // LC_ALL wins over LANG, as in the C library.
+        assert_eq!(utf8_locale_env(Some("tr_TR.UTF-8"), Some("C")), forced);
     }
 
     #[test]
