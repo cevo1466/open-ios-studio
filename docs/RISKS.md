@@ -5,6 +5,7 @@
 | R-01 | Tauri bundle only verifiable in CI → slow fix loops | High | Medium | Small PRs, `gh run view --log-failed`, pin runner image | open |
 | R-02 | xtool CLI has no stable machine-readable output/exit-code contract | High | High | Version-gated tolerant parsers, CI fixtures, tested-version range | open |
 | R-03 | `xtool devices` blocks by default (`--wait`) | Certain | Medium | Always `--no-wait` + timeout | mitigated in design |
+| R-13 | xtool upstream is abandoned or removed | Low | High | Single adapter (ADR-0003), pinned tested version range, MIT license allows a fork; a self-owned fallback backend is not planned | open |
 | R-04 | Apple SDK/Xcode.xip licensing | Certain | High | Never bundle SDK in artifacts; docs only | mitigated |
 | R-05 | AI-generated code may be malicious or non-compiling | High | High | Untrusted-input policy, diff approval, workspace limits, bounded repair loop | open (M3) |
 | R-06 | Password auth mode uses private Apple APIs | Medium | Medium | Document; prefer API-key mode | open |
