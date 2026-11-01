@@ -45,6 +45,12 @@ enum RunEvent {
     },
 }
 
+/// `PATH` plus the per-user tool directories (swiftly, ~/.local/bin, ...), so tools installed
+/// outside the desktop session's PATH are found.
+fn tool_path() -> std::ffi::OsString {
+    cli_ai::child_path().unwrap_or_else(|| std::env::var_os("PATH").unwrap_or_default())
+}
+
 fn with_workspace<T>(
     state: &State<'_, AppState>,
     f: impl FnOnce(&Workspace) -> Result<T, FsError>,
@@ -121,7 +127,7 @@ async fn xtool_detect(state: State<'_, AppState>) -> Result<xtool::XtoolInfo, St
     let cwd = with_workspace(&state, |ws| Ok(ws.root().to_path_buf()))
         .unwrap_or_else(|_| std::env::temp_dir());
     tauri::async_runtime::spawn_blocking(move || {
-        let path = std::env::var_os("PATH").unwrap_or_default();
+        let path = tool_path();
         xtool::detect(&path, &cwd)
     })
     .await
@@ -136,10 +142,13 @@ async fn xtool_run(
     args: xtool::RunArgs,
     on_event: Channel<RunEvent>,
 ) -> Result<(), String> {
-    let path = std::env::var_os("PATH").unwrap_or_default();
+    let path = tool_path();
     let program = xtool::find_in_path("xtool", &path)
         .ok_or_else(|| "xtool was not found on PATH.".to_owned())?;
-    let spec = with_workspace(&state, |ws| Ok(xtool::build_spec(&op, &args, &program, ws)))??;
+    let mut spec = with_workspace(&state, |ws| Ok(xtool::build_spec(&op, &args, &program, ws)))??;
+    // xtool calls `swift`; give it the same widened PATH used for detection.
+    spec.env
+        .push(("PATH".to_owned(), path.to_string_lossy().into_owned()));
 
     let cancel = runner::CancelToken::new();
     {

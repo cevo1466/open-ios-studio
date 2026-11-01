@@ -3,6 +3,8 @@
 All notable changes are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project follows [Semantic Versioning](https://semver.org/) (pre-1.0: anything may change).
 
 ## [Unreleased]
+### Fixed
+- swift and xtool are found in swiftly and other per-user directories even when the app is launched from the desktop menu (PATH was too narrow); builds pass the same PATH to xtool.
 
 ## [0.1.2] - 2026-11-01
 
