@@ -19,7 +19,7 @@ jobs:
       # sha256 published by GitHub for xtool-x86_64.AppImage of release 1.24.0
       XTOOL_SHA256: dbfd9d7216f077c84c171b688c4173c37c23ca76bf7fd185d1a9ae8a53dab59f
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Download pinned xtool and verify checksum
         run: |
           curl -fL "https://github.com/xtool-org/xtool/releases/download/${XTOOL_VERSION}/xtool-x86_64.AppImage" -o xtool
@@ -36,7 +36,7 @@ jobs:
           mkdir -p captured/rea
           npx -y rea-agents@6.8.0 capture-process --help > captured/rea/capture-process-help.txt 2>&1 || true
           head -40 captured/rea/capture-process-help.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: xtool-cli-fixtures
           path: captured
