@@ -1,6 +1,8 @@
 import { DiffEditor } from '@monaco-editor/react';
 import type { PendingChange } from '../ai/chatState';
 import '../ai-panel.css';
+import { useThemeDef } from '../theme/ThemeContext';
+import { monacoThemeName } from '../theme/themes';
 
 export interface ChangeReviewProps {
   changes: PendingChange[];
@@ -15,6 +17,7 @@ export interface ChangeReviewProps {
 const DECISION_TR: Record<PendingChange['decision'], string> = { pending: 'beklemede', approved: 'onaylandı', rejected: 'reddedildi' };
 
 export function ChangeReview({ changes, theme, onDecide, onDecideAll, onApply, applying, blockedReason }: ChangeReviewProps) {
+  const themeDef = useThemeDef(theme);
   const approved = changes.filter((c) => c.decision === 'approved').length;
   const disabled = approved === 0 || applying || !!blockedReason;
   return (
@@ -66,7 +69,7 @@ export function ChangeReview({ changes, theme, onDecide, onDecideAll, onApply, a
                 height="260px"
                 original={c.original ?? ''}
                 modified={c.content}
-                theme={theme === 'dark' ? 'vs-dark' : 'vs'}
+                theme={monacoThemeName(themeDef)}
                 options={{ readOnly: true, originalEditable: false, renderSideBySide: false, minimap: { enabled: false }, scrollBeyondLastLine: false }}
               />
             </div>

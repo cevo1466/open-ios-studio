@@ -21,6 +21,12 @@ describe('ai settings', () => {
     expect(parseAiSettings('42')).toEqual(defaultAiSettings);
     expect(parseAiSettings(JSON.stringify({ provider: 'x', models: 5 }))).toEqual(defaultAiSettings);
   });
+  it('keeps only known effort levels', () => {
+    const s = parseAiSettings(JSON.stringify({ efforts: { 'claude-cli': 'high', 'codex-cli': '--evil', openai: 5 } }));
+    expect(s.efforts['claude-cli']).toBe('high');
+    expect(s.efforts['codex-cli']).toBe('');
+    expect(s.efforts.openai).toBe('');
+  });
   it('clamps tokens and caps notes', () => {
     expect(parseAiSettings(JSON.stringify({ maxContextTokens: 1 })).maxContextTokens).toBe(4000);
     expect(parseAiSettings(JSON.stringify({ maxContextTokens: 9e9 })).maxContextTokens).toBe(120000);

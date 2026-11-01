@@ -89,7 +89,7 @@ test.describe('with fake desktop backend', () => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Ayarlar', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Ayarlar' });
-    await dialog.getByLabel('Tema').selectOption('dark');
+    await dialog.locator('select').first().selectOption('dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   });
 

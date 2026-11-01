@@ -4,6 +4,17 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-11-01
+
+### Added
+- Model and effort pickers for the Claude/Codex subscription providers (Sonnet, Opus, Haiku, Düşük … Maksimum), in the chat column and the AI side panel; passed to the CLI as `--model` / `--effort` (Codex: `model_reasoning_effort`).
+- "Claude Code'u projeyle aç": an interactive Claude Code session in the embedded terminal, started in the project folder with a fixed Open iOS Studio context (xtool, no Xcode/Simulator, Turkish replies) and the chosen model/effort. Also offered from a plain terminal.
+- Four more colour themes (Gece mavisi, Monokai, Dracula, Solarized açık) with matching editor and terminal colours, a swatch picker in Ayarlar and a command-palette entry.
+- Files panel: project folder block with path, refresh and collapse-all, folder/file icons, indent guides, captions for Package.swift / xtool.yml / Sources, a "Gizli dosyalar" group for dot-files (.bsp, .git …).
+
+### Fixed
+- The AI chat column ignored its configured width (missing CSS) and squeezed the editor area; it now follows the saved width and always leaves the editor at least 320px.
+
 ## [0.1.4] - 2026-11-01
 
 ### Added
@@ -74,7 +85,8 @@ First pre-release.
 - Packages are not code-signed.
 - No Apple SDK is bundled; xtool, a Swift toolchain and an Apple account are required on the user's side.
 
-[Unreleased]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.1...v0.1.2

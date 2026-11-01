@@ -16,3 +16,17 @@ describe('settings', () => {
     expect(effectiveTheme('light', true)).toBe('light');
   });
 });
+
+describe('colour themes', () => {
+  it('accepts every theme id and rejects unknown ones', () => {
+    for (const id of ['midnight', 'monokai', 'dracula', 'solarized-light', 'light', 'dark']) {
+      expect(parseSettings(JSON.stringify({ theme: id })).theme).toBe(id);
+    }
+    expect(parseSettings(JSON.stringify({ theme: 'neon' })).theme).toBe('system');
+  });
+  it('maps themes to a light or dark mode', () => {
+    expect(effectiveTheme('monokai', false)).toBe('dark');
+    expect(effectiveTheme('solarized-light', true)).toBe('light');
+    expect(effectiveTheme('system', false)).toBe('light');
+  });
+});

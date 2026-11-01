@@ -1,5 +1,5 @@
 import { Channel, invoke } from '@tauri-apps/api/core';
-import type { AiEvent, ChatRequest, CliProviderId, CliStatus, ModelInfo, ProviderId, PtyEvent, PtyKind } from './ai/types';
+import type { AiEvent, ChatRequest, CliProviderId, CliStatus, ModelInfo, ProviderId, PtyEvent, PtyKind, PtyOptions } from './ai/types';
 import type { RunEvent, XtoolInfo, XtoolOp, XtoolRunArgs } from './xtool/types';
 
 export interface Entry {
@@ -49,10 +49,10 @@ export const ipc = {
     channel.onmessage = onEvent;
     return invoke<void>('cli_stream', { request, onEvent: channel });
   },
-  ptyOpen: (kind: PtyKind, rows: number, cols: number, onEvent: (event: PtyEvent) => void) => {
+  ptyOpen: (kind: PtyKind, options: PtyOptions | undefined, rows: number, cols: number, onEvent: (event: PtyEvent) => void) => {
     const channel = new Channel<PtyEvent>();
     channel.onmessage = onEvent;
-    return invoke<number>('pty_open', { kind, rows, cols, onEvent: channel });
+    return invoke<number>('pty_open', { kind, options, rows, cols, onEvent: channel });
   },
   ptyWrite: (id: number, data: string) => invoke<void>('pty_write', { id, data }),
   ptyResize: (id: number, rows: number, cols: number) => invoke<void>('pty_resize', { id, rows, cols }),

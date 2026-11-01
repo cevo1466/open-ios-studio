@@ -1,8 +1,9 @@
 import { FitAddon } from '@xterm/addon-fit';
 import { Terminal } from '@xterm/xterm';
 import { useEffect, useRef, useState } from 'react';
-import type { PtyKind } from '../ai/types';
+import type { PtyKind, PtyOptions } from '../ai/types';
 import { ipc } from '../ipc';
+import { useThemeDef } from '../theme/ThemeContext';
 import '@xterm/xterm/css/xterm.css';
 import '../terminal-panel.css';
 
@@ -10,29 +11,31 @@ export const TERMINAL_TITLES: Record<PtyKind, string> = {
   'claude-login': 'Claude girişi',
   'codex-login': 'Codex girişi',
   'user-shell': 'Terminal',
+  'claude-code': 'Claude Code',
 };
 
 interface Props {
   kind: PtyKind;
+  /** Model/effort for a `claude-code` session; read when the session starts. */
+  options?: PtyOptions;
   /** Changing this value starts a fresh session. */
   runKey: number;
   theme: 'light' | 'dark';
   onExit(code: number | null): void;
   onClose(): void;
+  /** Shown on a plain shell: starts Claude Code with the project context instead. */
+  onStartClaudeCode?: { label: string; run(): void };
 }
 
 type Phase = 'starting' | 'running' | 'exited' | 'error';
 
-const THEMES = {
-  dark: { background: '#14161a', foreground: '#e6e6e6', cursor: '#e6e6e6' },
-  light: { background: '#ffffff', foreground: '#1b1b1b', cursor: '#1b1b1b', selectionBackground: '#cfe3ff' },
-};
 
 /**
  * Embedded terminal (ADR-0009). Everything typed here goes to the PTY of the session this panel
  * opened; nothing else in the app writes to it. Closing the panel kills the session.
  */
-export function TerminalPanel({ kind, runKey, theme, onExit, onClose }: Props) {
+export function TerminalPanel({ kind, options, runKey, theme, onExit, onClose, onStartClaudeCode }: Props) {
+  const colors = useThemeDef(theme).terminal;
   const host = useRef<HTMLDivElement>(null);
   const onExitRef = useRef(onExit);
   const termRef = useRef<Terminal | null>(null);
@@ -44,8 +47,8 @@ export function TerminalPanel({ kind, runKey, theme, onExit, onClose }: Props) {
   }, [onExit]);
 
   useEffect(() => {
-    if (termRef.current) termRef.current.options.theme = THEMES[theme];
-  }, [theme]);
+    if (termRef.current) termRef.current.options.theme = colors;
+  }, [colors]);
 
   useEffect(() => {
     const el = host.current;
@@ -54,7 +57,7 @@ export function TerminalPanel({ kind, runKey, theme, onExit, onClose }: Props) {
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
       fontSize: 13,
       cursorBlink: true,
-      theme: THEMES[theme],
+      theme: colors,
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
@@ -72,7 +75,7 @@ export function TerminalPanel({ kind, runKey, theme, onExit, onClose }: Props) {
       if (id !== null) void ipc.ptyWrite(id, data).catch(() => undefined);
     });
     ipc
-      .ptyOpen(kind, term.rows, term.cols, (ev) => {
+      .ptyOpen(kind, options, term.rows, term.cols, (ev) => {
         if (ev.kind === 'data') {
           term.write(ev.text);
         } else if (!disposed) {
@@ -115,7 +118,7 @@ export function TerminalPanel({ kind, runKey, theme, onExit, onClose }: Props) {
       termRef.current = null;
       term.dispose();
     };
-    // `theme` is applied by its own effect; a theme change must not restart the session.
+    // `colors` is applied by its own effect; a theme change must not restart the session.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, runKey]);
 
@@ -123,12 +126,17 @@ export function TerminalPanel({ kind, runKey, theme, onExit, onClose }: Props) {
     phase === 'starting' ? 'başlatılıyor' : phase === 'running' ? 'çalışıyor' : phase === 'exited' ? 'bitti' : 'başlatılamadı';
 
   return (
-    <section className="term-panel" aria-label={TERMINAL_TITLES[kind]}>
+    <section className="term-panel" aria-label={TERMINAL_TITLES[kind]} style={{ background: colors.background }}>
       <div className="term-head">
         <strong>{TERMINAL_TITLES[kind]}</strong>
         <span className="term-state" aria-live="polite">
           {label}
         </span>
+        {onStartClaudeCode && (
+          <button type="button" className="term-claude" onClick={onStartClaudeCode.run} title="Claude Code'u proje klasöründe, proje türünü ve xtool'u bilerek başlatır">
+            {onStartClaudeCode.label}
+          </button>
+        )}
         <button type="button" onClick={onClose}>
           Kapat
         </button>

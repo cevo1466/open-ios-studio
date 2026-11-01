@@ -1,5 +1,4 @@
 .term-panel { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; background: #14161a; }
-:root[data-theme='light'] .term-panel { background: #ffffff; }
 .term-head { display: flex; align-items: center; gap: 10px; padding: 2px 10px; border-bottom: 1px solid var(--border); background: var(--bg2); font-size: 12px; }
 .term-head strong { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .term-head .term-state { color: var(--muted); flex: 1; }
@@ -7,3 +6,5 @@
 .term-host { flex: 1; min-height: 0; min-width: 0; padding: 4px 8px; overflow: hidden; }
 .term-host .xterm { height: 100%; }
 .term-error { color: var(--danger-fg); background: var(--danger-bg); margin: 6px 10px; padding: 4px 8px; border-radius: 4px; }
+.term-head .term-claude { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; padding: 1px 10px; }
+.term-head .term-claude:hover:not(:disabled) { background: var(--accent-strong); border-color: var(--accent-strong); }

@@ -368,6 +368,7 @@ async fn cli_stream(
 fn pty_open(
     state: State<'_, AppState>,
     kind: pty::PtyKind,
+    options: Option<pty::PtyOptions>,
     rows: u16,
     cols: u16,
     on_event: Channel<pty::PtyEvent>,
@@ -383,9 +384,12 @@ fn pty_open(
             .or_else(|| std::env::var_os("HOME").map(std::path::PathBuf::from))
             .unwrap_or_else(std::env::temp_dir)
     };
-    state.pty.open(kind, rows, cols, cwd, move |event| {
-        let _ = on_event.send(event);
-    })
+    let options = options.unwrap_or_default();
+    state
+        .pty
+        .open(kind, &options, rows, cols, cwd, move |event| {
+            let _ = on_event.send(event);
+        })
 }
 
 #[tauri::command]

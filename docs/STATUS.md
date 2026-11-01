@@ -1,5 +1,13 @@
 # Status
 
+## v0.1.5 (pre-release): chat column fix, model/effort pickers, Claude Code with project context, themes, Files panel
+- Owner screenshots from Linux Mint showed the chat column ignoring its width (missing `.ai-dock` CSS) — fixed, with an E2E check on the real width.
+- Model/effort pickers (Claude: Sonnet/Opus/Haiku + effort; Codex: effort + custom model). Rust validates the effort against an allow-list per CLI before it reaches an argument vector.
+- New pty session kind `claude-code`: fixed argv (`--append-system-prompt <fixed context> [--model] [--effort]`), started in the workspace; the context text is a constant, no repository content is inserted (ADR-0009 stays valid).
+- Themes: six in total, one source of truth (CSS variables, terminal and Monaco colours).
+- NOT VERIFIED: all of the above on a real Linux Mint desktop until the owner runs 0.1.5; Codex effort flag (`-c model_reasoning_effort`) only by unit test.
+- Not started (needs design, brainstorming first): giving the AI read access to a live website over FTP/SSH to derive a mobile app from its responsive design.
+
 ## v0.1.4 (pre-release): UX overhaul + resizable panels (PRs #26, #27, ADR-0010)
 - Side panel shows one module (Dosyalar / Derle / Cihazlar / Yapay zekâ); bottom panel tabs Çıktı, Sorunlar, Terminal, Cihaz günlükleri; right panel is the chat only and closed by default; status bar with project, xtool, Swift, device, AI session and problem counts.
 - File tree: build artifacts in a collapsed "Build çıktıları" group, hidden noise opt-in, project files first. `.app`/binary files open an info card (file manager actions through `reveal_path`), never the text editor.

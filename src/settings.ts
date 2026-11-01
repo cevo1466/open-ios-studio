@@ -1,4 +1,6 @@
-export type ThemeChoice = 'system' | 'light' | 'dark';
+import { isThemeChoice, resolveTheme, type ThemeChoice } from './theme/themes';
+
+export type { ThemeChoice };
 
 export interface Settings {
   theme: ThemeChoice;
@@ -12,7 +14,7 @@ export function parseSettings(raw: string | null): Settings {
   if (!raw) return defaultSettings;
   try {
     const v = JSON.parse(raw) as Partial<Settings>;
-    const theme = v.theme === 'light' || v.theme === 'dark' || v.theme === 'system' ? v.theme : 'system';
+    const theme: ThemeChoice = isThemeChoice(v.theme) ? v.theme : 'system';
     const size = typeof v.fontSize === 'number' ? Math.min(28, Math.max(10, Math.round(v.fontSize))) : 14;
     return { theme, fontSize: size };
   } catch {
@@ -37,5 +39,5 @@ export function saveSettings(s: Settings): void {
 }
 
 export function effectiveTheme(choice: ThemeChoice, prefersDark: boolean): 'light' | 'dark' {
-  return choice === 'system' ? (prefersDark ? 'dark' : 'light') : choice;
+  return resolveTheme(choice, prefersDark).mode;
 }
