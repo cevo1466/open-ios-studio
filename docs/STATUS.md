@@ -1,5 +1,8 @@
 # Status
 
+## v0.1.9 (pre-release): UTF-8 locale for terminal sessions (PR #39)
+- Owner reported stray spaces when typing Turkish characters in the embedded Claude terminal. PTY sessions now always get a UTF-8 locale. The cause is a hypothesis (not reproduced; Chromium test shows the frontend forwards Turkish text unchanged). NOT VERIFIED on a real desktop.
+
 ## v0.1.8 (pre-release): Claude Code starts without permission prompts by default (PR #37, ADR-0012)
 - Checkbox "İzin sormadan çalış" (on by default, owner decision) adds `--dangerously-skip-permissions`; terminal header shows the state. NOT VERIFIED on a real desktop.
 
