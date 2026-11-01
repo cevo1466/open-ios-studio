@@ -8,7 +8,8 @@ import { buildGenerationMessages, buildPlanMessages, buildRepairMessages } from 
 import { parseProposedChanges } from './protocol';
 import { loadAiSettings, saveAiSettings, type AiSettings } from './settings';
 import { loadConversation, saveConversation } from './storage';
-import type { AiEvent, ChatMessage, ProviderId } from './types';
+import { isCliProvider } from './cli';
+import type { AiEvent, ChatMessage, CliStatus, ProviderId } from './types';
 
 interface Params {
   workspace: string | null;
@@ -49,15 +50,40 @@ export function useAi(params: Params) {
   }
 
   const provider = settings.provider;
-  const needsKey = provider !== 'ollama';
+  const cliProvider = isCliProvider(provider) ? provider : null;
+  const needsKey = provider !== 'ollama' && !cliProvider;
+  const [cliState, setCliState] = useState<{ provider: ProviderId; status: CliStatus } | null>(null);
+  // A status read for another provider is stale for the selected one.
+  const cliStatus = cliState && cliState.provider === provider ? cliState.status : null;
+  const [cliError, setCliError] = useState<string | null>(null);
 
   const setSettings = useCallback((next: AiSettings) => {
     setSettingsState(next);
     saveAiSettings(next);
   }, []);
 
+  const refreshCli = useCallback(async () => {
+    if (!cliProvider) return;
+    try {
+      setCliState({ provider: cliProvider, status: await ipc.cliStatus(cliProvider) });
+      setCliError(null);
+    } catch (e) {
+      setCliError(String(e));
+    }
+  }, [cliProvider]);
+
+  const openSystemLogin = useCallback(async () => {
+    if (!cliProvider) return;
+    try {
+      await ipc.cliLoginTerminal(cliProvider);
+      setCliError(null);
+    } catch (e) {
+      setCliError(String(e));
+    }
+  }, [cliProvider]);
+
   const refreshKey = useCallback(async (p: ProviderId) => {
-    if (p === 'ollama') return;
+    if (p === 'ollama' || isCliProvider(p)) return;
     try {
       setKeyStored(await ipc.secretStatus(p));
       setKeyringError(null);
@@ -68,6 +94,10 @@ export function useAi(params: Params) {
   }, []);
 
   const refreshModels = useCallback(async () => {
+    if (isCliProvider(provider)) {
+      setModels([]);
+      return;
+    }
     setModelsLoading(true);
     setModelsError(null);
     try {
@@ -81,7 +111,25 @@ export function useAi(params: Params) {
   }, [provider]);
 
   useEffect(() => {
-    if (provider === 'ollama') return;
+    if (!cliProvider) return;
+    let cancelled = false;
+    ipc
+      .cliStatus(cliProvider)
+      .then((st) => {
+        if (cancelled) return;
+        setCliState({ provider: cliProvider, status: st });
+        setCliError(null);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setCliError(String(e));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cliProvider]);
+
+  useEffect(() => {
+    if (provider === 'ollama' || isCliProvider(provider)) return;
     let cancelled = false;
     ipc
       .secretStatus(provider)
@@ -151,7 +199,9 @@ export function useAi(params: Params) {
         }
       };
       try {
-        await ipc.aiStream({ provider, model: settings.models[provider], messages }, onEvent);
+        const request = { provider, model: settings.models[provider], messages };
+        if (isCliProvider(provider)) await ipc.cliStream(request, onEvent);
+        else await ipc.aiStream(request, onEvent);
       } catch (e) {
         failed = true;
         dispatch({ type: 'assistantError', message: String(e) });
@@ -283,6 +333,11 @@ export function useAi(params: Params) {
     chat: chat as ChatState,
     keyStored: needsKey ? keyStored : null,
     needsKey,
+    cliProvider,
+    cliStatus,
+    cliError,
+    refreshCli: () => void refreshCli(),
+    openSystemLogin: () => void openSystemLogin(),
     keyringError,
     models,
     modelsLoading,

@@ -4,6 +4,9 @@ import { EditorPane } from './components/EditorPane';
 import { Explorer } from './components/Explorer';
 import { useAi } from './ai/useAi';
 import { BuildPanel } from './components/BuildPanel';
+import { TerminalPanel } from './components/TerminalPanel';
+import { CLI_TERMINAL_KIND } from './ai/cli';
+import type { PtyKind } from './ai/types';
 import { ChatPanel } from './components/ChatPanel';
 import { DevicesPanel } from './components/DevicesPanel';
 import { AppStoreReadiness, SecurityCenter } from './components/PolicyPanels';
@@ -20,7 +23,13 @@ import { buildReducer, initialBuildState } from './xtool/buildState';
 import { buildOutcome, compatibility, parseAuthStatus, parseDevices, parseDiagnostics, parseSwiftVersion, parseXtoolVersion, redactLine } from './xtool/parse';
 import type { Device, RunEvent, XtoolInfo, XtoolOp, XtoolRunArgs } from './xtool/types';
 
-const PROVIDER_LABELS: Record<string, string> = { anthropic: 'Claude (Anthropic)', openai: 'OpenAI', ollama: 'Ollama (yerel)' };
+const PROVIDER_LABELS: Record<string, string> = {
+  anthropic: 'Claude (Anthropic API)',
+  openai: 'OpenAI (API)',
+  ollama: 'Ollama (yerel)',
+  'claude-cli': 'Claude (abonelik)',
+  'codex-cli': 'Codex (ChatGPT aboneliği)',
+};
 
 export function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -36,6 +45,8 @@ export function App() {
   const [analysing, setAnalysing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [buildOpen, setBuildOpen] = useState(false);
+  const [terminal, setTerminal] = useState<{ kind: PtyKind; key: number } | null>(null);
+  const openTerminal = (kind: PtyKind) => setTerminal((t) => ({ kind, key: (t?.key ?? 0) + 1 }));
   const [build, buildDispatch] = useReducer(buildReducer, initialBuildState);
   const [xtoolInfo, setXtoolInfo] = useState<XtoolInfo | null>(null);
   const [xtoolLoading, setXtoolLoading] = useState(false);
@@ -394,7 +405,11 @@ export function App() {
           </button>
           <button type="button" className="act" onClick={() => setChatOpen(true)} disabled={!desktop} title={desktop ? 'Yapay zekâ asistanı' : 'Yalnızca masaüstü uygulaması'}>
             Yapay zekâ
-            <small>Claude · OpenAI · Ollama</small>
+            <small>Claude · Codex · OpenAI · Ollama</small>
+          </button>
+          <button type="button" className="act" onClick={() => openTerminal('user-shell')} disabled={!desktop} title={desktop ? 'Gömülü terminal' : 'Yalnızca masaüstü uygulaması'}>
+            Terminal
+            <small>kendi kabuğunuz</small>
           </button>
           <button type="button" className="act" onClick={() => setPanel('asr')}>
             App Store hazırlığı
@@ -467,7 +482,7 @@ export function App() {
               workspace={state.workspace}
               xtoolFound={xtoolInfo ? xtoolInfo.found : null}
               aiProviderLabel={PROVIDER_LABELS[ai.settings.provider] ?? ai.settings.provider}
-              aiReady={ai.needsKey ? ai.keyStored : true}
+              aiReady={ai.cliProvider ? (ai.cliStatus ? ai.cliStatus.loggedIn : null) : ai.needsKey ? ai.keyStored : true}
               onOpenFolder={() => void openFolder()}
               onNewFile={() => setNewName('')}
               onOpenAi={() => setChatOpen(true)}
@@ -542,6 +557,20 @@ export function App() {
               />
             </div>
           )}
+          {terminal && (
+            <div className="term-dock">
+              <TerminalPanel
+                kind={terminal.kind}
+                runKey={terminal.key}
+                theme={theme}
+                onExit={() => ai.refreshCli()}
+                onClose={() => {
+                  setTerminal(null);
+                  ai.refreshCli();
+                }}
+              />
+            </div>
+          )}
         </main>
         {chatOpen && (
           <aside className="ai-dock" aria-label="Yapay zekâ asistanı">
@@ -567,6 +596,12 @@ export function App() {
               applying={ai.applying}
               applyBlockedReason={ai.applyBlockedReason}
               keyringError={ai.keyringError}
+              cliProvider={ai.cliProvider}
+              cliStatus={ai.cliStatus}
+              cliError={ai.cliError}
+              onRefreshCli={ai.refreshCli}
+              onLoginEmbedded={() => ai.cliProvider && openTerminal(CLI_TERMINAL_KIND[ai.cliProvider])}
+              onLoginSystem={ai.openSystemLogin}
               onClose={() => setChatOpen(false)}
             />
           </aside>

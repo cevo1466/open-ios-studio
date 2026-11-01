@@ -1,0 +1,6 @@
+.term-dock { height: 300px; min-height: 160px; border-top: 1px solid var(--border); display: flex; }
+.term-panel { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
+.term-head { display: flex; align-items: center; gap: 12px; padding: 4px 10px; border-bottom: 1px solid var(--border); }
+.term-head .term-state { color: var(--muted); font-size: 12px; flex: 1; }
+.term-host { flex: 1; min-height: 0; padding: 4px 6px; }
+.term-error { color: var(--danger, #c0392b); margin: 6px 10px; }
