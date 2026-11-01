@@ -47,10 +47,12 @@ function Level({ dir, depth, refreshKey, activePath, revealArtifacts, onOpen, on
     };
   }, [dir, refreshKey, onError]);
 
-  useEffect(() => {
-    // Opening the group in response to an external request (the binary-file card).
-    if (atRoot && revealArtifacts > 0) setArtifactsOpen(true);
-  }, [atRoot, revealArtifacts]);
+  // Open the group when the binary-file card asks for it (adjusting state while rendering).
+  const [seenReveal, setSeenReveal] = useState(revealArtifacts);
+  if (atRoot && revealArtifacts !== seenReveal) {
+    setSeenReveal(revealArtifacts);
+    if (revealArtifacts > 0) setArtifactsOpen(true);
+  }
 
   if (entries === null) return <li className="tree-note">Yükleniyor…</li>;
   if (entries.length === 0 && atRoot) return <li className="tree-note">Bu klasör boş.</li>;
