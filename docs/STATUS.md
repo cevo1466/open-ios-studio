@@ -1,5 +1,11 @@
 # Status
 
+## v0.2.0 (candidate): App Store release pipeline (ADR-0013, ADR-0014)
+- Added the "Yayın" panel and Rust modules `ipa_pack`, `signing`, `appstore`, `release` plus commands `asc_*` / `release_*` and the xtool op `build-release-ipa`.
+- Verified locally: 67 Rust unit tests for the new modules in a standalone crate (clippy and rustfmt clean), 364 Vitest tests, typecheck, lint, production web build. The new modules use fake `openssl`/`rcodesign` scripts and a local mock HTTP server.
+- NOT VERIFIED: the full Tauri crate build (needs the Linux webview libraries; CI is the reference), `xtool dev build --ipa` on a real machine, every Apple call (certificate, profile, signing, Build Uploads), Playwright E2E for the new panel (not written; panel covered by unit tests of its logic), launching the desktop app.
+- BLOCKED until a paid Apple Developer account exists: first real run of prepare, sign and upload.
+
 ## v0.1.9 (pre-release): UTF-8 locale for terminal sessions (PR #39)
 - Owner reported stray spaces when typing Turkish characters in the embedded Claude terminal. PTY sessions now always get a UTF-8 locale. The cause is a hypothesis (not reproduced; Chromium test shows the frontend forwards Turkish text unchanged). NOT VERIFIED on a real desktop.
 

@@ -35,3 +35,6 @@ Release workflow (tag-triggered, owner-approved), checksums, contributor guide, 
 
 ## Subscription providers + embedded terminal ◐ (PR pending CI)
 - ADR-0008/0009. Real subscription call and desktop terminal launch NOT VERIFIED until run on Linux Mint.
+
+## M6 — App Store Release ◐ (v0.2.0)
+"Yayın" panel: release IPA, repack (icons, privacy manifest), certificate + profile via the App Store Connect API, signing with a pinned `rcodesign`, Build Uploads (ADR-0013/0014). Unit-tested with fake tools and a mock server. Real App Store Connect calls, signing and upload are `BLOCKED` until a paid Apple Developer account exists.

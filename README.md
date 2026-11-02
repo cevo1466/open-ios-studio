@@ -38,6 +38,9 @@ The app's status bar and *Derle* panel show which of these are missing.
 ## If xtool disappears
 Open iOS Studio depends on xtool (MIT-licensed, community project) for signing, packaging and device install. The app talks to it only through one adapter (ADR-0003), and it does not copy xtool code. If upstream stops, the already installed binary and this repository keep working; only new iOS/Xcode changes would break builds over time. The code is MIT, so a fork of xtool could be used instead. See `docs/RISKS.md` (R-13).
 
+## App Store release (Yayın panel)
+For owners with a paid Apple Developer account and no Mac. Needs: an App Store Connect API key (Issuer ID, Key ID, `.p8`), the app record created in App Store Connect, and `openssl` (`sudo apt install openssl`). Studio downloads a pinned `rcodesign` (SHA-256 verified) when it is not on PATH. Steps: settings → key → release build → repack → certificate and profile → sign → upload. Everything that talks to Apple is marked NOT_VERIFIED until it has run once with a real account; a successful upload is not App Store approval. See ADR-0013 and ADR-0014.
+
 ## Develop
 ```bash
 npm ci

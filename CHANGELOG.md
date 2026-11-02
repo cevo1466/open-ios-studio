@@ -4,6 +4,20 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-02
+
+### Added
+- "Yayın" panel: release IPA build, IPA repack (iPhone icon set, privacy manifest, iPad key removal, build number), distribution certificate + App Store profile through the App Store Connect API, signing with a pinned and SHA-256-verified `rcodesign`, and upload through the Build Uploads API (ADR-0013).
+- App Store Connect API key stored in the OS keyring; the `.p8` is never shown or read back (ADR-0014).
+- xtool operation `build-release-ipa` (`xtool dev build --configuration release --ipa`).
+- Source-level release preflight (bundle id vs `xtool.yml`, privacy manifest, encryption flag).
+
+### Known limitations
+- Nothing that talks to Apple has been run against a real account (NOT_VERIFIED); `Assets.car` cannot be produced on Linux (R-15); the full signing chain is unproven (R-16).
+
+### Changed
+- ADR-0005's "Apple credentials are never handled" is partially superseded by ADR-0014.
+
 ## [0.1.9] - 2026-11-01
 
 ### Fixed
