@@ -234,28 +234,30 @@ impl AscClient {
             .map(|_| ())
     }
 
+    /// The app record whose bundle id is EXACTLY `bundle_id`. Apple's `filter[bundleId]` is
+    /// looser than equality (it also returned an `XTL-<team>.`-prefixed record), so the
+    /// attribute is compared here; a near match must never receive an upload.
     pub async fn find_app(&self, bundle_id: &str) -> Result<Option<AppInfo>, AscError> {
         let v = self
             .call(
                 reqwest::Method::GET,
                 "/v1/apps",
-                &[("filter[bundleId]", bundle_id), ("limit", "1")],
+                &[("filter[bundleId]", bundle_id), ("limit", "50")],
                 None,
             )
             .await?;
         Ok(v["data"]
             .as_array()
-            .and_then(|a| a.first())
+            .into_iter()
+            .flatten()
+            .find(|d| d["attributes"]["bundleId"].as_str() == Some(bundle_id))
             .map(|d| AppInfo {
                 id: d["id"].as_str().unwrap_or_default().to_owned(),
                 name: d["attributes"]["name"]
                     .as_str()
                     .unwrap_or_default()
                     .to_owned(),
-                bundle_id: d["attributes"]["bundleId"]
-                    .as_str()
-                    .unwrap_or(bundle_id)
-                    .to_owned(),
+                bundle_id: bundle_id.to_owned(),
             }))
     }
 
@@ -266,7 +268,7 @@ impl AscClient {
                 "/v1/bundleIds",
                 &[
                     ("filter[identifier]", identifier),
-                    ("filter[platform]", "IOS"),
+                    ("filter[platform]", "IOS,UNIVERSAL"),
                 ],
                 None,
             )
@@ -770,6 +772,16 @@ pub(crate) mod tests {
             other => panic!("{other:?}"),
         }
         assert!(!err.to_string().contains("eyJ"));
+    }
+
+    #[tokio::test]
+    async fn find_app_requires_an_exact_bundle_id_match() {
+        let (base, _) = serve(Box::new(|_| {
+            (200, r#"{"data":[{"id":"9","attributes":{"name":"Other","bundleId":"XTL-TEAM.com.zeta.app"}}]}"#.into())
+        }))
+        .await;
+        let c = AscClient::for_test(test_creds(), base);
+        assert_eq!(c.find_app("com.zeta.app").await.unwrap(), None);
     }
 
     #[tokio::test]

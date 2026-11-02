@@ -6,3 +6,11 @@ src-tauri/gen/
 .DS_Store
 playwright-report/
 test-results/
+
+# Apple signing material must never be committed
+*.p8
+*.p12
+*.mobileprovision
+*.cer
+*.key
+AuthKey_*
