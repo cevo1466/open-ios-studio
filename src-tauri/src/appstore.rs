@@ -525,7 +525,11 @@ impl AscClient {
             op["offset"].as_u64().unwrap_or(u64::MAX),
             op["length"].as_u64().unwrap_or(0),
         );
-        if length == 0 || offset.checked_add(length).is_none_or(|end| end > file_size) {
+        if length == 0
+            || !offset
+                .checked_add(length)
+                .is_some_and(|end| end <= file_size)
+        {
             return Err(AscError::Upload(
                 "Parça aralığı dosya boyutunu aşıyor.".into(),
             ));
