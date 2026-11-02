@@ -204,6 +204,16 @@ pub fn build_spec(
                 BUILD_TIMEOUT,
             ))
         }
+        // REQUIRES_RUNTIME_TEST: `--ipa` needs a real xtool; the output path is checked by the caller.
+        "build-release-ipa" => {
+            let dir = project_dir(args, workspace)?;
+            Ok(tool_spec(
+                xtool,
+                &["dev", "build", "--configuration", "release", "--ipa"],
+                &dir,
+                BUILD_TIMEOUT,
+            ))
+        }
         "auth-status" => Ok(tool_spec(xtool, &["auth", "status"], root, QUICK_TIMEOUT)),
         // `--no-wait` is essential: the default waits forever for a device to appear.
         "devices" => Ok(tool_spec(
@@ -358,6 +368,19 @@ mod tests {
             ..RunArgs::default()
         };
         assert!(build_spec("build", &escape, xtool, &ws).is_err());
+    }
+
+    #[test]
+    fn release_ipa_build_is_a_fixed_release_vector() {
+        let (_d, ws) = ws();
+        let xtool = Path::new("/usr/bin/xtool");
+        assert!(build_spec("build-release-ipa", &RunArgs::default(), xtool, &ws).is_err());
+        fs::write(ws.root().join("Package.swift"), "").expect("write");
+        let spec = build_spec("build-release-ipa", &RunArgs::default(), xtool, &ws).expect("spec");
+        assert_eq!(
+            spec.args,
+            ["dev", "build", "--configuration", "release", "--ipa"]
+        );
     }
 
     #[test]
