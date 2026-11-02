@@ -260,6 +260,14 @@ pub fn p12_spec(
         &path_str(p12_out)?,
         "-passout",
         &passout,
+        // OpenSSL 3 writes AES/SHA-256 PKCS#12 by default; macOS `security import` (used by CI
+        // runners) rejects it with "MAC verification failed". Use the legacy-compatible algorithms.
+        "-certpbe",
+        "PBE-SHA1-3DES",
+        "-keypbe",
+        "PBE-SHA1-3DES",
+        "-macalg",
+        "sha1",
     ]
     .iter()
     .map(|s| (*s).to_owned())
@@ -442,6 +450,11 @@ mod tests {
         )
         .unwrap();
         assert!(s.args.contains(&"file:/d/pw".to_owned()));
+        // macOS-importable encryption (see p12_spec).
+        let pos = |a: &str| s.args.iter().position(|x| x == a).expect(a);
+        assert_eq!(s.args[pos("-macalg") + 1], "sha1");
+        assert_eq!(s.args[pos("-certpbe") + 1], "PBE-SHA1-3DES");
+        assert_eq!(s.args[pos("-keypbe") + 1], "PBE-SHA1-3DES");
         let sign = rcodesign_sign_spec(
             Path::new("/r"),
             Path::new("/tmp"),
