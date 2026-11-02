@@ -1,0 +1,18 @@
+/* "Yayın" side view (reuses the .bs-* building blocks of build-panel.css) */
+.rp-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.rp-step { display: grid; grid-template-columns: 14px 1fr auto; gap: 8px; align-items: start; }
+.rp-dot { width: 10px; height: 10px; margin-top: 4px; border-radius: 50%; border: 2px solid var(--border); }
+.rp-done .rp-dot { border-color: var(--success); background: var(--success); }
+.rp-running .rp-dot { border-color: var(--accent); background: var(--accent); animation: pulse 1.2s ease-in-out infinite; }
+.rp-failed .rp-dot { border-color: var(--danger); background: var(--danger); }
+.rp-ready .rp-dot { border-color: var(--accent); }
+.rp-blocked { color: var(--muted); }
+.rp-label { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rp-why { font-size: 12px; color: var(--muted); line-height: 1.4; }
+.rp-apple { font-size: 11px; color: var(--warn); }
+.rp-form { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--border); border-radius: var(--r1); background: var(--bg); }
+.rp-form label { display: flex; flex-direction: column; gap: 4px; }
+.rp-checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.rp-check { display: grid; grid-template-columns: 96px 1fr; gap: 6px; }
+.rp-PASS { color: var(--success); } .rp-FAIL { color: var(--danger-fg); } .rp-WARNING { color: var(--warn); } .rp-NOT_VERIFIED { color: var(--muted); }
+.rp-progress { font-size: 12px; color: var(--muted); }

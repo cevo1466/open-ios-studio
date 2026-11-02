@@ -15,3 +15,6 @@
 | R-10 | Policy rules drift from Apple/OWASP sources | High | Medium | `lastVerified`/`policyVersion` per rule, `null` when unverified, diff report | open |
 | R-11 | Policy Engine over-claims compliance | Medium | High | Separate enforcement status; no score; manual items stay NOT_VERIFIED | open |
 | R-12 | Prompt injection via repo files/logs | Medium | High | Treat as data; privilege limits; tests (MSEC-025/026) | open |
+| R-14 | Apple changes the App Store Connect API or upload flow | Medium | Medium | Shapes checked against OpenAPI 4.5.1 (`docs/research/ASC_API_CAPABILITIES.md`); errors surface Apple's code/title | open |
+| R-15 | `Assets.car` (asset-catalog compiler) cannot be produced on Linux, so icon acceptance is only seen in App Store Connect processing | High | Medium | Repack writes the 8 iPhone icon PNGs and `CFBundleIcons`; preflight reports icon acceptance NOT_VERIFIED; never claimed OK | open |
+| R-16 | Sign/upload chain never exercised with a real paid account (certificate, profile, rcodesign signature, upload) | Certain | High | Unit tests with fake tools and a mock server; every Apple step labelled NOT_VERIFIED; first real run recorded in STATUS | open |

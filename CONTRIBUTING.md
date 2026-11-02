@@ -14,7 +14,7 @@ npm run build
 node scripts/validate-policies.mjs
 ```
 
-The desktop shell needs Rust and the Tauri 2 Linux libraries (`libwebkit2gtk-4.1-dev`, `libdbus-1-dev`, `pkg-config` and others; see `.github/workflows/ci.yml` for the exact list). Then:
+The desktop shell needs Rust (install with [rustup](https://rustup.rs); the release modules use recent crates such as `zip` 9 and `p256` 0.14, so use current stable) and the Tauri 2 Linux libraries (`libwebkit2gtk-4.1-dev`, `libdbus-1-dev`, `pkg-config` and others; see `.github/workflows/ci.yml` for the exact list). Then:
 
 ```sh
 cargo fmt --manifest-path src-tauri/Cargo.toml --check
@@ -26,6 +26,9 @@ npx tauri dev
 ## CI is the reference build
 
 Rust and Tauri builds are verified in GitHub Actions on `ubuntu-22.04`, not on every contributor machine. A change is not "verified" until CI is green. A package counts as verified only after its artifact was inspected (`dpkg-deb`, `sha256sum`). Launching the desktop app on a real desktop is verified by a human, never by CI.
+
+### Release modules without the Tauri libraries
+`ipa_pack.rs`, `signing.rs`, `appstore.rs` and `release.rs` do not depend on Tauri. If the webview libraries are missing, create a scratch crate outside the repository that `#[path]`-includes those files (plus `runner.rs`, `xtool.rs`, `fs_engine.rs`) and run `cargo test` / `cargo clippy -- -D warnings` there. CI remains the reference for the full crate.
 
 ## Branches
 

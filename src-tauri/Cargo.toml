@@ -1,6 +1,6 @@
 [package]
 name = "open-ios-studio"
-version = "0.1.9"
+version = "0.2.0"
 description = "AI-assisted iOS development environment built on xtool"
 license = "MIT"
 edition = "2021"
@@ -24,6 +24,14 @@ futures-util = "0.3"
 serde_json = "1"
 tokio = { version = "1", features = ["time", "process", "io-util", "rt"] }
 portable-pty = "0.9"
+zip = { version = "9", default-features = false, features = ["deflate"] }
+plist = { version = "1", default-features = false }
+sha2 = "0.11"
+p256 = { version = "0.14", features = ["ecdsa", "pkcs8", "pem"] }
+base64 = "0.22"
+flate2 = "1"
+tar = "0.4"
+image = { version = "0.25", default-features = false, features = ["png"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

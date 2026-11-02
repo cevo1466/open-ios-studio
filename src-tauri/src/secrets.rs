@@ -23,6 +23,17 @@ pub fn account_for(provider: &str) -> Result<String, String> {
     }
 }
 
+/// Keyring accounts for the App Store Connect API key (Issuer ID, Key ID, `.p8` contents).
+pub const ASC_ISSUER: &str = "asc-issuer-id";
+pub const ASC_KEY_ID: &str = "asc-key-id";
+pub const ASC_PRIVATE_KEY: &str = "asc-private-key";
+
+/// Keyring account for the distribution `.p12` password of one bundle id.
+pub fn p12_account(bundle_id: &str) -> Result<String, String> {
+    crate::xtool::validate_bundle_id(bundle_id)?;
+    Ok(format!("p12-password-{bundle_id}"))
+}
+
 pub fn validate_key(key: &str) -> Result<(), String> {
     if key.trim().is_empty() {
         return Err("The API key is empty.".to_owned());
@@ -111,6 +122,16 @@ mod tests {
         assert_eq!(account_for("openai").as_deref(), Ok("ai-key-openai"));
         assert!(account_for("ollama").is_err());
         assert!(account_for("../etc").is_err());
+    }
+
+    #[test]
+    fn p12_accounts_are_per_bundle_and_validated() {
+        assert_eq!(
+            p12_account("com.zeta.app").as_deref(),
+            Ok("p12-password-com.zeta.app")
+        );
+        assert!(p12_account("../x").is_err());
+        assert!(p12_account("").is_err());
     }
 
     #[test]

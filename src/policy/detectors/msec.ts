@@ -342,7 +342,8 @@ const msec022: Detector = {
     for (const f of files) {
       if (/(^|\/)node_modules\//.test(f.path)) continue;
       const b = baseName(f.path);
-      if (b === 'Package.swift' && /\.package\(/.test(f.content)) {
+      // Only remote dependencies need a Package.resolved; `.package(path:)` is a local package (xtool's generated wrapper uses it).
+      if (b === 'Package.swift' && /\.package\([^)]*\b(url|id)\s*:/.test(f.content)) {
         manifests++;
         if (files.some((x) => baseName(x.path) === 'Package.resolved')) locked++;
         else hits.push({ level: 'warn', file: f.path, line: 1, message: 'Package.swift has dependencies but no Package.resolved is committed.', evidence: 'Package.resolved missing', remediation: 'Commit Package.resolved to pin transitive dependency versions.' });

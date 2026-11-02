@@ -24,6 +24,7 @@ import { describeChoice } from './ai/models';
 import type { PtyKind, PtyOptions, RemoteSite } from './ai/types';
 import { ChatPanel } from './components/ChatPanel';
 import { DevicesPanel } from './components/DevicesPanel';
+import { ReleaseSidebar } from './components/ReleaseSidebar';
 import { AppStoreReadiness, SecurityCenter } from './components/PolicyPanels';
 import { CloseGuardDialog } from './components/CloseGuard';
 import { WelcomeScreen } from './components/WelcomeScreen';
@@ -44,6 +45,7 @@ const SIDEBAR_TITLES: Record<SidebarView, string> = {
   files: 'Dosyalar',
   build: 'Derle',
   devices: 'Cihazlar',
+  release: 'Yayın',
   ai: 'Yapay zekâ',
 };
 
@@ -570,6 +572,10 @@ export function App() {
           onView={(v) => {
             if (v === 'build') openBuild();
             else if (v === 'devices') openDevices();
+            else if (v === 'release') {
+              setView('release');
+              if (xtoolInfo === null) void detectXtool();
+            }
             else if (v === 'ai') {
               setView('ai');
               setChatOpen(true);
@@ -688,6 +694,16 @@ export function App() {
               onRefresh={() => void refreshDevices()}
               onRunOnDevice={(udid, configuration) => void runXtool('run-device', { configuration, udid: udid ?? undefined })}
               onLaunch={(udid, bundleId) => void runXtool('launch', { bundleId, udid: udid ?? undefined })}
+            />
+          )}
+          {view === 'release' && (
+            <ReleaseSidebar
+              desktop={desktop}
+              hasWorkspace={hasWorkspace}
+              xtoolFound={xtoolInfo?.found === true}
+              build={build}
+              onBuildRelease={(project) => void runXtool('build-release-ipa', { project })}
+              onCancel={() => void ipc.xtoolCancel()}
             />
           )}
           {view === 'ai' && (

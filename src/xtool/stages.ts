@@ -34,7 +34,7 @@ export interface RunResult {
 /** Which stages apply to an operation. Other operations show no stage bar. */
 export function stagesFor(op: XtoolOp | null): StageDef[] {
   if (op === 'run-device') return ALL;
-  if (op === 'build') return ALL.slice(0, 1);
+  if (op === 'build' || op === 'build-release-ipa') return ALL.slice(0, 1);
   return [];
 }
 

@@ -212,6 +212,11 @@ describe('MSEC-021 env files', () => {
 });
 
 describe('MSEC-022 dependencies', () => {
+  it('ignores local path packages such as the xtool wrapper', () => {
+    const r = run('MSEC-022', [['xtool/.xtool-tmp/Package.swift', 'dependencies: [.package(path: "../..")]']]);
+    expect(r.outcome).toBe('pass');
+  });
+
   it('passes with lockfiles and notes vulnerability scan not performed', () => {
     const r = run('MSEC-022', [
       ['package.json', '{"dependencies":{"a":"^1.0.0"}}'],

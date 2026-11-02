@@ -1,10 +1,14 @@
 mod ai;
+mod appstore;
 mod cli_ai;
 mod fs_engine;
+mod ipa_pack;
 mod pty;
+mod release;
 mod reveal;
 mod runner;
 mod secrets;
+mod signing;
 mod xtool;
 
 use std::sync::Mutex;
@@ -407,6 +411,311 @@ fn pty_close(state: State<'_, AppState>, id: u32) -> Result<(), String> {
     state.pty.close(id)
 }
 
+// ---- App Store release (ADR-0013 / ADR-0014). Logic lives in `release`/`appstore`/`ipa_pack`;
+// these commands only resolve workspace paths, talk to the keyring and forward events.
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AscStatus {
+    configured: bool,
+    issuer_id: Option<String>,
+    key_id: Option<String>,
+}
+
+/// Whether an App Store Connect key is stored. The `.p8` contents are never returned.
+#[tauri::command]
+async fn asc_credentials_status() -> Result<AscStatus, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        let store = secrets::KeyringStore;
+        let issuer_id = store.get(secrets::ASC_ISSUER)?;
+        let key_id = store.get(secrets::ASC_KEY_ID)?;
+        let has_key = store.get(secrets::ASC_PRIVATE_KEY)?.is_some();
+        Ok(AscStatus {
+            configured: issuer_id.is_some() && key_id.is_some() && has_key,
+            issuer_id,
+            key_id,
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn asc_credentials_set(
+    issuer_id: String,
+    key_id: String,
+    private_key: String,
+) -> Result<(), String> {
+    let creds = appstore::Credentials {
+        issuer_id: issuer_id.trim().to_owned(),
+        key_id: key_id.trim().to_owned(),
+        private_key_pem: private_key,
+    };
+    appstore::validate_credentials(&creds)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let store = secrets::KeyringStore;
+        store.set(secrets::ASC_ISSUER, &creds.issuer_id)?;
+        store.set(secrets::ASC_KEY_ID, &creds.key_id)?;
+        store.set(secrets::ASC_PRIVATE_KEY, &creds.private_key_pem)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn asc_credentials_delete() -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        let store = secrets::KeyringStore;
+        store.delete(secrets::ASC_ISSUER)?;
+        store.delete(secrets::ASC_KEY_ID)?;
+        store.delete(secrets::ASC_PRIVATE_KEY)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+async fn asc_client() -> Result<appstore::AscClient, String> {
+    let creds = tauri::async_runtime::spawn_blocking(|| {
+        let store = secrets::KeyringStore;
+        match (
+            store.get(secrets::ASC_ISSUER)?,
+            store.get(secrets::ASC_KEY_ID)?,
+            store.get(secrets::ASC_PRIVATE_KEY)?,
+        ) {
+            (Some(issuer_id), Some(key_id), Some(private_key_pem)) => Ok(appstore::Credentials {
+                issuer_id,
+                key_id,
+                private_key_pem,
+            }),
+            _ => Err("No App Store Connect key is stored. Add one in Settings.".to_owned()),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    appstore::AscClient::new(creds).map_err(|e| e.to_string())
+}
+
+fn app_data_dir(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir)
+}
+
+/// The `.p12` password of a bundle id: read from the keyring, created on first use.
+async fn p12_password(bundle_id: &str, create: bool) -> Result<Option<String>, String> {
+    let account = secrets::p12_account(bundle_id)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let store = secrets::KeyringStore;
+        if let Some(existing) = store.get(&account)? {
+            return Ok(Some(existing));
+        }
+        if !create {
+            return Ok(None);
+        }
+        let fresh = release::random_hex(16).map_err(|e| e.to_string())?;
+        store.set(&account, &fresh)?;
+        Ok(Some(fresh))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn asc_test() -> Result<(), String> {
+    asc_client().await?.ping().await.map_err(|e| e.to_string())
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RepackSummary {
+    app_name: String,
+    icons_written: usize,
+    ipad_orientations_removed: bool,
+    privacy_manifest_added: bool,
+    build_number_set: Option<String>,
+    warnings: Vec<String>,
+}
+
+/// Repack an IPA inside the workspace (icons, privacy manifest, plist edits). Unsigned output.
+#[tauri::command]
+async fn release_repack(
+    state: State<'_, AppState>,
+    project: String,
+    input: String,
+    output: String,
+    build_number: Option<String>,
+) -> Result<RepackSummary, String> {
+    let manifest_path = if project.trim_matches('/').is_empty() {
+        "PrivacyInfo.xcprivacy".to_owned()
+    } else {
+        format!("{}/PrivacyInfo.xcprivacy", project.trim_end_matches('/'))
+    };
+    let (src, dst, privacy) = with_workspace(&state, |ws| {
+        Ok((
+            ws.resolve(&input)?,
+            ws.resolve(&output)?,
+            ws.read_file_if_exists(&manifest_path)?,
+        ))
+    })?;
+    let opts = ipa_pack::RepackOptions {
+        privacy_manifest: privacy.map(String::into_bytes),
+        build_number,
+        provisioning_profile: None,
+    };
+    let report = tauri::async_runtime::spawn_blocking(move || ipa_pack::repack(&src, &dst, &opts))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
+    Ok(RepackSummary {
+        app_name: report.app_name,
+        icons_written: report.icons_written.len(),
+        ipad_orientations_removed: report.ipad_orientations_removed,
+        privacy_manifest_added: report.privacy_manifest_added,
+        build_number_set: report.build_number_set,
+        warnings: report.warnings,
+    })
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PrepareSummary {
+    certificate_created: bool,
+    profile_name: String,
+    profile_uuid: String,
+    profile_expires: Option<String>,
+}
+
+/// Distribution certificate + App Store profile for a bundle id. Re-uses what exists; never
+/// revokes or deletes anything on Apple's side.
+#[tauri::command]
+async fn release_prepare(
+    app: tauri::AppHandle,
+    bundle_id: String,
+    app_name: String,
+    email: String,
+) -> Result<PrepareSummary, String> {
+    let data = app_data_dir(&app)?;
+    let client = asc_client().await?;
+    let openssl = xtool::find_in_path("openssl", &tool_path())
+        .ok_or_else(|| "openssl was not found on PATH.".to_owned())?;
+    let password = p12_password(&bundle_id, true)
+        .await?
+        .ok_or_else(|| "could not create the p12 password".to_owned())?;
+    let cert = release::ensure_certificate(
+        &client,
+        &openssl,
+        &data,
+        &bundle_id,
+        "Open iOS Studio",
+        &email,
+        &password,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+    let (bytes, info) =
+        release::ensure_profile(&client, &bundle_id, &app_name, &cert.certificate_id)
+            .await
+            .map_err(|e| e.to_string())?;
+    let dir = release::bundle_dir(&data, &bundle_id).map_err(|e| e.to_string())?;
+    std::fs::write(dir.join("profile.mobileprovision"), bytes).map_err(|e| e.to_string())?;
+    Ok(PrepareSummary {
+        certificate_created: cert.created,
+        profile_name: info.name,
+        profile_uuid: info.uuid,
+        profile_expires: info.expiration,
+    })
+}
+
+/// Sign an IPA with the stored distribution certificate (rcodesign, pinned and verified).
+#[tauri::command]
+async fn release_sign(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    bundle_id: String,
+    input: String,
+    output: String,
+) -> Result<(), String> {
+    let data = app_data_dir(&app)?;
+    let (src, dst) = with_workspace(&state, |ws| Ok((ws.resolve(&input)?, ws.resolve(&output)?)))?;
+    let dir = release::bundle_dir(&data, &bundle_id).map_err(|e| e.to_string())?;
+    let p12 = dir.join("distribution.p12");
+    let profile = std::fs::read(dir.join("profile.mobileprovision"))
+        .map_err(|_| "Run the prepare step first (no profile stored).".to_owned())?;
+    if !p12.is_file() {
+        return Err("Run the prepare step first (no certificate stored).".to_owned());
+    }
+    let password = p12_password(&bundle_id, false)
+        .await?
+        .ok_or_else(|| "The p12 password is missing from the keyring.".to_owned())?;
+    let rcodesign = release::ensure_rcodesign(&data, &tool_path())
+        .await
+        .map_err(|e| e.to_string())?;
+    release::sign_ipa(&rcodesign, &data, &src, &dst, &profile, &p12, &password)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[derive(Debug, Serialize)]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+enum UploadEvent {
+    Created { upload_id: String },
+    Part { done: usize, total: usize },
+    Committed,
+    State { state: String },
+}
+
+/// Upload a signed IPA to App Store Connect (Build Uploads) and wait for processing.
+#[tauri::command]
+async fn release_upload(
+    state: State<'_, AppState>,
+    bundle_id: String,
+    ipa: String,
+    short_version: String,
+    build_version: String,
+    on_event: Channel<UploadEvent>,
+) -> Result<(), String> {
+    let path = with_workspace(&state, |ws| ws.resolve(&ipa))?;
+    let client = asc_client().await?;
+    let app_info = client
+        .find_app(&bundle_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| {
+            "No app with this bundle id exists in App Store Connect. Create the app there first (the API cannot)."
+                .to_owned()
+        })?;
+    let sender = on_event.clone();
+    let outcome = client
+        .upload_ipa(
+            &path,
+            &app_info.id,
+            &short_version,
+            &build_version,
+            900,
+            move |p| {
+                let event = match p {
+                    appstore::Progress::Created { upload_id } => UploadEvent::Created { upload_id },
+                    appstore::Progress::Part { done, total } => UploadEvent::Part { done, total },
+                    appstore::Progress::Committed => UploadEvent::Committed,
+                    appstore::Progress::State(state) => UploadEvent::State { state },
+                };
+                let _ = sender.send(event);
+            },
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+    match outcome {
+        appstore::UploadState::Failed(message) => {
+            Err(format!("Apple rejected the build: {message}"))
+        }
+        _ => Ok(()),
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -436,7 +745,15 @@ pub fn run() {
             pty_open,
             pty_write,
             pty_resize,
-            pty_close
+            pty_close,
+            asc_credentials_status,
+            asc_credentials_set,
+            asc_credentials_delete,
+            asc_test,
+            release_repack,
+            release_prepare,
+            release_sign,
+            release_upload
         ])
         .run(tauri::generate_context!())
         .expect("error while running Open iOS Studio");
