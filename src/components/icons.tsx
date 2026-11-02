@@ -37,6 +37,13 @@ export const IconTerminal = () => (
     <path d="M7.5 10l3 2.5-3 2.5M13 15h4" />
   </Svg>
 );
+export const IconRocket = () => (
+  <Svg>
+    <path d="M12 3.5c3 2 4.5 5 4.5 8.5l-2 3h-5l-2-3c0-3.500 1.500-6.500 4.500-8.500z" />
+    <circle cx="12" cy="10" r="1.500" />
+    <path d="M9.500 15l-1.500 4 4-1.500M14.500 15l1.500 4-4-1.500" />
+  </Svg>
+);
 export const IconStore = () => (
   <Svg>
     <path d="M12 3.5l7 3v5.2c0 4-2.8 7.2-7 8.8-4.2-1.6-7-4.8-7-8.8V6.5z" />

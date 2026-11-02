@@ -1,6 +1,7 @@
 import { Channel, invoke } from '@tauri-apps/api/core';
 import type { AiEvent, ChatRequest, CliProviderId, CliStatus, ModelInfo, ProviderId, PtyEvent, PtyKind, PtyOptions } from './ai/types';
 import type { RunEvent, XtoolInfo, XtoolOp, XtoolRunArgs } from './xtool/types';
+import type { AscStatus, PrepareSummary, RepackSummary, UploadEvent } from './release/types';
 
 export interface Entry {
   name: string;
@@ -59,4 +60,18 @@ export const ipc = {
   ptyClose: (id: number) => invoke<void>('pty_close', { id }),
   revealPath: (path: string, parent: boolean) => invoke<void>('reveal_path', { path, parent }),
   createFile: (path: string) => invoke<void>('create_file', { path }),
+  // App Store release (ADR-0013). The `.p8` goes to Rust once and is never read back.
+  ascCredentialsStatus: () => invoke<AscStatus>('asc_credentials_status'),
+  ascCredentialsSet: (issuerId: string, keyId: string, privateKey: string) => invoke<void>('asc_credentials_set', { issuerId, keyId, privateKey }),
+  ascCredentialsDelete: () => invoke<void>('asc_credentials_delete'),
+  ascTest: () => invoke<void>('asc_test'),
+  releaseRepack: (project: string, input: string, output: string, buildNumber: string | null) =>
+    invoke<RepackSummary>('release_repack', { project, input, output, buildNumber }),
+  releasePrepare: (bundleId: string, appName: string, email: string) => invoke<PrepareSummary>('release_prepare', { bundleId, appName, email }),
+  releaseSign: (bundleId: string, input: string, output: string) => invoke<void>('release_sign', { bundleId, input, output }),
+  releaseUpload: (bundleId: string, ipa: string, shortVersion: string, buildVersion: string, onEvent: (event: UploadEvent) => void) => {
+    const channel = new Channel<UploadEvent>();
+    channel.onmessage = onEvent;
+    return invoke<void>('release_upload', { bundleId, ipa, shortVersion, buildVersion, onEvent: channel });
+  },
 };

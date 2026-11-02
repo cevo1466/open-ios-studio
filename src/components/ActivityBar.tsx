@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { IconBuild, IconDevice, IconFiles, IconLock, IconSettings, IconSparkle, IconStore, IconTerminal } from './icons';
+import { IconBuild, IconDevice, IconFiles, IconLock, IconSettings, IconRocket, IconSparkle, IconStore, IconTerminal } from './icons';
 
-export type SidebarView = 'files' | 'build' | 'devices' | 'ai';
+export type SidebarView = 'files' | 'build' | 'devices' | 'release' | 'ai';
 
 interface Props {
   view: SidebarView;
@@ -56,6 +56,7 @@ export function ActivityBar({ view, desktop, terminalOpen, onView, onTerminal, o
       <Item icon={<IconFiles />} label="Dosyalar" active={view === 'files'} onClick={() => onView('files')} />
       <Item icon={<IconBuild />} label="Derle" title={only ?? 'xtool ile derle ve iPhone’a yükle'} disabled={!desktop} active={view === 'build'} onClick={() => onView('build')} />
       <Item icon={<IconDevice />} label="Cihazlar" title={only ?? 'Bağlı iPhone’lar ve imza durumu'} disabled={!desktop} active={view === 'devices'} onClick={() => onView('devices')} />
+      <Item icon={<IconRocket />} label="Yayın" title={only ?? 'App Store’a yayın: sertifika, imza, yükleme'} disabled={!desktop} active={view === 'release'} onClick={() => onView('release')} />
       <Item icon={<IconSparkle />} label="Yapay zekâ" title={only ?? 'Yapay zekâ ayarları ve sohbet'} disabled={!desktop} active={view === 'ai'} onClick={() => onView('ai')} />
       <Item icon={<IconTerminal />} label="Terminal" title={only ?? 'Gömülü terminal (Ctrl+J paneli gösterir/gizler)'} disabled={!desktop} active={terminalOpen} onClick={onTerminal} />
       <span className="act-sep" aria-hidden="true" />

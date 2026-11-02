@@ -3,12 +3,12 @@
  * The webview never passes raw argv: it names an allow-listed operation and Rust builds the command.
  */
 
-export type XtoolOp = 'version' | 'sdk-status' | 'new' | 'build' | 'auth-status' | 'devices' | 'run-device' | 'launch';
+export type XtoolOp = 'version' | 'sdk-status' | 'new' | 'build' | 'auth-status' | 'devices' | 'run-device' | 'launch' | 'build-release-ipa';
 
 export interface XtoolRunArgs {
   /** `new`: package name, validated by `validateProjectName` and again in Rust. */
   name?: string;
-  /** `build`: workspace-relative project directory containing Package.swift ('' = workspace root). */
+  /** `build` / `build-release-ipa`: workspace-relative project directory containing Package.swift ('' = workspace root). */
   project?: string;
   /** `build`: configuration. */
   configuration?: 'debug' | 'release';
