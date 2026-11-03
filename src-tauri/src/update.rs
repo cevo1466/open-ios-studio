@@ -18,7 +18,9 @@ use crate::doctor::compare_versions;
 
 const RELEASES_API: &str =
     "https://api.github.com/repos/cevo1466/open-ios-studio/releases?per_page=10";
+const RELEASES_ATOM: &str = "https://github.com/cevo1466/open-ios-studio/releases.atom";
 const DOWNLOAD_PREFIX: &str = "https://github.com/cevo1466/open-ios-studio/releases/download/";
+const MAX_FEED_BYTES: usize = 2 * 1024 * 1024;
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(20);
 const API_TIMEOUT: Duration = Duration::from_secs(30);
 const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(15 * 60);
@@ -241,7 +243,21 @@ fn client(timeout: Duration, follow_redirects: bool) -> Result<reqwest::Client, 
         .map_err(|e| format!("request failed: {}", e.without_url()))
 }
 
+/// The release list. The REST API allows only 60 unauthenticated requests per hour and IP, so it
+/// answers 403 on shared or busy networks; then the public release feed (no such limit) is used.
 async fn fetch_releases() -> Result<Vec<Release>, String> {
+    match fetch_releases_api().await {
+        Ok(releases) => Ok(releases),
+        Err(api_err) => match fetch_latest_from_feed().await {
+            Ok(release) => Ok(vec![release]),
+            Err(feed_err) => Err(format!(
+                "{api_err} The release feed did not work either: {feed_err}"
+            )),
+        },
+    }
+}
+
+async fn fetch_releases_api() -> Result<Vec<Release>, String> {
     let resp = client(API_TIMEOUT, false)?
         .get(RELEASES_API)
         .header("Accept", "application/vnd.github+json")
@@ -255,6 +271,82 @@ async fn fetch_releases() -> Result<Vec<Release>, String> {
     resp.json::<Vec<Release>>()
         .await
         .map_err(|e| format!("release list could not be read: {}", e.without_url()))
+}
+
+/// Fallback: newest tag from `releases.atom`, assets from that release's `SHA256SUMS.txt`.
+/// Neither URL goes through the rate-limited API. Sizes and the pre-release flag are not in
+/// these files, so they are reported as unknown (0 / false).
+async fn fetch_latest_from_feed() -> Result<Release, String> {
+    let resp = client(API_TIMEOUT, true)?
+        .get(RELEASES_ATOM)
+        .send()
+        .await
+        .map_err(|e| format!("GitHub could not be reached: {}", e.without_url()))?;
+    if !resp.status().is_success() {
+        return Err(format!("GitHub answered {} for the feed.", resp.status()));
+    }
+    let bytes = resp
+        .bytes()
+        .await
+        .map_err(|e| e.without_url().to_string())?;
+    if bytes.len() > MAX_FEED_BYTES {
+        return Err("The release feed is unexpectedly large.".to_owned());
+    }
+    let xml = String::from_utf8(bytes.to_vec()).map_err(|_| "The feed is not UTF-8.".to_owned())?;
+    let (tag, updated) = parse_feed_latest(&xml)
+        .ok_or_else(|| "No published release was found in the feed.".to_owned())?;
+    let sums = fetch_small_text(&format!("{DOWNLOAD_PREFIX}{tag}/SHA256SUMS.txt")).await?;
+    Ok(release_from_sums(&tag, updated, &sums))
+}
+
+/// Newest `vX.Y.Z` release in an Atom feed: its tag and `<updated>` time. Feed entries are
+/// published releases only (no drafts).
+pub fn parse_feed_latest(xml: &str) -> Option<(String, Option<String>)> {
+    const TAG_LINK: &str = "https://github.com/cevo1466/open-ios-studio/releases/tag/";
+    xml.split("<entry>").skip(1).find_map(|entry| {
+        let entry = entry.split("</entry>").next()?;
+        let rest = &entry[entry.find(TAG_LINK)? + TAG_LINK.len()..];
+        let tag = &rest[..rest.find('"')?];
+        parse_tag(tag)?;
+        let updated = entry.find("<updated>").and_then(|i| {
+            let rest = &entry[i + "<updated>".len()..];
+            rest.find("</updated>").map(|j| rest[..j].trim().to_owned())
+        });
+        Some((tag.to_owned(), updated))
+    })
+}
+
+/// Builds a release from the tag and the text of its `SHA256SUMS.txt` (the assets listed there
+/// plus the file itself). Names that could leave the download folder or the URL are dropped.
+pub fn release_from_sums(tag: &str, published_at: Option<String>, sums: &str) -> Release {
+    let url = |name: &str| format!("{DOWNLOAD_PREFIX}{tag}/{name}");
+    let mut assets: Vec<ReleaseAsset> = parse_sha256sums(sums)
+        .into_iter()
+        .map(|(_, name)| name)
+        .filter(|n| {
+            n.chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-' | '+'))
+                && !n.contains("..")
+        })
+        .map(|name| ReleaseAsset {
+            browser_download_url: url(&name),
+            name,
+            size: 0,
+        })
+        .collect();
+    assets.push(ReleaseAsset {
+        name: "SHA256SUMS.txt".to_owned(),
+        size: 0,
+        browser_download_url: url("SHA256SUMS.txt"),
+    });
+    Release {
+        tag_name: tag.to_owned(),
+        draft: false,
+        prerelease: false,
+        published_at,
+        html_url: format!("https://github.com/cevo1466/open-ios-studio/releases/tag/{tag}"),
+        assets,
+    }
 }
 
 /// Latest release compared with `current` (the app's own version).
@@ -443,6 +535,56 @@ pub fn apply_appimage(downloaded: &Path, expected_sha256: &str) -> Result<String
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const FEED: &str = r#"<feed><title>Release notes</title><updated>2026-11-03T20:11:44Z</updated>
+<entry><id>x/nightly</id><updated>2026-11-04T00:00:00Z</updated>
+<link rel="alternate" type="text/html" href="https://github.com/cevo1466/open-ios-studio/releases/tag/nightly"/></entry>
+<entry><id>x/v0.1.11</id><updated>2026-11-03T20:22:53Z</updated>
+<link rel="alternate" type="text/html" href="https://github.com/cevo1466/open-ios-studio/releases/tag/v0.1.11"/></entry>
+<entry><id>x/v0.1.10</id><updated>2026-11-03T19:47:17Z</updated>
+<link rel="alternate" type="text/html" href="https://github.com/cevo1466/open-ios-studio/releases/tag/v0.1.10"/></entry></feed>"#;
+
+    #[test]
+    fn feed_gives_newest_version_tag_and_its_time() {
+        assert_eq!(
+            parse_feed_latest(FEED),
+            Some((
+                "v0.1.11".to_owned(),
+                Some("2026-11-03T20:22:53Z".to_owned())
+            ))
+        );
+    }
+
+    #[test]
+    fn feed_without_a_version_tag_gives_nothing() {
+        assert_eq!(parse_feed_latest("<feed></feed>"), None);
+        assert_eq!(parse_feed_latest(&FEED.replace("v0.1.1", "x")), None);
+    }
+
+    #[test]
+    fn feed_release_lists_assets_from_sums_and_drops_unsafe_names() {
+        let h = "a".repeat(64);
+        let sums = format!(
+            "{h}  Open-iOS-Studio_0.1.11_amd64.deb\n{h}  *Open-iOS-Studio_0.1.11_x86_64.AppImage\n{h}  ../evil.deb\n{h}  sub/dir.deb\n"
+        );
+        let r = release_from_sums("v0.1.11", None, &sums);
+        let names: Vec<&str> = r.assets.iter().map(|a| a.name.as_str()).collect();
+        assert_eq!(
+            names,
+            [
+                "Open-iOS-Studio_0.1.11_amd64.deb",
+                "Open-iOS-Studio_0.1.11_x86_64.AppImage",
+                "SHA256SUMS.txt"
+            ]
+        );
+        assert!(r
+            .assets
+            .iter()
+            .all(|a| checked_url(&a.browser_download_url).is_ok()));
+        assert_eq!(info_from("0.1.10", &r).latest, "0.1.11");
+        assert!(info_from("0.1.10", &r).newer);
+        assert!(!info_from("0.1.11", &r).newer);
+    }
 
     fn release(tag: &str, draft: bool, prerelease: bool) -> Release {
         Release {
