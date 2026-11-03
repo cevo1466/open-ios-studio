@@ -4,6 +4,8 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-11-03
+
 ### Added
 - Derle panel: "Ortam denetimi" lists Swift, Darwin SDK, xtool (version vs tested 1.24.0), SDK status, Apple account, iPhone, usbmuxd and git with fix hints; `scripts/doctor.sh` does the same in a terminal.
 - Bundled agent skills copied into every project's `.claude/skills/` when Claude Code is opened: `ios-app-xtool`, `mobile-ios-design`, `find-skills` (ADR-0015).
@@ -114,7 +116,8 @@ First pre-release.
 - Packages are not code-signed.
 - No Apple SDK is bundled; xtool, a Swift toolchain and an Apple account are required on the user's side.
 
-[Unreleased]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.9...HEAD
+[Unreleased]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.10...HEAD
+[0.1.10]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.6...v0.1.7

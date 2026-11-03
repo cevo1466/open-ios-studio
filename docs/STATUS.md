@@ -1,6 +1,6 @@
 # Status
 
-## Unreleased (branch claude/pensive-brown-a2ijs2, 2026-11-03): launch-readiness slice 1
+## v0.1.10 (pre-release candidate, PR #42): launch-readiness slice 1
 - **Environment check**: Rust `doctor.rs` + Derle panel section "Ortam denetimi" (Swift, Darwin SDK, xtool version vs tested 1.24.0, SDK status, Apple account, iPhone, usbmuxd, git) with Turkish fix hints; `scripts/doctor.sh` for terminals (`npm run doctor`), self-tested and shellchecked in CI. Classification is unit-tested against the 1.24.0 fixture strings; a real machine run is NOT VERIFIED here (no Swift/xtool in the dev container).
 - **Bundled agent skills** (ADR-0015): `skills/` vendored (`find-skills` from vercel-labs/skills, `mobile-ios-design` from wshobson/agents, both MIT, pinned commits + SHA-256 in `SOURCE.md`) plus our `ios-app-xtool`; embedded at compile time and copied into `<project>/.claude/skills/` when Claude Code is opened (edited files kept). Rust tests cover install/keep/report; that Claude Code actually loads them on the owner's machine is NOT VERIFIED.
 - **Updates from the app**: `update.rs` queries the GitHub releases of this repository (pre-releases included), downloads DEB/AppImage into Downloads, verifies against `SHA256SUMS.txt`, offers the `apt` command or replaces the running AppImage in place. Pure parts are unit-tested; the network path is NOT VERIFIED (no live release with the new asset layout was downloaded from this session).
