@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { PtyKind, PtyOptions } from '../ai/types';
 import { ipc } from '../ipc';
 import { useThemeDef } from '../theme/ThemeContext';
+import { createOrderedWriter } from './terminalInput';
 import '@xterm/xterm/css/xterm.css';
 import '../terminal-panel.css';
 
@@ -73,9 +74,9 @@ export function TerminalPanel({ kind, options, runKey, theme, onExit, onClose, o
 
     let id: number | null = null;
     let disposed = false;
-    const input = term.onData((data) => {
-      if (id !== null) void ipc.ptyWrite(id, data).catch(() => undefined);
-    });
+    // One keystroke must reach the PTY as one small write (see terminalInput.ts).
+    const send = createOrderedWriter((piece) => (id === null ? Promise.resolve() : ipc.ptyWrite(id, piece)));
+    const input = term.onData(send);
     ipc
       .ptyOpen(kind, options, term.rows, term.cols, (ev) => {
         if (ev.kind === 'data') {

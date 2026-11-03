@@ -4,6 +4,9 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+### Fixed
+- Terminal: typed text goes to the PTY one character at a time and in order, so Turkish letters (ı ş ğ ü ö ç) are no longer taken for a paste by Claude Code. Escape sequences and bracketed pastes stay whole.
+
 ## [0.1.10] - 2026-11-03
 
 ### Added
