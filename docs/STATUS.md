@@ -1,5 +1,24 @@
 # Status
 
+## Verification tour (owner, real desktop + iPhone)
+Checklist: `docs/VERIFICATION_TOUR.md`. Every row stays `NOT VERIFIED` until the owner records a run.
+
+| # | What | Result | Date | Note |
+|---|---|---|---|---|
+| T1 | DEB installs, window opens | NOT VERIFIED | | |
+| T2 | Ortam denetimi all PASS | NOT VERIFIED | | |
+| T3 | New project from the app | NOT VERIFIED | | |
+| T4 | Yalnızca derle succeeds | NOT VERIFIED | | |
+| T5 | iPhone listed | NOT VERIFIED | | |
+| T6 | Derle ve Yükle installs and launches | NOT VERIFIED | | |
+| T7 | Claude Code opens with bundled skills | NOT VERIFIED | | |
+| T8 | Turkish letters in the terminal | NOT VERIFIED | | owner reported "halloldu" on 0.1.11 in chat; record it here with the date |
+| T9 | Updates check says up to date | NOT VERIFIED | | |
+| T10 | App Store readiness on a real project | NOT VERIFIED | | |
+| T11 | Terminal copy/paste | NOT VERIFIED | | after PR #52 |
+| T12 | Pre-submission check green on a new project | NOT VERIFIED | | after the preflight PR |
+| T13 | Swift completion and diagnostics | NOT VERIFIED | | after the LSP PR |
+
 ## v0.1.10 (pre-release candidate, PR #42): launch-readiness slice 1
 - **Environment check**: Rust `doctor.rs` + Derle panel section "Ortam denetimi" (Swift, Darwin SDK, xtool version vs tested 1.24.0, SDK status, Apple account, iPhone, usbmuxd, git) with Turkish fix hints; `scripts/doctor.sh` for terminals (`npm run doctor`), self-tested and shellchecked in CI. Classification is unit-tested against the 1.24.0 fixture strings; a real machine run is NOT VERIFIED here (no Swift/xtool in the dev container).
 - **Bundled agent skills** (ADR-0015): `skills/` vendored (`find-skills` from vercel-labs/skills, `mobile-ios-design` from wshobson/agents, both MIT, pinned commits + SHA-256 in `SOURCE.md`) plus our `ios-app-xtool`; embedded at compile time and copied into `<project>/.claude/skills/` when Claude Code is opened (edited files kept). Rust tests cover install/keep/report; that Claude Code actually loads them on the owner's machine is NOT VERIFIED.
