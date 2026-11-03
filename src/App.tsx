@@ -25,6 +25,9 @@ import type { PtyKind, PtyOptions, RemoteSite } from './ai/types';
 import { ChatPanel } from './components/ChatPanel';
 import { DevicesPanel } from './components/DevicesPanel';
 import { AppStoreReadiness, SecurityCenter } from './components/PolicyPanels';
+import { PreflightView, type StepProgress } from './components/PreflightView';
+import { fingerprintFiles, gateInstall, iconHeaderString, readXtoolConfig, runPreflight, REPORT_JSON, REPORT_MD, type PreflightReport } from './preflight';
+import { loadCatalogs } from './policy/catalog';
 import { CloseGuardDialog } from './components/CloseGuard';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { BinaryCard } from './components/BinaryCard';
@@ -58,7 +61,13 @@ export function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
   const [newName, setNewName] = useState<string | null>(null);
-  const [panel, setPanel] = useState<'asr' | 'msec' | null>(null);
+  const [panel, setPanel] = useState<'asr' | 'msec' | 'preflight' | null>(null);
+  const [preflight, setPreflight] = useState<PreflightReport | null>(null);
+  const [preflightRunning, setPreflightRunning] = useState(false);
+  const [preflightProgress, setPreflightProgress] = useState<StepProgress>({});
+  const [preflightError, setPreflightError] = useState<string | null>(null);
+  /** Fingerprint of the files as they are now; compared with the report's to detect staleness. */
+  const [currentFingerprint, setCurrentFingerprint] = useState<string | null>(null);
   const [report, setReport] = useState<EvaluationReport | null>(null);
   const [analysing, setAnalysing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -137,6 +146,46 @@ export function App() {
 
   const fail = useCallback((message: string) => setNotice(message), []);
 
+  const refreshFingerprint = useCallback(async () => {
+    if (!state.workspace) {
+      setCurrentFingerprint(null);
+      return;
+    }
+    try {
+      const scan = await ipc.scanWorkspace();
+      const cfg = readXtoolConfig(scan.files);
+      const header = await ipc.readPngHeader(cfg.iconPath).catch(() => null);
+      setCurrentFingerprint(await fingerprintFiles(scan.files, iconHeaderString(header)));
+    } catch {
+      setCurrentFingerprint(null);
+    }
+  }, [state.workspace]);
+
+  // A workspace change drops the old report, reloads the persisted one and fingerprints the files.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      setPreflight(null);
+      setPreflightProgress({});
+      setPreflightError(null);
+      setCurrentFingerprint(null);
+      if (!state.workspace) return;
+      try {
+        const json = await ipc.readFileIfExists(REPORT_JSON);
+        if (!cancelled && json) {
+          const parsed = JSON.parse(json) as PreflightReport;
+          if (parsed && parsed.version === 1 && Array.isArray(parsed.steps)) setPreflight(parsed);
+        }
+      } catch {
+        /* an unreadable report simply counts as "not run" */
+      }
+      if (!cancelled) await refreshFingerprint();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [state.workspace, refreshFingerprint]);
+
   const openFolder = useCallback(async () => {
     if (state.tabs.some(isDirty) && !window.confirm('Discard unsaved changes and open another folder?')) return;
     try {
@@ -159,6 +208,8 @@ export function App() {
         return;
       }
       setBinary(null);
+      // Opening a file brings the editor back in front of any policy/preflight view.
+      setPanel(null);
       if (state.tabs.some((t) => t.path === path)) {
         dispatch({ type: 'activate', path });
         return;
@@ -181,10 +232,11 @@ export function App() {
       await ipc.writeFile(tab.path, tab.content);
       dispatch({ type: 'saved', path: tab.path, content: tab.content });
       setNotice(null);
+      void refreshFingerprint();
     } catch (e) {
       fail(`Kaydedilemedi (${tab.path}): ${String(e)}`);
     }
-  }, [state.tabs, state.active, fail]);
+  }, [state.tabs, state.active, fail, refreshFingerprint]);
 
   const runAnalysis = useCallback(async () => {
     setAnalysisError(null);
@@ -215,9 +267,14 @@ export function App() {
     }
   }, []);
 
+  const gateRef = useRef<{ allowed: boolean; reason: string | null }>({ allowed: false, reason: null });
   const runXtool = useCallback(
     async (op: XtoolOp, args: XtoolRunArgs) => {
       const onDevice = op === 'run-device' || op === 'launch';
+      if (onDevice && !gateRef.current.allowed) {
+        setNotice(gateRef.current.reason ?? 'Yayın öncesi denetim geçilmedi.');
+        return;
+      }
       const dispatchRun = onDevice ? deviceDispatch : buildDispatch;
       dispatchRun({ type: 'start', op });
       if (onDevice) setDeviceLogOpen(true);
@@ -227,14 +284,69 @@ export function App() {
         dispatchRun({ type: 'event', event: event.kind === 'line' ? { ...event, text: redactLine(event.text) } : event });
       try {
         await ipc.xtoolRun(op, args, onEvent);
-        if (op === 'new') setRefreshKey((k) => k + 1);
+        if (op === 'new') {
+          setRefreshKey((k) => k + 1);
+          void refreshFingerprint();
+        }
       } catch (e) {
         onEvent({ kind: 'line', stream: 'stderr', text: String(e) });
         onEvent({ kind: 'exit', code: null, cancelled: false, timedOut: false, droppedLines: 0 });
       }
     },
-    [showBottom],
+    [showBottom, refreshFingerprint],
   );
+
+  /** The pre-submission check: six steps, a verdict, and the report written into the workspace. */
+  const runPreflightNow = useCallback(async () => {
+    if (!state.workspace) {
+      setPreflightError('Önce bir klasör açın.');
+      setPanel('preflight');
+      return;
+    }
+    setPreflightRunning(true);
+    setPreflightError(null);
+    setPreflightProgress({});
+    setPanel('preflight');
+    try {
+      const report = await runPreflight(
+        {
+          project: '',
+          scan: () => ipc.scanWorkspace(),
+          runOp: async (op, args, onLine) => {
+            const lines: string[] = [];
+            let code: number | null = null;
+            let timedOut = false;
+            let cancelled = false;
+            await ipc.xtoolRun(op, args, (e) => {
+              if (e.kind === 'line') {
+                const text = redactLine(e.text);
+                lines.push(text);
+                onLine(text);
+              } else {
+                code = e.code;
+                timedOut = e.timedOut;
+                cancelled = e.cancelled;
+              }
+            });
+            return { code, lines, timedOut, cancelled };
+          },
+          readPng: (path) => ipc.readPngHeader(path).catch(() => null),
+          writeFile: (path, content) => ipc.applyFile(path, content),
+          analyze: analyzeProject,
+          rules: loadCatalogs,
+          now: () => new Date().toISOString(),
+        },
+        (id, st) => setPreflightProgress((prev) => ({ ...prev, [id]: st })),
+      );
+      setPreflight(report);
+      setCurrentFingerprint(report.fingerprint);
+      setRefreshKey((k) => k + 1);
+    } catch (e) {
+      setPreflightError(String(e));
+    } finally {
+      setPreflightRunning(false);
+    }
+  }, [state.workspace]);
 
   /** Run a short xtool operation and return its output without touching the build log. */
   const collectXtool = useCallback(async (op: XtoolOp, args: XtoolRunArgs = {}) => {
@@ -454,14 +566,18 @@ export function App() {
         run: () => setSettings((s) => ({ ...s, theme: theme === 'dark' ? 'light' : 'dark' })),
       },
       { id: 'theme-pick', title: 'Renk temasını seç…', enabled: true, run: () => setShowSettings(true) },
+      { id: 'preflight-run', title: 'Yayın öncesi denetimi çalıştır', enabled: desktop && hasWorkspace, run: () => void runPreflightNow() },
+      { id: 'preflight-view', title: 'Yayın öncesi denetimi aç', enabled: true, run: () => setPanel('preflight') },
     ],
-    [desktop, hasWorkspace, openFolder, theme],
+    [desktop, hasWorkspace, openFolder, theme, runPreflightNow],
   );
 
   const errorCount = diagnostics.filter((d) => d.severity === 'error').length;
   const warningCount = diagnostics.filter((d) => d.severity === 'warning').length;
   const anyRunning = build.running || deviceRun.running;
   const selectedDevice = devices?.find((d) => d.udid === selectedUdid) ?? (devices && devices.length === 1 ? devices[0] : null);
+  const gate = gateInstall(preflight, currentFingerprint);
+  gateRef.current = gate;
   const installCheck = canRunOnDevice({
     xtoolFound: xtoolInfo?.found === true,
     hasWorkspace,
@@ -469,6 +585,7 @@ export function App() {
     authLoggedIn,
     devices,
     selectedUdid,
+    preflight: gate,
   });
   const showOutput = () => showBottom(deviceRun.op !== null && deviceRun.nextId >= build.nextId ? 'devicelog' : 'output');
   const session = sessionState({ provider: ai.settings.provider, keyStored: ai.keyStored, cliStatus: ai.cliStatus });
@@ -512,9 +629,9 @@ export function App() {
           restart: () => openClaudeCode(),
         }
       : undefined;
-  function openClaudeCode(remote?: RemoteSite) {
+  function openClaudeCode(remote?: RemoteSite, extraContext?: string) {
     const start = () =>
-      openTerminal('claude-code', { model: ai.settings.models['claude-cli'], effort: ai.settings.efforts['claude-cli'], skipPermissions: ai.settings.skipPermissions, remote });
+      openTerminal('claude-code', { model: ai.settings.models['claude-cli'], effort: ai.settings.efforts['claude-cli'], skipPermissions: ai.settings.skipPermissions, remote, extraContext });
     if (!state.workspace) {
       start();
       return;
@@ -596,7 +713,7 @@ export function App() {
           view={view}
           desktop={desktop}
           terminalOpen={terminal !== null && bottomVisible && activeBottom === 'terminal'}
-          policyView={panel}
+          policyView={panel === 'preflight' ? null : panel}
           onView={(v) => {
             if (v === 'build') openBuild();
             else if (v === 'devices') openDevices();
@@ -691,6 +808,9 @@ export function App() {
               diagnostics={diagnostics}
               deviceName={selectedDevice?.name ?? null}
               installBlocked={installCheck.reason}
+              preflight={{ verdict: preflight?.verdict ?? null, running: preflightRunning, gateReason: gate.reason, finishedAt: preflight?.finishedAt ?? null }}
+              onPreflight={() => void runPreflightNow()}
+              onOpenPreflight={() => setPanel('preflight')}
               doctor={doctor}
               doctorLoading={doctorLoading}
               doctorError={doctorError}
@@ -718,6 +838,7 @@ export function App() {
               hasWorkspace={hasWorkspace}
               running={anyRunning}
               selectedUdid={selectedUdid}
+              preflight={gate}
               onSelect={setSelectedUdid}
               onRefresh={() => void refreshDevices()}
               onRunOnDevice={(udid, configuration) => void runXtool('run-device', { configuration, udid: udid ?? undefined })}
@@ -782,6 +903,17 @@ export function App() {
               onRevealParent={() => void ipc.revealPath(binary.path, true).catch((e: unknown) => setBinary({ ...binary, error: String(e) }))}
               onShowArtifacts={() => setRevealArtifacts((n) => n + 1)}
               onClose={() => setBinary(null)}
+            />
+          ) : panel === 'preflight' ? (
+            <PreflightView
+              report={preflight}
+              running={preflightRunning}
+              progress={preflightProgress}
+              error={preflightError}
+              gateReason={gate.reason}
+              onRun={() => void runPreflightNow()}
+              onHandOff={() => openClaudeCode(undefined, `Yayın öncesi denetim raporu ${REPORT_MD} dosyasında; önce onu oku, kırmızı adımları düzelt, sonra kullanıcıdan denetimi yeniden çalıştırmasını iste.`)}
+              onClose={() => setPanel(null)}
             />
           ) : panel ? (
             <PolicyPanel

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { installFakeTauri } from './fakeTauri';
+import { fsWrites, installFakeTauri } from './fakeTauri';
 
 test.use({ colorScheme: 'dark', viewport: { width: 1280, height: 800 } });
 
@@ -86,4 +86,56 @@ test('settings offer a verified update download and the install command', async 
   const cmds = (await calls(page)).map((c) => c.cmd);
   expect(cmds).toContain('update_check');
   expect(cmds.filter((c) => c === 'update_download')).toHaveLength(1);
+});
+
+test('pre-submission check runs, gates install and hands the report to Claude Code', async ({ page }) => {
+  test.setTimeout(60_000);
+  await openWorkspace(page);
+  await activity(page, /^Derle/).click();
+  const section = page.getByRole('region', { name: 'Yayın öncesi denetim özeti' });
+  await expect(section.getByRole('status')).toHaveText('Yayın öncesi denetim çalıştırılmadı.');
+
+  await section.getByRole('button', { name: 'Denetimi çalıştır' }).click();
+  const view = page.getByRole('region', { name: 'Yayın öncesi denetim', exact: true });
+  await expect(view).toBeVisible();
+  const steps = view.locator('.pf-step');
+  await expect(steps).toHaveCount(6);
+  await expect(view.getByText('Testler').first()).toBeVisible();
+  // No Tests/ in the fixture and no Info.plist: both are NOT_VERIFIED, never red.
+  await expect(steps.filter({ hasText: 'Testler' })).toContainText('Doğrulanamadı');
+  await expect(steps.filter({ hasText: 'Manifest' })).toContainText('Doğrulanamadı');
+  await expect(steps.filter({ hasText: 'Simge' })).toContainText('Geçti');
+  await expect(steps.filter({ hasText: 'Derleme' })).toContainText('Geçti');
+  await expect(view.getByText(/App Store onayı anlamına gelmez/)).toBeVisible();
+
+  const writes = await fsWrites(page);
+  expect(writes.map((w) => w.path)).toEqual(expect.arrayContaining(['.open-ios-studio/preflight/latest.json', '.open-ios-studio/preflight/latest.md']));
+  const verdictText = await view.getByRole('status').first().innerText();
+  const green = verdictText.startsWith('Sonuç yeşil');
+
+  // The sidebar summary follows the verdict; the gate re-closes when a file changes.
+  await expect(section.getByRole('status')).toContainText(green ? 'Yeşil' : 'kırmızı');
+  await activity(page, /^Dosyalar/).click();
+  await page.getByRole('tree').getByRole('button', { name: 'Sources', exact: true }).click();
+  await page.getByRole('tree').getByRole('button', { name: 'Demo', exact: true }).click();
+  await page.getByRole('tree').getByRole('button', { name: 'ContentView.swift', exact: true }).click();
+  const editor = page.locator('.monaco-editor').first();
+  await expect(editor).toBeVisible();
+  await editor.click();
+  await page.keyboard.press('Control+End');
+  await page.keyboard.type('// edit');
+  await expect(page.locator('.view-lines').first()).toContainText(/\/\/\s*edit/);
+  await expect(page.getByRole('tab', { name: /ContentView\.swift/ }).getByTitle('Kaydedilmemiş değişiklikler')).toBeVisible();
+  await page.keyboard.press('Control+S');
+  await expect(page.getByTitle('Kaydedilmemiş değişiklikler')).toHaveCount(0);
+  await expect.poll(async () => (await fsWrites(page)).some((w) => w.path === 'Sources/Demo/ContentView.swift')).toBe(true);
+  await activity(page, /^Derle/).click();
+  await expect(section.getByRole('status')).toContainText(green ? 'Dosyalar değişti' : 'kırmızı');
+  await page.getByRole('button', { name: 'Raporu aç' }).click();
+
+  // Hand-off starts Claude Code with the report path in the extra context.
+  await view.getByRole('button', { name: "Raporu Claude Code'a ver" }).click();
+  await expect.poll(async () => (await calls(page)).some((c) => c.cmd === 'pty_open')).toBe(true);
+  const open = (await calls(page)).find((c) => c.cmd === 'pty_open');
+  expect(String((open?.args.options as { extraContext?: string })?.extraContext)).toContain('.open-ios-studio/preflight/latest.md');
 });

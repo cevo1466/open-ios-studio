@@ -23,6 +23,10 @@ export interface BuildSidebarProps {
   deviceName: string | null;
   /** Why "Derle ve Yükle" is not possible, or null when it is. */
   installBlocked: string | null;
+  /** Pre-submission check: last report, whether it runs now, and why the install gate is closed. */
+  preflight: { verdict: 'green' | 'red' | null; running: boolean; gateReason: string | null; finishedAt: string | null };
+  onPreflight(): void;
+  onOpenPreflight(): void;
   /** Environment check results (null = not run yet). */
   doctor: DoctorCheck[] | null;
   doctorLoading: boolean;
@@ -152,6 +156,27 @@ export function BuildSidebar(p: BuildSidebarProps) {
             <p>Komut seçenekleri ve çıktı biçimi Studio ile doğrulanmadı; hata ayrıştırma farklı olabilir.</p>
           </details>
         )}
+      </section>
+
+      <section className="bs-doctor bs-preflight" aria-label="Yayın öncesi denetim özeti">
+        <div className="bs-doctor-head">
+          <span className="bs-label">Yayın öncesi denetim</span>
+          <button type="button" onClick={p.onPreflight} disabled={p.preflight.running || running || !p.hasWorkspace} title="Derleme, testler, politika, gizli anahtar, manifest ve simge kontrolleri; kırmızıyken Derle ve Yükle kapalıdır">
+            {p.preflight.running ? 'Denetleniyor…' : p.preflight.verdict ? 'Yeniden çalıştır' : 'Denetimi çalıştır'}
+          </button>
+        </div>
+        <p className={`bs-doctor-summary bs-${p.preflight.verdict === 'green' && !p.preflight.gateReason ? 'ok' : p.preflight.verdict === 'red' ? 'error' : 'warn'}`} role="status">
+          {p.preflight.running
+            ? 'Denetim sürüyor…'
+            : p.preflight.verdict === null
+              ? 'Yayın öncesi denetim çalıştırılmadı.'
+              : p.preflight.gateReason
+                ? `${p.preflight.verdict === 'green' ? 'Son sonuç yeşil' : 'Son sonuç kırmızı'}; ${p.preflight.gateReason}.`
+                : 'Yeşil: Derle ve Yükle açık.'}
+        </p>
+        <button type="button" className="tree-link" onClick={p.onOpenPreflight}>
+          Raporu aç
+        </button>
       </section>
 
       <section className="bs-doctor" aria-label="Ortam denetimi">

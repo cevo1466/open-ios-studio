@@ -33,7 +33,13 @@ describe('deviceStatus', () => {
 });
 
 describe('canRunOnDevice', () => {
-  const ok = { xtoolFound: true, hasWorkspace: true, running: false, authLoggedIn: true, devices: [dev], selectedUdid: null };
+  const ok = { xtoolFound: true, hasWorkspace: true, running: false, authLoggedIn: true, devices: [dev], selectedUdid: null, preflight: { allowed: true, reason: null } };
+  it('preflight reason blocks run-on-device before device checks', () => {
+    const gate = { allowed: false, reason: 'Yayın öncesi denetim çalıştırılmadı' };
+    expect(canRunOnDevice({ ...ok, preflight: gate }).reason).toBe('Yayın öncesi denetim çalıştırılmadı');
+    expect(canRunOnDevice({ ...ok, preflight: gate, devices: [] }).reason).toBe('Yayın öncesi denetim çalıştırılmadı');
+    expect(canRunOnDevice({ ...ok, preflight: gate, xtoolFound: false }).reason).toMatch(/xtool/);
+  });
   it('ok with one device', () => expect(canRunOnDevice(ok)).toEqual({ ok: true, reason: null }));
   it('ok with selected', () => expect(canRunOnDevice({ ...ok, selectedUdid: dev.udid }).ok).toBe(true));
   it('xtool missing', () => expect(canRunOnDevice({ ...ok, xtoolFound: false }).reason).toMatch(/xtool/));

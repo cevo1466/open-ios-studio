@@ -76,6 +76,16 @@ export async function installFakeTauri(page: Page): Promise<void> {
         skipped: 0,
       }),
       xtool_detect: () => ({ found: false, path: null, versionOutput: null, swiftVersionOutput: null, error: null }),
+      // Build and test runs succeed instantly; the channel is the `onEvent` argument itself.
+      xtool_run: (a) => {
+        const ch = a.onEvent as { onmessage: (e: unknown) => void };
+        const op = String(a.op);
+        const lines = op === 'build' ? ['Building Demo…', 'Build complete'] : op === 'swift-test' ? ['Test Suite passed'] : [];
+        for (const text of lines) ch.onmessage({ kind: 'line', stream: 'stdout', text });
+        ch.onmessage({ kind: 'exit', code: 0, cancelled: false, timedOut: false, droppedLines: 0 });
+        return null;
+      },
+      read_png_header: (a) => (String(a.path).endsWith('icon.png') ? { width: 1024, height: 1024, colorType: 2 } : null),
       'plugin:event|listen': (a) => {
         if (a.event === 'tauri://close-requested') w.__closeHandler = a.handler;
         return nextId++;

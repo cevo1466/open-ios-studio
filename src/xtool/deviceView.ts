@@ -63,11 +63,14 @@ export interface CanRunInput {
   authLoggedIn: boolean | null;
   devices: Device[] | null;
   selectedUdid: string | null;
+  /** The pre-submission gate (owner decision: red blocks installing until green). */
+  preflight: { allowed: boolean; reason: string | null };
 }
 
 export function canRunOnDevice(input: CanRunInput): { ok: boolean; reason: string | null } {
   const no = (reason: string) => ({ ok: false, reason });
   if (!input.xtoolFound) return no('xtool bulunamadı.');
+  if (!input.preflight.allowed) return no(input.preflight.reason ?? 'Yayın öncesi denetim geçilmedi.');
   if (input.running) return no('Zaten çalışan bir işlem var. İptal edin veya bitmesini bekleyin.');
   if (!input.hasWorkspace) return no('Önce bir çalışma klasörü açın.');
   if (!input.devices || input.devices.length === 0) return no('iPhone algılanmadı.');
