@@ -77,6 +77,16 @@ export function TerminalPanel({ kind, options, runKey, theme, onExit, onClose, o
     // One keystroke must reach the PTY as one small write (see terminalInput.ts).
     const send = createOrderedWriter((piece) => (id === null ? Promise.resolve() : ipc.ptyWrite(id, piece)));
     const input = term.onData(send);
+    // WebKitGTK keeps composed text (ı ş ğ …) in xterm's hidden textarea; stale content is then
+    // re-sent with later keystrokes and looks like a paste. Empty it once xterm has read it.
+    const ta = term.textarea;
+    const clearTa = () => {
+      setTimeout(() => {
+        if (ta && ta.value !== '') ta.value = '';
+      }, 0);
+    };
+    ta?.addEventListener('compositionend', clearTa);
+    ta?.addEventListener('input', clearTa);
     ipc
       .ptyOpen(kind, options, term.rows, term.cols, (ev) => {
         if (ev.kind === 'data') {
@@ -117,6 +127,8 @@ export function TerminalPanel({ kind, options, runKey, theme, onExit, onClose, o
       disposed = true;
       observer.disconnect();
       input.dispose();
+      ta?.removeEventListener('compositionend', clearTa);
+      ta?.removeEventListener('input', clearTa);
       if (id !== null) void ipc.ptyClose(id).catch(() => undefined);
       termRef.current = null;
       term.dispose();
