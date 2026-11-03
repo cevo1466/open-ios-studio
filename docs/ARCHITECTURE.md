@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **design (Milestone 0)**. Nothing below is implemented yet; see `STATUS.md`.
+Status: **implemented through M5 (v0.1.x)**; this page keeps the design intent. Where the code differs, `STATUS.md` and the ADRs under `docs/decisions/` win. Modules added after M5: `doctor.rs` (environment check), `skills.rs` (bundled agent skills, ADR-0015), `update.rs` (release check/download with checksum verification).
 
 ## Principles
 Hexagonal: domain logic has no Tauri/OS imports; ports are traits/interfaces; adapters talk to the OS, xtool, Git, AI providers. Tauri commands are a thin IPC layer. No abstraction without a second implementation or a test seam.

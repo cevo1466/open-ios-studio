@@ -84,28 +84,30 @@ function Shell({
   const { report, loading, error, onRun, onClose } = props;
   const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => closeRef.current?.focus(), []);
+  // Rendered inside the editor region like an editor tab (VS Code's Settings/Welcome views), not as a
+  // modal overlay: the side panel, status bar and bottom panel stay usable while the report is open.
   return (
-    <div className="pp-overlay" onMouseDown={onClose}>
-      <div
-        className="pp-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        onMouseDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') onClose();
-        }}
-      >
-        <header className="pp-head">
-          <h2 id={titleId}>{title}</h2>
-          <span className="pp-actions">
-            <button type="button" onClick={onRun} disabled={loading}>
-              {loading ? 'Analiz ediliyor…' : report ? 'Analizi yeniden çalıştır' : 'Analizi çalıştır'}
-            </button>
-            <button type="button" ref={closeRef} onClick={onClose}>Kapat</button>
-          </span>
-        </header>
-        <div className="pp-body">
+    <section
+      className="pp-view"
+      role="region"
+      aria-labelledby={titleId}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose();
+      }}
+    >
+      <header className="pp-head">
+        <h2 id={titleId}>{title}</h2>
+        <span className="pp-actions">
+          <button type="button" onClick={onRun} disabled={loading}>
+            {loading ? 'Analiz ediliyor…' : report ? 'Analizi yeniden çalıştır' : 'Analizi çalıştır'}
+          </button>
+          <button type="button" ref={closeRef} onClick={onClose} title="Görünümü kapat (Esc)">
+            Kapat
+          </button>
+        </span>
+      </header>
+      <div className="pp-body">
+        <div className="pp-content">
           <p className="pp-muted pp-note">Kural metinleri teknik kaynaklara bağlı olduğundan İngilizce gösterilir.</p>
           {error && <div className="pp-error" role="alert">Analiz başarısız oldu: {error}</div>}
           {!report && !error && (
@@ -120,12 +122,12 @@ function Shell({
           )}
           {report && children(report)}
         </div>
-        <footer className="pp-foot">
-          <p>Reddedilme riskini azaltır; App Store onayı garanti edilmez. App Review sonucuna yalnızca Apple karar verir.</p>
-          <p>Skor yok, kaynak düzeyinde kontroller: derlemenin başarılı olması App Store uyumluluğu anlamına gelmez.</p>
-        </footer>
       </div>
-    </div>
+      <footer className="pp-foot">
+        <p>Reddedilme riskini azaltır; App Store onayı garanti edilmez. App Review sonucuna yalnızca Apple karar verir.</p>
+        <p>Skor yok, kaynak düzeyinde kontroller: derlemenin başarılı olması App Store uyumluluğu anlamına gelmez.</p>
+      </footer>
+    </section>
   );
 }
 

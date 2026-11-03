@@ -38,10 +38,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Policy catalog schema and honesty checks
-        run: node scripts/validate-policies.mjs
-      - name: Release gate self-test
-        run: node scripts/policy-gate.mjs --self-test
+      - name: Policy catalog schema, honesty checks and release gate self-test
+        run: npm run validate:policies
       - name: Policy engine tests (rules, detectors, remediation, prompt context)
         run: npx vitest run src/policy
 
@@ -116,8 +114,20 @@ jobs:
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
       - run: cargo test --manifest-path src-tauri/Cargo.toml
 
+  shell:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: shellcheck (scripts/*.sh), runner-provided binary
+        run: shellcheck --version && shellcheck -S warning scripts/*.sh
+      - name: doctor script self-test and a run on the runner (must report the missing toolchain, exit 1)
+        run: |
+          bash scripts/doctor.sh --self-test
+          if NO_COLOR=1 bash scripts/doctor.sh; then echo "doctor unexpectedly passed on a runner without Swift/xtool"; exit 1; fi
+
   cargo-audit:
-    # Advisory job: failures are visible in the run but do not block merging yet.
+    # Advisory job: failures are visible in the run but do not block merging yet
+    # (RUSTSEC advisories for transitive Tauri dependencies often have no fix available).
     runs-on: ubuntu-22.04
     continue-on-error: true
     steps:
@@ -125,10 +135,5 @@ jobs:
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           toolchain: stable
-      - name: Skip until Cargo.lock is committed
-        if: hashFiles('src-tauri/Cargo.lock') == ''
-        run: echo "No Cargo.lock committed yet; cargo audit skipped (NOT VERIFIED)."
-      - if: hashFiles('src-tauri/Cargo.lock') != ''
-        run: cargo install cargo-audit --locked
-      - if: hashFiles('src-tauri/Cargo.lock') != ''
-        run: cargo audit --file src-tauri/Cargo.lock
+      - run: cargo install cargo-audit --locked
+      - run: cargo audit --file src-tauri/Cargo.lock

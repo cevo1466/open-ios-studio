@@ -130,7 +130,7 @@ fn tool_spec(program: &Path, args: &[&str], cwd: &Path, timeout: Duration) -> Sp
 }
 
 /// Run a short command and return its combined output, trimmed.
-fn probe(program: &Path, args: &[&str], cwd: &Path) -> Result<String, String> {
+pub(crate) fn probe(program: &Path, args: &[&str], cwd: &Path) -> Result<String, String> {
     let spec = tool_spec(program, args, cwd, DETECT_TIMEOUT);
     let mut lines: Vec<String> = Vec::new();
     let info = runner::run(&spec, &CancelToken::new(), |_: Stream, text| {

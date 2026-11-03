@@ -38,6 +38,7 @@ import type { EvaluationReport } from './policy/types';
 import { initialState, isDirty, reducer } from './state/store';
 import { buildReducer, initialBuildState } from './xtool/buildState';
 import { compatibility, parseAuthStatus, parseDevices, parseDiagnostics, parseSwiftVersion, parseXtoolVersion, redactLine } from './xtool/parse';
+import type { DoctorCheck } from './xtool/doctor';
 import type { Device, RunEvent, XtoolInfo, XtoolOp, XtoolRunArgs } from './xtool/types';
 
 const SIDEBAR_TITLES: Record<SidebarView, string> = {
@@ -92,6 +93,20 @@ export function App() {
   /** Build + install + launch on a device keeps its own log, shown as "Cihaz günlükleri". */
   const [deviceRun, deviceDispatch] = useReducer(buildReducer, initialBuildState);
   const [xtoolInfo, setXtoolInfo] = useState<XtoolInfo | null>(null);
+  const [doctor, setDoctor] = useState<DoctorCheck[] | null>(null);
+  const [doctorLoading, setDoctorLoading] = useState(false);
+  const [doctorError, setDoctorError] = useState<string | null>(null);
+  const runDoctor = useCallback(async () => {
+    setDoctorLoading(true);
+    setDoctorError(null);
+    try {
+      setDoctor(await ipc.envDoctor());
+    } catch (e) {
+      setDoctorError(String(e));
+    } finally {
+      setDoctorLoading(false);
+    }
+  }, []);
   const [xtoolLoading, setXtoolLoading] = useState(false);
   const [devices, setDevices] = useState<Device[] | null>(null);
   const [authText, setAuthText] = useState<string | null>(null);
@@ -498,7 +513,21 @@ export function App() {
         }
       : undefined;
   function openClaudeCode(remote?: RemoteSite) {
-    openTerminal('claude-code', { model: ai.settings.models['claude-cli'], effort: ai.settings.efforts['claude-cli'], skipPermissions: ai.settings.skipPermissions, remote });
+    const start = () =>
+      openTerminal('claude-code', { model: ai.settings.models['claude-cli'], effort: ai.settings.efforts['claude-cli'], skipPermissions: ai.settings.skipPermissions, remote });
+    if (!state.workspace) {
+      start();
+      return;
+    }
+    // The bundled skills (ios-app-xtool, mobile-ios-design, find-skills) go into .claude/skills first so
+    // Claude Code discovers them at start; a failure is shown but never blocks the session.
+    void ipc
+      .skillsInstallBundled()
+      .then((r) => {
+        if (r.installed.length > 0) setRefreshKey((k) => k + 1);
+      })
+      .catch((e: unknown) => setNotice(`Hazır skill'ler projeye kopyalanamadı: ${String(e)}`))
+      .finally(start);
   }
   if (terminal) {
     bottomTabs.push({
@@ -567,6 +596,7 @@ export function App() {
           view={view}
           desktop={desktop}
           terminalOpen={terminal !== null && bottomVisible && activeBottom === 'terminal'}
+          policyView={panel}
           onView={(v) => {
             if (v === 'build') openBuild();
             else if (v === 'devices') openDevices();
@@ -582,12 +612,12 @@ export function App() {
         />
 
         <aside className="sidebar" aria-label={SIDEBAR_TITLES[view]}>
-          <div className="side-title">{SIDEBAR_TITLES[view]}</div>
+          {view !== 'files' && <div className="side-title">{SIDEBAR_TITLES[view]}</div>}
           {view === 'files' && (
             <>
             <div className="files-head">
               <div className="files-title">
-                <span>Dosyalar</span>
+                <span>{SIDEBAR_TITLES.files}</span>
                 <span className="files-tools">
                   <button type="button" className="icon-btn" onClick={() => setRefreshKey((k) => k + 1)} disabled={!hasWorkspace} aria-label="Dosya listesini yenile" title="Dosya listesini yenile">
                     <IconRefresh />
@@ -661,6 +691,10 @@ export function App() {
               diagnostics={diagnostics}
               deviceName={selectedDevice?.name ?? null}
               installBlocked={installCheck.reason}
+              doctor={doctor}
+              doctorLoading={doctorLoading}
+              doctorError={doctorError}
+              onDoctor={() => void runDoctor()}
               onRedetect={() => void detectXtool()}
               onRun={(op, args) => void runXtool(op, args)}
               onInstall={(configuration) => void runXtool('run-device', { configuration, udid: selectedUdid ?? undefined })}
@@ -748,6 +782,15 @@ export function App() {
               onRevealParent={() => void ipc.revealPath(binary.path, true).catch((e: unknown) => setBinary({ ...binary, error: String(e) }))}
               onShowArtifacts={() => setRevealArtifacts((n) => n + 1)}
               onClose={() => setBinary(null)}
+            />
+          ) : panel ? (
+            <PolicyPanel
+              which={panel}
+              report={report}
+              loading={analysing}
+              error={analysisError}
+              onRun={() => void runAnalysis()}
+              onClose={() => setPanel(null)}
             />
           ) : state.tabs.length === 0 ? (
             <WelcomeScreen
@@ -897,17 +940,7 @@ export function App() {
           }}
         />
       )}
-      {showSettings && <SettingsDialog settings={settings} onChange={setSettings} onClose={() => setShowSettings(false)} />}
-      {panel && (
-        <PolicyPanel
-          which={panel}
-          report={report}
-          loading={analysing}
-          error={analysisError}
-          onRun={() => void runAnalysis()}
-          onClose={() => setPanel(null)}
-        />
-      )}
+      {showSettings && <SettingsDialog settings={settings} desktop={desktop} onChange={setSettings} onClose={() => setShowSettings(false)} />}
       {showPalette && <CommandPalette commands={commands} onClose={() => setShowPalette(false)} />}
     </div>
     </ThemeContext.Provider>

@@ -96,7 +96,7 @@ test.describe('with fake desktop backend', () => {
   test('App Store Readiness reports unverified rules without a score', async ({ page }) => {
     await openWorkspace(page);
     await page.getByRole('button', { name: /^App Store hazırlığı/ }).click();
-    const dialog = page.getByRole('dialog', { name: 'App Store Hazırlığı' });
+    const dialog = page.getByRole('region', { name: 'App Store Hazırlığı' });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByText('yalnızca Apple karar verir')).toBeVisible();
 

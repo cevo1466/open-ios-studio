@@ -92,6 +92,44 @@ export async function installFakeTauri(page: Page): Promise<void> {
       ai_cancel: () => null,
       cli_status: () => ({ installed: true, loggedIn: false, detail: 'Not logged in' }),
       cli_login_terminal: () => 'xterm',
+      env_doctor: () => [
+        { id: 'swift', status: 'PASS', detail: 'Swift version 6.1' },
+        { id: 'darwin-sdk', status: 'FAIL', detail: "no 'darwin' SDK installed" },
+        { id: 'xtool', status: 'PASS', detail: '1.24.0 (tested)' },
+        { id: 'xtool-sdk', status: 'FAIL', detail: 'Not installed' },
+        { id: 'apple-account', status: 'WARN', detail: 'Logged out' },
+        { id: 'device', status: 'WARN', detail: 'no iPhone connected' },
+        { id: 'usbmuxd', status: 'PASS', detail: 'installed' },
+        { id: 'git', status: 'PASS', detail: 'installed' },
+      ],
+      update_check: () => ({
+        current: '0.1.9',
+        latest: '0.2.0',
+        newer: true,
+        prerelease: true,
+        publishedAt: '2026-11-02T10:00:00Z',
+        htmlUrl: 'https://github.com/cevo1466/open-ios-studio/releases/tag/v0.2.0',
+        assets: [
+          { name: 'Open-iOS-Studio_0.2.0_amd64.deb', size: 12_000_000, kind: 'deb' },
+          { name: 'Open-iOS-Studio_0.2.0_amd64.AppImage', size: 90_000_000, kind: 'app-image' },
+          { name: 'SHA256SUMS.txt', size: 200, kind: 'checksums' },
+        ],
+        installKind: 'deb',
+      }),
+      update_download: (a: Args) => {
+        const deb = a?.kind === 'deb';
+        const name = `Open-iOS-Studio_0.2.0_amd64.${deb ? 'deb' : 'AppImage'}`;
+        return {
+          path: `/home/demo/Downloads/${name}`,
+          name,
+          sha256: 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+          installCommand: deb ? `cd "/home/demo/Downloads" && sudo apt install ./${name}` : null,
+          canReplaceRunningAppimage: false,
+        };
+      },
+      update_apply_appimage: () => '/home/demo/Open.AppImage',
+      update_reveal: () => null,
+      skills_install_bundled: () => ({ installed: ['.claude/skills/ios-app-xtool/SKILL.md'], unchanged: [], kept: [] }),
       pty_open: () => 1,
       pty_write: () => null,
       pty_resize: () => null,

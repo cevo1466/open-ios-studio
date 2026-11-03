@@ -1,0 +1,7 @@
+# The repository owner reviews every change; security-sensitive areas are listed explicitly
+# so that the requirement is visible in the pull request.
+*                       @cevo1466
+/src-tauri/             @cevo1466
+/policies/              @cevo1466
+/.github/workflows/     @cevo1466
+/SECURITY.md            @cevo1466
