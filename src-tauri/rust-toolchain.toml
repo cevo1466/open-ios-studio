@@ -1,0 +1,5 @@
+# Pins the toolchain channel for contributors who use rustup; CI installs the same channel.
+# Keep `rust-version` in Cargo.toml in sync with the oldest version that must still compile.
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]

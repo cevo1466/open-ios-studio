@@ -7,12 +7,12 @@ Thanks for helping. Read `CLAUDE.md` (hard rules), `docs/STATUS.md`, `docs/ROADM
 ```sh
 npm ci
 npm run dev        # Vite dev server
-npm run typecheck
-npm run lint
-npm test           # Vitest
-npm run build
-node scripts/validate-policies.mjs
+npm run verify     # typecheck, lint, Vitest, build, policy catalogs (what CI's web job runs)
+npm run e2e        # Playwright against a mocked Tauri IPC
+npm run doctor     # environment check for building iOS apps (scripts/doctor.sh)
 ```
+
+Shell scripts under `scripts/` must pass `shellcheck -S warning` (CI job `shell`).
 
 The desktop shell needs Rust and the Tauri 2 Linux libraries (`libwebkit2gtk-4.1-dev`, `libdbus-1-dev`, `pkg-config` and others; see `.github/workflows/ci.yml` for the exact list). Then:
 

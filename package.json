@@ -11,7 +11,10 @@
     "lint": "eslint .",
     "test": "vitest run",
     "tauri": "tauri",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "validate:policies": "node scripts/validate-policies.mjs && node scripts/policy-gate.mjs --self-test",
+    "doctor": "bash scripts/doctor.sh",
+    "verify": "npm run typecheck && npm run lint && npm test && npm run build && npm run validate:policies"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -39,5 +42,8 @@
   },
   "overrides": {
     "dompurify": "^3.4.17"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
