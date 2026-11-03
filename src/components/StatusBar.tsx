@@ -8,6 +8,8 @@ export interface StatusBarProps {
   swift: string | null;
   device: string | null;
   ai: { label: string; state: string; tone: SessionTone };
+  /** The Swift language server segment (desktop only). */
+  lsp?: { label: string; tone: Tone; title?: string; onClick?: () => void };
   errors: number;
   warnings: number;
   panelAvailable: boolean;
@@ -58,6 +60,11 @@ export function StatusBar(p: StatusBarProps) {
         <Seg tone={aiTone} onClick={p.onAi} title="Yapay zekâ ayarlarını aç">
           {p.ai.label} · {p.ai.state}
         </Seg>
+        {p.lsp && (
+          <Seg tone={p.lsp.tone} title={p.lsp.title ?? 'Swift dil sunucusu (sourcekit-lsp)'} onClick={p.lsp.onClick}>
+            {p.lsp.label}
+          </Seg>
+        )}
         <Seg onClick={p.onProblems} title="Sorunları göster">
           <span className={p.errors > 0 ? 'sb-err' : undefined}>{p.errors} hata</span>
           <span className={p.warnings > 0 ? 'sb-warn' : undefined}>{p.warnings} uyarı</span>

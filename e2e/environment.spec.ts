@@ -167,3 +167,25 @@ test('views open as editor tabs next to files', async ({ page }) => {
   await page.getByRole('button', { name: 'Package.swift sekmesini kapat' }).click();
   await expect(page.getByRole('heading', { name: 'Open iOS Studio' })).toBeVisible();
 });
+
+test('Swift language support starts for the workspace and lists server diagnostics', async ({ page }) => {
+  await openWorkspace(page);
+  await expect(page.locator('.status').getByText('Swift LSP: çalışıyor')).toBeVisible();
+  expect((await calls(page)).filter((c) => c.cmd === 'lsp_start')).toHaveLength(1);
+
+  // A Swift file is announced to the server; the fake answers with one diagnostic for it.
+  await page.getByRole('tree').getByRole('button', { name: 'Sources', exact: true }).click();
+  await page.getByRole('tree').getByRole('button', { name: 'Demo', exact: true }).click();
+  await page.getByRole('tree').getByRole('button', { name: 'ContentView.swift', exact: true }).click();
+  await expect(page.locator('.monaco-editor').first()).toBeVisible();
+  const didOpens = async () => (await calls(page)).filter((c) => c.cmd === 'lsp_send' && String(c.args.json).includes('textDocument/didOpen'));
+  await expect.poll(async () => (await didOpens()).length).toBe(1);
+  expect(String((await didOpens())[0].args.json)).toContain('file:///work/demo/Sources/Demo/ContentView.swift');
+  await page.getByRole('tab', { name: /Sorunlar/ }).click();
+  await expect(page.getByRole('list', { name: 'Sorunlar' })).toContainText('unused variable (sourcekit-lsp)');
+
+  // A non-Swift file is never sent to the server.
+  await page.getByRole('tree').getByRole('button', { name: 'xtool.yml', exact: true }).click();
+  await expect(page.getByRole('tab', { name: /xtool\.yml/ })).toHaveAttribute('aria-selected', 'true');
+  expect(await didOpens()).toHaveLength(1);
+});

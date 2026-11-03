@@ -15,6 +15,7 @@ function ctx(overrides: Partial<CommandContext> = {}): CommandContext {
     openView: vi.fn(),
     runPreflight: vi.fn(),
     runDoctor: vi.fn(),
+    restartLsp: vi.fn(),
     claudeCode: vi.fn(),
     bottom: vi.fn(),
     redetect: vi.fn(),
@@ -87,5 +88,7 @@ describe('buildCommands', () => {
     expect(c.actions.bottom).toHaveBeenCalledWith('problems');
     byId('updates').run();
     expect(c.actions.settings).toHaveBeenCalled();
+    byId('lsp-restart').run();
+    expect(c.actions.restartLsp).toHaveBeenCalled();
   });
 });

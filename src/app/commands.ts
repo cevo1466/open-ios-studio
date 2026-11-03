@@ -20,6 +20,7 @@ export interface CommandActions {
   openView(id: ViewId): void;
   runPreflight(): void;
   runDoctor(): void;
+  restartLsp(): void;
   claudeCode(): void;
   bottom(tab: BottomTabId): void;
   redetect(): void;
@@ -55,6 +56,7 @@ export function buildCommands(ctx: CommandContext): Command[] {
     { id: 'view-preflight', title: 'Yayın öncesi denetimi aç', enabled: true, run: () => a.openView('preflight') },
     { id: 'preflight-run', title: 'Yayın öncesi denetimi çalıştır', enabled: project, run: a.runPreflight },
     { id: 'doctor', title: 'Ortamı denetle', enabled: desktop, run: a.runDoctor },
+    { id: 'lsp-restart', title: "Swift LSP'yi yeniden başlat", enabled: project, run: a.restartLsp },
     { id: 'updates', title: 'Güncellemeleri denetle', enabled: true, run: a.settings },
     { id: 'claude-code', title: "Claude Code'u projeyle aç", enabled: project, run: a.claudeCode },
     { id: 'bottom-output', title: 'Alt panel: Çıktı', enabled: desktop, run: () => a.bottom('output') },

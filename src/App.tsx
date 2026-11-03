@@ -29,6 +29,7 @@ import { buildCommands } from './app/commands';
 import { useCloseGuard } from './app/useCloseGuard';
 import { usePreflight } from './app/usePreflight';
 import { useXtool } from './app/useXtool';
+import { useSwiftLsp } from './app/useSwiftLsp';
 import { PreflightView } from './components/PreflightView';
 import { REPORT_MD } from './preflight';
 import { CloseGuardDialog } from './components/CloseGuard';
@@ -125,6 +126,7 @@ export function App() {
     diagnostics,
     parsedVersion,
   } = xt;
+  const swift = useSwiftLsp({ workspace: state.workspace, desktop, tabs: state.tabs });
 
   const themeDef = resolveTheme(settings.theme, prefersDark);
   const theme = themeDef.mode;
@@ -174,14 +176,16 @@ export function App() {
         return;
       }
       try {
-        dispatch({ type: 'open', path, content: await ipc.readFile(path) });
+        const content = await ipc.readFile(path);
+        dispatch({ type: 'open', path, content });
+        swift.notifyOpen(path, content);
         setNotice(null);
       } catch (e) {
         if (isNotTextError(String(e))) setBinary({ path, kind: 'binary', error: null });
         else fail(`Dosya açılamadı (${path}): ${String(e)}`);
       }
     },
-    [state.tabs, fail],
+    [state.tabs, fail, swift],
   );
 
   const save = useCallback(async () => {
@@ -231,17 +235,21 @@ export function App() {
   const dirtyPaths = useMemo(() => state.tabs.filter(isDirty).map((t) => t.path), [state.tabs]);
   const openPaths = useMemo(() => state.tabs.map((t) => t.path), [state.tabs]);
 
-  const onApplied = useCallback(async (paths: string[]) => {
-    setRefreshKey((k) => k + 1);
-    for (const path of paths) {
-      try {
-        const content = await ipc.readFile(path);
-        dispatch({ type: 'reloaded', path, content });
-      } catch {
-        /* file not open or unreadable: the explorer refresh is enough */
+  const onApplied = useCallback(
+    async (paths: string[]) => {
+      setRefreshKey((k) => k + 1);
+      for (const path of paths) {
+        try {
+          const content = await ipc.readFile(path);
+          dispatch({ type: 'reloaded', path, content });
+          swift.notifyChange(path, content);
+        } catch {
+          /* file not open or unreadable: the explorer refresh is enough */
+        }
       }
-    }
-  }, []);
+    },
+    [swift],
+  );
 
   const ai = useAi({
     workspace: state.workspace,
@@ -264,8 +272,9 @@ export function App() {
       const tab = state.tabs.find((t) => t.path === path);
       if (tab && isDirty(tab) && !window.confirm(`${path} dosyasında kaydedilmemiş değişiklikler var. Yine de kapatılsın mı?`)) return;
       dispatch({ type: 'close', path });
+      swift.notifyClose(path);
     },
-    [state.tabs],
+    [state.tabs, swift],
   );
 
   /** Ctrl+W: the view in front, else the active file (dirty files still ask). */
@@ -343,6 +352,7 @@ export function App() {
           openView: (id) => dispatch({ type: 'openView', id }),
           runPreflight: () => void pf.run(),
           runDoctor: () => void runDoctor(),
+          restartLsp: () => swift.restart(),
           claudeCode: () => openClaudeCode(),
           bottom: (tab) => showBottom(tab),
           redetect: () => void detectXtool(),
@@ -350,7 +360,7 @@ export function App() {
       }),
     // openTerminal/openClaudeCode are plain functions of the render; the list is rebuilt on these inputs only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [desktop, hasWorkspace, chatOpen, terminal, openFolder, theme, openBuild, openDevices, pf.run, runDoctor, showBottom, detectXtool],
+    [desktop, hasWorkspace, chatOpen, terminal, openFolder, theme, openBuild, openDevices, pf.run, runDoctor, showBottom, detectXtool, swift.restart],
   );
 
   const errorCount = diagnostics.filter((d) => d.severity === 'error').length;
@@ -372,28 +382,34 @@ export function App() {
   const session = sessionState({ provider: ai.settings.provider, keyStored: ai.keyStored, cliStatus: ai.cliStatus });
 
   // Bottom panel tabs, in a fixed order: Çıktı, Sorunlar, Terminal, Cihaz günlükleri.
+  // Server (sourcekit-lsp) rows join the build rows in Sorunlar; they never change the build counts.
+  const lspCount = swift.diagnostics.length;
+  const allDiagnostics = lspCount === 0 ? diagnostics : [...diagnostics, ...swift.diagnostics];
+  const problemsBadge =
+    [errorCount > 0 ? `${errorCount} hata` : warningCount > 0 ? `${warningCount} uyarı` : null, lspCount > 0 ? `${lspCount} LSP` : null].filter(Boolean).join(' · ') || undefined;
   const bottomTabs: BottomTab[] = [];
-  if (buildOpen) {
-    bottomTabs.push({
-      id: 'output',
-      label: 'Çıktı',
-      badge: build.running ? 'çalışıyor' : undefined,
-      tone: build.running ? 'busy' : undefined,
-      content: (
-        <LogView
-          state={build}
-          emptyText="Henüz çıktı yok. Derle bölümünden “Derle ve Yükle” ya da “Yalnızca derle”ye basın."
-          onClear={() => buildDispatch({ type: 'clear' })}
-          onCancel={() => void ipc.xtoolCancel()}
-        />
-      ),
-    });
+  if (buildOpen || lspCount > 0) {
+    if (buildOpen)
+      bottomTabs.push({
+        id: 'output',
+        label: 'Çıktı',
+        badge: build.running ? 'çalışıyor' : undefined,
+        tone: build.running ? 'busy' : undefined,
+        content: (
+          <LogView
+            state={build}
+            emptyText="Henüz çıktı yok. Derle bölümünden “Derle ve Yükle” ya da “Yalnızca derle”ye basın."
+            onClear={() => buildDispatch({ type: 'clear' })}
+            onCancel={() => void ipc.xtoolCancel()}
+          />
+        ),
+      });
     bottomTabs.push({
       id: 'problems',
       label: 'Sorunlar',
-      badge: errorCount > 0 ? `${errorCount} hata` : warningCount > 0 ? `${warningCount} uyarı` : undefined,
-      tone: errorCount > 0 ? 'error' : warningCount > 0 ? 'warn' : undefined,
-      content: <ProblemsList diagnostics={diagnostics} onOpenFile={(path) => void openFile(path)} />,
+      badge: problemsBadge,
+      tone: errorCount > 0 ? 'error' : warningCount > 0 || lspCount > 0 ? 'warn' : undefined,
+      content: <ProblemsList diagnostics={allDiagnostics} onOpenFile={(path) => void openFile(path)} />,
     });
   }
   const claudeCodeLabel = `Claude Code'u projeyle aç (${describeChoice('claude-cli', ai.settings.models['claude-cli'], ai.settings.efforts['claude-cli']) || 'varsayılan model'})`;
@@ -737,8 +753,12 @@ export function App() {
             fontSize={settings.fontSize}
             onActivate={(path) => dispatch({ type: 'activate', path })}
             onClose={closeTab}
-            onChange={(path, content) => dispatch({ type: 'edit', path, content })}
+            onChange={(path, content) => {
+              dispatch({ type: 'edit', path, content });
+              swift.notifyChange(path, content);
+            }}
             onSave={() => void saveRef.current()}
+            onEditorMount={swift.attach}
           />
           )}
           </div>
@@ -835,6 +855,7 @@ export function App() {
         swift={parseSwiftVersion(xtoolInfo?.swiftVersionOutput ?? '')}
         device={selectedDevice?.name ?? null}
         ai={{ label: PROVIDER_LABELS[ai.settings.provider], state: session.label, tone: session.tone }}
+        lsp={desktop && hasWorkspace ? { ...swift.status, onClick: swift.restart } : undefined}
         errors={errorCount}
         warnings={warningCount}
         panelAvailable={bottomTabs.length > 0}

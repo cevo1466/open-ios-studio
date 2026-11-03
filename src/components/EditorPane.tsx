@@ -38,9 +38,11 @@ interface Props {
   onCloseView: (id: ViewId) => void;
   onChange: (path: string, content: string) => void;
   onSave: () => void;
+  /** Called once per editor mount with the Monaco instance (language providers register here). */
+  onEditorMount?: (editor: Parameters<OnMount>[0], monaco: Parameters<OnMount>[1]) => void;
 }
 
-export function EditorPane({ tabs, active, views, activeView, viewContent, theme, fontSize, onActivate, onClose, onActivateView, onCloseView, onChange, onSave }: Props) {
+export function EditorPane({ tabs, active, views, activeView, viewContent, theme, fontSize, onActivate, onClose, onActivateView, onCloseView, onChange, onSave, onEditorMount }: Props) {
   const themeDef = useThemeDef(theme);
   const current = activeView === null ? tabs.find((t) => t.path === active) : undefined;
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
@@ -100,6 +102,7 @@ export function EditorPane({ tabs, active, views, activeView, viewContent, theme
           onMount={(editor, monaco) => {
             editorRef.current = editor;
             editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, onSave);
+            onEditorMount?.(editor, monaco);
           }}
         />
       ) : (

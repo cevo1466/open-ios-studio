@@ -1,5 +1,6 @@
 import { Channel, invoke } from '@tauri-apps/api/core';
 import type { AiEvent, ChatRequest, CliProviderId, CliStatus, ModelInfo, ProviderId, PtyEvent, PtyKind, PtyOptions } from './ai/types';
+import type { LspEvent, LspStarted } from './lsp/types';
 import type { PngHeader } from './preflight/icon';
 import type { DoctorCheck } from './xtool/doctor';
 import type { RunEvent, XtoolInfo, XtoolOp, XtoolRunArgs } from './xtool/types';
@@ -102,4 +103,12 @@ export const ipc = {
   updateApplyAppimage: (path: string, sha256: string) => invoke<string>('update_apply_appimage', { path, sha256 }),
   updateReveal: (path: string) => invoke<void>('update_reveal', { path }),
   createFile: (path: string) => invoke<void>('create_file', { path }),
+  /** Starts sourcekit-lsp for the open workspace; frames arrive on `onEvent` (ADR: stdio relay). */
+  lspStart: (onEvent: (event: LspEvent) => void) => {
+    const channel = new Channel<LspEvent>();
+    channel.onmessage = onEvent;
+    return invoke<LspStarted>('lsp_start', { onEvent: channel });
+  },
+  lspSend: (id: number, json: string) => invoke<void>('lsp_send', { id, json }),
+  lspStop: () => invoke<void>('lsp_stop'),
 };
