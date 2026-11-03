@@ -1,5 +1,15 @@
 # Status
 
+## Unreleased (branch claude/pensive-brown-a2ijs2, 2026-11-03): launch-readiness slice 1
+- **Environment check**: Rust `doctor.rs` + Derle panel section "Ortam denetimi" (Swift, Darwin SDK, xtool version vs tested 1.24.0, SDK status, Apple account, iPhone, usbmuxd, git) with Turkish fix hints; `scripts/doctor.sh` for terminals (`npm run doctor`), self-tested and shellchecked in CI. Classification is unit-tested against the 1.24.0 fixture strings; a real machine run is NOT VERIFIED here (no Swift/xtool in the dev container).
+- **Bundled agent skills** (ADR-0015): `skills/` vendored (`find-skills` from vercel-labs/skills, `mobile-ios-design` from wshobson/agents, both MIT, pinned commits + SHA-256 in `SOURCE.md`) plus our `ios-app-xtool`; embedded at compile time and copied into `<project>/.claude/skills/` when Claude Code is opened (edited files kept). Rust tests cover install/keep/report; that Claude Code actually loads them on the owner's machine is NOT VERIFIED.
+- **Updates from the app**: `update.rs` queries the GitHub releases of this repository (pre-releases included), downloads DEB/AppImage into Downloads, verifies against `SHA256SUMS.txt`, offers the `apt` command or replaces the running AppImage in place. Pure parts are unit-tested; the network path is NOT VERIFIED (no live release with the new asset layout was downloaded from this session).
+- **UI (VS Code parity, step 1)**: duplicate "DOSYALAR" title removed; App Store Hazırlığı / Güvenlik Merkezi render inside the editor region (non-modal, activity bar shows the active state); E2E covers both; screenshots taken against the mocked IPC.
+- **Repo hygiene**: `.editorconfig`, `.nvmrc`, `rust-toolchain.toml`, Dependabot (npm/cargo/actions, weekly, grouped), CODEOWNERS, feature-request issue template + security contact link, `npm run verify`, CI `shell` job, cargo-audit job simplified (Cargo.lock exists).
+- **Docs**: `docs/ENVIRONMENT.md` (what Linux can/cannot do, install order, troubleshooting, paid Apple Developer Program needed for App Store), README update/check sections, ROADMAP statuses corrected (M0–M2 were still ☐) and M6 added, ARCHITECTURE header no longer claims "nothing implemented".
+- Known: `src-tauri/Cargo.lock` on main is incomplete for the current Cargo.toml (a fresh resolve adds ~1300 lines); this branch commits the regenerated lock because `sha2` was added. PR #41 touches the same file and will need a re-resolve on merge.
+- Owner's remaining asks, not in this slice: pre-submission test agent, full VS Code-style editor tabs for views, Turkish-terminal confirmation, App Store upload (PR #41).
+
 ## v0.1.9 (pre-release): UTF-8 locale for terminal sessions (PR #39)
 - Owner reported stray spaces when typing Turkish characters in the embedded Claude terminal. PTY sessions now always get a UTF-8 locale. The cause is a hypothesis (not reproduced; Chromium test shows the frontend forwards Turkish text unchanged). NOT VERIFIED on a real desktop.
 
@@ -41,7 +51,7 @@
 **v0.1.0 (pre-release)**: https://github.com/cevo1466/open-ios-studio/releases/tag/v0.1.0 — `Open-iOS-Studio_0.1.0_amd64.deb`, `Open-iOS-Studio_0.1.0_amd64.AppImage`, `SHA256SUMS.txt` (checksums re-verified after downloading the published assets). Published by `release.yml` after verify and bundle jobs passed.
 **NOT VERIFIED:** that the app window opens on a real Linux desktop (no display in CI or on the dev host). Please try the DEB/AppImage on Linux Mint and report.
 
-Last updated: 2026-10-31
+Last updated: 2026-11-03
 
 ## M4 + M5 (this PR)
 - Devices panel: `xtool devices --no-wait`, `auth status`, run on device (`dev run`), launch by bundle id; UDID/bundle id validated in Rust. Device output format is from xtool source (no device in CI): NOT VERIFIED on hardware. Device-dependent tests are BLOCKED.
@@ -62,7 +72,7 @@ Last updated: 2026-10-31
 - rustfmt patch artifact step added to CI (uploads a patch when formatting fails).
 
 ## Current stage
-Policy Engine core (branch `feature/policy-engine-core`). M0 (#1) and M1 (#13) are merged.
+Launch readiness (M6 in ROADMAP.md). M0–M5 are merged; the App Store release pipeline is in PR #41 (feature/appstore-release).
 
 ## Policy Engine — what exists
 - Catalogs: `policies/app-store.rules.json` (ASR-001..024), `policies/mobile-security.rules.json` (MSEC-001..026), schema `policies/schema/rule.schema.json`, validated by `scripts/validate-policies.mjs` (CI job `policy`).
