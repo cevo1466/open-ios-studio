@@ -26,6 +26,7 @@ import { ChatPanel } from './components/ChatPanel';
 import { DevicesPanel } from './components/DevicesPanel';
 import { AppStoreReadiness, SecurityCenter } from './components/PolicyPanels';
 import { buildCommands } from './app/commands';
+import { useCloseGuard } from './app/useCloseGuard';
 import { usePreflight } from './app/usePreflight';
 import { PreflightView } from './components/PreflightView';
 import { REPORT_MD } from './preflight';
@@ -34,7 +35,7 @@ import { WelcomeScreen } from './components/WelcomeScreen';
 import { BinaryCard } from './components/BinaryCard';
 import { classifyPath, isNotTextError, type FileKind } from './files/kind';
 import { SettingsDialog } from './components/SettingsDialog';
-import { dirtyTabs, saveAllDirty } from './state/closeGuard';
+import { dirtyTabs } from './state/closeGuard';
 import { inDesktopApp, ipc } from './ipc';
 import { loadSettings, saveSettings, type Settings } from './settings';
 import { analyzeProject } from './policy';
@@ -366,68 +367,7 @@ export function App() {
     if (target.kind === 'view') dispatch({ type: 'closeView', id: target.id });
     else closeTab(target.path);
   };
-  const tabsRef = useRef(state.tabs);
-  useEffect(() => {
-    tabsRef.current = state.tabs;
-  }, [state.tabs]);
-  const [closePrompt, setClosePrompt] = useState(false);
-  const [closeBusy, setCloseBusy] = useState(false);
-  const [closeError, setCloseError] = useState<string | null>(null);
-
-  // Ask before the window closes with unsaved changes (desktop app only).
-  useEffect(() => {
-    if (!desktop) return;
-    let cancelled = false;
-    let unlisten: (() => void) | undefined;
-    import('@tauri-apps/api/window')
-      .then(({ getCurrentWindow }) =>
-        getCurrentWindow().onCloseRequested((event) => {
-          if (dirtyTabs(tabsRef.current).length > 0) {
-            event.preventDefault();
-            setClosePrompt(true);
-          }
-        }),
-      )
-      .then((fn) => {
-        if (cancelled) fn();
-        else unlisten = fn;
-      })
-      .catch(() => {
-        /* window API unavailable: closing is not guarded */
-      });
-    return () => {
-      cancelled = true;
-      unlisten?.();
-    };
-  }, [desktop]);
-
-  const forceClose = async () => {
-    try {
-      const { getCurrentWindow } = await import('@tauri-apps/api/window');
-      await getCurrentWindow().destroy();
-    } catch (e) {
-      setCloseBusy(false);
-      setCloseError(`Pencere kapatılamadı: ${String(e)}`);
-    }
-  };
-
-  const saveAndClose = async () => {
-    setCloseBusy(true);
-    setCloseError(null);
-    const result = await saveAllDirty(state.tabs, ipc.writeFile);
-    for (const s of result.saved) dispatch({ type: 'saved', path: s.path, content: s.content });
-    if (result.failed.length > 0) {
-      setCloseBusy(false);
-      setCloseError(`Kaydedilemedi: ${result.failed.map((f) => `${f.path} (${f.error})`).join(', ')}`);
-      return;
-    }
-    await forceClose();
-  };
-
-  const discardAndClose = () => {
-    setCloseBusy(true);
-    void forceClose();
-  };
+  const closeGuard = useCloseGuard(desktop, state.tabs, dispatch);
 
   const createFile = useCallback(
     async (name: string) => {
@@ -999,17 +939,14 @@ export function App() {
         }}
         onTogglePanel={() => toggleBottomRef.current()}
       />
-      {closePrompt && (
+      {closeGuard.prompt && (
         <CloseGuardDialog
           dirty={dirtyTabs(state.tabs)}
-          busy={closeBusy}
-          error={closeError}
-          onSaveAndClose={() => void saveAndClose()}
-          onDiscardAndClose={discardAndClose}
-          onCancel={() => {
-            setClosePrompt(false);
-            setCloseError(null);
-          }}
+          busy={closeGuard.busy}
+          error={closeGuard.error}
+          onSaveAndClose={() => void closeGuard.saveAndClose()}
+          onDiscardAndClose={closeGuard.discardAndClose}
+          onCancel={closeGuard.cancel}
         />
       )}
       {showSettings && <SettingsDialog settings={settings} desktop={desktop} onChange={setSettings} onClose={() => setShowSettings(false)} />}
