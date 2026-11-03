@@ -26,9 +26,9 @@ import { ChatPanel } from './components/ChatPanel';
 import { DevicesPanel } from './components/DevicesPanel';
 import { AppStoreReadiness, SecurityCenter } from './components/PolicyPanels';
 import { buildCommands } from './app/commands';
-import { PreflightView, type StepProgress } from './components/PreflightView';
-import { fingerprintFiles, gateInstall, iconHeaderString, readXtoolConfig, runPreflight, REPORT_JSON, REPORT_MD, type PreflightReport } from './preflight';
-import { loadCatalogs } from './policy/catalog';
+import { usePreflight } from './app/usePreflight';
+import { PreflightView } from './components/PreflightView';
+import { REPORT_MD } from './preflight';
 import { CloseGuardDialog } from './components/CloseGuard';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { BinaryCard } from './components/BinaryCard';
@@ -62,12 +62,9 @@ export function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
   const [newName, setNewName] = useState<string | null>(null);
-  const [preflight, setPreflight] = useState<PreflightReport | null>(null);
-  const [preflightRunning, setPreflightRunning] = useState(false);
-  const [preflightProgress, setPreflightProgress] = useState<StepProgress>({});
-  const [preflightError, setPreflightError] = useState<string | null>(null);
-  /** Fingerprint of the files as they are now; compared with the report's to detect staleness. */
-  const [currentFingerprint, setCurrentFingerprint] = useState<string | null>(null);
+  const onReportWritten = useCallback(() => setRefreshKey((k) => k + 1), []);
+  const pf = usePreflight({ workspace: state.workspace, dispatch, onReportWritten });
+  const refreshFingerprint = pf.refreshFingerprint;
   const [report, setReport] = useState<EvaluationReport | null>(null);
   const [analysing, setAnalysing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -145,46 +142,6 @@ export function App() {
   }, [themeDef, settings]);
 
   const fail = useCallback((message: string) => setNotice(message), []);
-
-  const refreshFingerprint = useCallback(async () => {
-    if (!state.workspace) {
-      setCurrentFingerprint(null);
-      return;
-    }
-    try {
-      const scan = await ipc.scanWorkspace();
-      const cfg = readXtoolConfig(scan.files);
-      const header = await ipc.readPngHeader(cfg.iconPath).catch(() => null);
-      setCurrentFingerprint(await fingerprintFiles(scan.files, iconHeaderString(header)));
-    } catch {
-      setCurrentFingerprint(null);
-    }
-  }, [state.workspace]);
-
-  // A workspace change drops the old report, reloads the persisted one and fingerprints the files.
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      setPreflight(null);
-      setPreflightProgress({});
-      setPreflightError(null);
-      setCurrentFingerprint(null);
-      if (!state.workspace) return;
-      try {
-        const json = await ipc.readFileIfExists(REPORT_JSON);
-        if (!cancelled && json) {
-          const parsed = JSON.parse(json) as PreflightReport;
-          if (parsed && parsed.version === 1 && Array.isArray(parsed.steps)) setPreflight(parsed);
-        }
-      } catch {
-        /* an unreadable report simply counts as "not run" */
-      }
-      if (!cancelled) await refreshFingerprint();
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [state.workspace, refreshFingerprint]);
 
   const openFolder = useCallback(async () => {
     if (state.tabs.some(isDirty) && !window.confirm('Discard unsaved changes and open another folder?')) return;
@@ -294,57 +251,6 @@ export function App() {
     [showBottom, refreshFingerprint],
   );
 
-  /** The pre-submission check: six steps, a verdict, and the report written into the workspace. */
-  const runPreflightNow = useCallback(async () => {
-    if (!state.workspace) {
-      setPreflightError('Önce bir klasör açın.');
-      dispatch({ type: 'openView', id: 'preflight' });
-      return;
-    }
-    setPreflightRunning(true);
-    setPreflightError(null);
-    setPreflightProgress({});
-    dispatch({ type: 'openView', id: 'preflight' });
-    try {
-      const report = await runPreflight(
-        {
-          project: '',
-          scan: () => ipc.scanWorkspace(),
-          runOp: async (op, args, onLine) => {
-            const lines: string[] = [];
-            let code: number | null = null;
-            let timedOut = false;
-            let cancelled = false;
-            await ipc.xtoolRun(op, args, (e) => {
-              if (e.kind === 'line') {
-                const text = redactLine(e.text);
-                lines.push(text);
-                onLine(text);
-              } else {
-                code = e.code;
-                timedOut = e.timedOut;
-                cancelled = e.cancelled;
-              }
-            });
-            return { code, lines, timedOut, cancelled };
-          },
-          readPng: (path) => ipc.readPngHeader(path).catch(() => null),
-          writeFile: (path, content) => ipc.applyFile(path, content),
-          analyze: analyzeProject,
-          rules: loadCatalogs,
-          now: () => new Date().toISOString(),
-        },
-        (id, st) => setPreflightProgress((prev) => ({ ...prev, [id]: st })),
-      );
-      setPreflight(report);
-      setCurrentFingerprint(report.fingerprint);
-      setRefreshKey((k) => k + 1);
-    } catch (e) {
-      setPreflightError(String(e));
-    } finally {
-      setPreflightRunning(false);
-    }
-  }, [state.workspace]);
 
   /** Run a short xtool operation and return its output without touching the build log. */
   const collectXtool = useCallback(async (op: XtoolOp, args: XtoolRunArgs = {}) => {
@@ -586,7 +492,7 @@ export function App() {
           terminal: () => openTerminal('user-shell'),
           toggleChat: () => setChatOpen((v) => !v),
           openView: (id) => dispatch({ type: 'openView', id }),
-          runPreflight: () => void runPreflightNow(),
+          runPreflight: () => void pf.run(),
           runDoctor: () => void runDoctor(),
           claudeCode: () => openClaudeCode(),
           bottom: (tab) => showBottom(tab),
@@ -595,14 +501,14 @@ export function App() {
       }),
     // openTerminal/openClaudeCode are plain functions of the render; the list is rebuilt on these inputs only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [desktop, hasWorkspace, chatOpen, terminal, openFolder, theme, openBuild, openDevices, runPreflightNow, runDoctor, showBottom, detectXtool],
+    [desktop, hasWorkspace, chatOpen, terminal, openFolder, theme, openBuild, openDevices, pf.run, runDoctor, showBottom, detectXtool],
   );
 
   const errorCount = diagnostics.filter((d) => d.severity === 'error').length;
   const warningCount = diagnostics.filter((d) => d.severity === 'warning').length;
   const anyRunning = build.running || deviceRun.running;
   const selectedDevice = devices?.find((d) => d.udid === selectedUdid) ?? (devices && devices.length === 1 ? devices[0] : null);
-  const gate = gateInstall(preflight, currentFingerprint);
+  const gate = pf.gate;
   gateRef.current = gate;
   const installCheck = canRunOnDevice({
     xtoolFound: xtoolInfo?.found === true,
@@ -729,12 +635,12 @@ export function App() {
   const viewContent =
     state.activeView === 'preflight' ? (
       <PreflightView
-              report={preflight}
-              running={preflightRunning}
-              progress={preflightProgress}
-              error={preflightError}
+              report={pf.report}
+              running={pf.running}
+              progress={pf.progress}
+              error={pf.error}
               gateReason={gate.reason}
-              onRun={() => void runPreflightNow()}
+              onRun={() => void pf.run()}
               onHandOff={() => openClaudeCode(undefined, `Yayın öncesi denetim raporu ${REPORT_MD} dosyasında; önce onu oku, kırmızı adımları düzelt, sonra kullanıcıdan denetimi yeniden çalıştırmasını iste.`)}
               onClose={() => dispatch({ type: 'closeView', id: 'preflight' })}
             />
@@ -857,8 +763,8 @@ export function App() {
               diagnostics={diagnostics}
               deviceName={selectedDevice?.name ?? null}
               installBlocked={installCheck.reason}
-              preflight={{ verdict: preflight?.verdict ?? null, running: preflightRunning, gateReason: gate.reason, finishedAt: preflight?.finishedAt ?? null }}
-              onPreflight={() => void runPreflightNow()}
+              preflight={{ verdict: pf.report?.verdict ?? null, running: pf.running, gateReason: gate.reason, finishedAt: pf.report?.finishedAt ?? null }}
+              onPreflight={() => void pf.run()}
               onOpenPreflight={() => dispatch({ type: 'openView', id: 'preflight' })}
               doctor={doctor}
               doctorLoading={doctorLoading}
