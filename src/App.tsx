@@ -25,6 +25,7 @@ import type { PtyKind, PtyOptions, RemoteSite } from './ai/types';
 import { ChatPanel } from './components/ChatPanel';
 import { DevicesPanel } from './components/DevicesPanel';
 import { AppStoreReadiness, SecurityCenter } from './components/PolicyPanels';
+import { buildCommands } from './app/commands';
 import { PreflightView, type StepProgress } from './components/PreflightView';
 import { fingerprintFiles, gateInstall, iconHeaderString, readXtoolConfig, runPreflight, REPORT_JSON, REPORT_MD, type PreflightReport } from './preflight';
 import { loadCatalogs } from './policy/catalog';
@@ -561,23 +562,40 @@ export function App() {
 
   const hasWorkspace = state.workspace !== null;
   const commands: Command[] = useMemo(
-    () => [
-      { id: 'open', title: 'Klasör aç…', enabled: desktop, run: () => void openFolder() },
-      { id: 'new', title: 'Yeni dosya…', enabled: hasWorkspace, run: () => setNewName('') },
-      { id: 'save', title: 'Dosyayı kaydet', enabled: hasWorkspace, hint: 'Ctrl+S', run: () => void saveRef.current() },
-      { id: 'settings', title: 'Ayarları aç', enabled: true, run: () => setShowSettings(true) },
-      { id: 'panel', title: 'Alt paneli göster/gizle', enabled: desktop, hint: 'Ctrl+J', run: () => toggleBottomRef.current() },
-      {
-        id: 'theme',
-        title: 'Açık/koyu temayı değiştir',
-        enabled: true,
-        run: () => setSettings((s) => ({ ...s, theme: theme === 'dark' ? 'light' : 'dark' })),
-      },
-      { id: 'theme-pick', title: 'Renk temasını seç…', enabled: true, run: () => setShowSettings(true) },
-      { id: 'preflight-run', title: 'Yayın öncesi denetimi çalıştır', enabled: desktop && hasWorkspace, run: () => void runPreflightNow() },
-      { id: 'preflight-view', title: 'Yayın öncesi denetimi aç', enabled: true, run: () => dispatch({ type: 'openView', id: 'preflight' }) },
-    ],
-    [desktop, hasWorkspace, openFolder, theme, runPreflightNow],
+    () =>
+      buildCommands({
+        desktop,
+        hasWorkspace,
+        chatOpen,
+        terminalOpen: terminal !== null,
+        actions: {
+          openFolder: () => void openFolder(),
+          newFile: () => setNewName(''),
+          save: () => void saveRef.current(),
+          settings: () => setShowSettings(true),
+          togglePanel: () => toggleBottomRef.current(),
+          toggleTheme: () => setSettings((s) => ({ ...s, theme: theme === 'dark' ? 'light' : 'dark' })),
+          sidebar: (v) => {
+            if (v === 'build') openBuild();
+            else if (v === 'devices') openDevices();
+            else if (v === 'ai') {
+              setView('ai');
+              setChatOpen(true);
+            } else setView('files');
+          },
+          terminal: () => openTerminal('user-shell'),
+          toggleChat: () => setChatOpen((v) => !v),
+          openView: (id) => dispatch({ type: 'openView', id }),
+          runPreflight: () => void runPreflightNow(),
+          runDoctor: () => void runDoctor(),
+          claudeCode: () => openClaudeCode(),
+          bottom: (tab) => showBottom(tab),
+          redetect: () => void detectXtool(),
+        },
+      }),
+    // openTerminal/openClaudeCode are plain functions of the render; the list is rebuilt on these inputs only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [desktop, hasWorkspace, chatOpen, terminal, openFolder, theme, openBuild, openDevices, runPreflightNow, runDoctor, showBottom, detectXtool],
   );
 
   const errorCount = diagnostics.filter((d) => d.severity === 'error').length;
