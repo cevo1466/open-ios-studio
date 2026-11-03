@@ -54,6 +54,9 @@ test('App Store readiness opens in the editor area, not as a modal, and the side
   await activity(page, /^Güvenlik merkezi/).click();
   await expect(page.getByRole('region', { name: 'Güvenlik Merkezi' })).toBeVisible();
   await expect(view).toHaveCount(0);
+  // Kapat closes the Security tab; the App Store tab underneath comes back, then closing it shows the welcome screen.
+  await page.getByRole('button', { name: 'Kapat', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'App Store Hazırlığı' })).toBeVisible();
   await page.getByRole('button', { name: 'Kapat', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Open iOS Studio' })).toBeVisible();
 });
@@ -138,4 +141,29 @@ test('pre-submission check runs, gates install and hands the report to Claude Co
   await expect.poll(async () => (await calls(page)).some((c) => c.cmd === 'pty_open')).toBe(true);
   const open = (await calls(page)).find((c) => c.cmd === 'pty_open');
   expect(String((open?.args.options as { extraContext?: string })?.extraContext)).toContain('.open-ios-studio/preflight/latest.md');
+});
+
+test('views open as editor tabs next to files', async ({ page }) => {
+  await openWorkspace(page);
+  await activity(page, /^App Store hazırlığı/).click();
+  const viewTab = page.getByRole('tab', { name: 'App Store Hazırlığı' });
+  await expect(viewTab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('region', { name: 'App Store Hazırlığı' })).toBeVisible();
+
+  // A file opened from the explorer comes to the front; the view tab stays in the strip.
+  await page.getByRole('tree').getByRole('button', { name: 'Package.swift', exact: true }).click();
+  await expect(page.getByRole('tab', { name: /Package\.swift/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.monaco-editor').first()).toBeVisible();
+  await expect(viewTab).toHaveAttribute('aria-selected', 'false');
+
+  // Clicking the view tab brings the view back; Ctrl+W closes it and the file shows again.
+  await viewTab.click();
+  await expect(page.getByRole('region', { name: 'App Store Hazırlığı' })).toBeVisible();
+  await page.keyboard.press('Control+W');
+  await expect(viewTab).toHaveCount(0);
+  await expect(page.locator('.monaco-editor').first()).toBeVisible();
+
+  // Closing the last file brings the welcome screen back.
+  await page.getByRole('button', { name: 'Package.swift sekmesini kapat' }).click();
+  await expect(page.getByRole('heading', { name: 'Open iOS Studio' })).toBeVisible();
 });

@@ -38,7 +38,7 @@ import { inDesktopApp, ipc } from './ipc';
 import { loadSettings, saveSettings, type Settings } from './settings';
 import { analyzeProject } from './policy';
 import type { EvaluationReport } from './policy/types';
-import { initialState, isDirty, reducer } from './state/store';
+import { initialState, isDirty, reducer, tabToClose, VIEW_TITLE, type ViewId } from './state/store';
 import { buildReducer, initialBuildState } from './xtool/buildState';
 import { compatibility, parseAuthStatus, parseDevices, parseDiagnostics, parseSwiftVersion, parseXtoolVersion, redactLine } from './xtool/parse';
 import type { DoctorCheck } from './xtool/doctor';
@@ -61,7 +61,6 @@ export function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
   const [newName, setNewName] = useState<string | null>(null);
-  const [panel, setPanel] = useState<'asr' | 'msec' | 'preflight' | null>(null);
   const [preflight, setPreflight] = useState<PreflightReport | null>(null);
   const [preflightRunning, setPreflightRunning] = useState(false);
   const [preflightProgress, setPreflightProgress] = useState<StepProgress>({});
@@ -208,8 +207,6 @@ export function App() {
         return;
       }
       setBinary(null);
-      // Opening a file brings the editor back in front of any policy/preflight view.
-      setPanel(null);
       if (state.tabs.some((t) => t.path === path)) {
         dispatch({ type: 'activate', path });
         return;
@@ -300,13 +297,13 @@ export function App() {
   const runPreflightNow = useCallback(async () => {
     if (!state.workspace) {
       setPreflightError('Önce bir klasör açın.');
-      setPanel('preflight');
+      dispatch({ type: 'openView', id: 'preflight' });
       return;
     }
     setPreflightRunning(true);
     setPreflightError(null);
     setPreflightProgress({});
-    setPanel('preflight');
+    dispatch({ type: 'openView', id: 'preflight' });
     try {
       const report = await runPreflight(
         {
@@ -454,6 +451,14 @@ export function App() {
     [state.tabs],
   );
 
+  /** Ctrl+W: the view in front, else the active file (dirty files still ask). */
+  const closeActiveRef = useRef<() => void>(() => undefined);
+  closeActiveRef.current = () => {
+    const target = tabToClose(state);
+    if (!target) return;
+    if (target.kind === 'view') dispatch({ type: 'closeView', id: target.id });
+    else closeTab(target.path);
+  };
   const tabsRef = useRef(state.tabs);
   useEffect(() => {
     tabsRef.current = state.tabs;
@@ -545,6 +550,9 @@ export function App() {
       } else if (mod && !e.shiftKey && e.key.toLowerCase() === 'j') {
         e.preventDefault();
         toggleBottomRef.current();
+      } else if (mod && !e.shiftKey && e.key.toLowerCase() === 'w') {
+        e.preventDefault();
+        closeActiveRef.current();
       }
     };
     window.addEventListener('keydown', handler);
@@ -567,7 +575,7 @@ export function App() {
       },
       { id: 'theme-pick', title: 'Renk temasını seç…', enabled: true, run: () => setShowSettings(true) },
       { id: 'preflight-run', title: 'Yayın öncesi denetimi çalıştır', enabled: desktop && hasWorkspace, run: () => void runPreflightNow() },
-      { id: 'preflight-view', title: 'Yayın öncesi denetimi aç', enabled: true, run: () => setPanel('preflight') },
+      { id: 'preflight-view', title: 'Yayın öncesi denetimi aç', enabled: true, run: () => dispatch({ type: 'openView', id: 'preflight' }) },
     ],
     [desktop, hasWorkspace, openFolder, theme, runPreflightNow],
   );
@@ -700,6 +708,29 @@ export function App() {
     '--ai-w': `${layout.aiWidth}px`,
   } as CSSProperties;
 
+  const viewContent =
+    state.activeView === 'preflight' ? (
+      <PreflightView
+              report={preflight}
+              running={preflightRunning}
+              progress={preflightProgress}
+              error={preflightError}
+              gateReason={gate.reason}
+              onRun={() => void runPreflightNow()}
+              onHandOff={() => openClaudeCode(undefined, `Yayın öncesi denetim raporu ${REPORT_MD} dosyasında; önce onu oku, kırmızı adımları düzelt, sonra kullanıcıdan denetimi yeniden çalıştırmasını iste.`)}
+              onClose={() => dispatch({ type: 'closeView', id: 'preflight' })}
+            />
+    ) : state.activeView !== null ? (
+      <PolicyPanel
+              which={state.activeView === 'appstore' ? 'asr' : 'msec'}
+              report={report}
+              loading={analysing}
+              error={analysisError}
+              onRun={() => void runAnalysis()}
+              onClose={() => dispatch({ type: 'closeView', id: state.activeView === 'appstore' ? 'appstore' : 'security' })}
+            />
+    ) : null;
+
   return (
     <ThemeContext.Provider value={themeDef}>
     <div className="app" ref={appRef} style={layoutVars}>
@@ -713,7 +744,7 @@ export function App() {
           view={view}
           desktop={desktop}
           terminalOpen={terminal !== null && bottomVisible && activeBottom === 'terminal'}
-          policyView={panel === 'preflight' ? null : panel}
+          policyView={state.activeView === 'appstore' ? 'asr' : state.activeView === 'security' ? 'msec' : null}
           onView={(v) => {
             if (v === 'build') openBuild();
             else if (v === 'devices') openDevices();
@@ -723,8 +754,8 @@ export function App() {
             } else setView('files');
           }}
           onTerminal={() => openTerminal('user-shell')}
-          onStore={() => setPanel('asr')}
-          onSecurity={() => setPanel('msec')}
+          onStore={() => dispatch({ type: 'openView', id: 'appstore' })}
+          onSecurity={() => dispatch({ type: 'openView', id: 'security' })}
           onSettings={() => setShowSettings(true)}
         />
 
@@ -810,7 +841,7 @@ export function App() {
               installBlocked={installCheck.reason}
               preflight={{ verdict: preflight?.verdict ?? null, running: preflightRunning, gateReason: gate.reason, finishedAt: preflight?.finishedAt ?? null }}
               onPreflight={() => void runPreflightNow()}
-              onOpenPreflight={() => setPanel('preflight')}
+              onOpenPreflight={() => dispatch({ type: 'openView', id: 'preflight' })}
               doctor={doctor}
               doctorLoading={doctorLoading}
               doctorError={doctorError}
@@ -904,27 +935,7 @@ export function App() {
               onShowArtifacts={() => setRevealArtifacts((n) => n + 1)}
               onClose={() => setBinary(null)}
             />
-          ) : panel === 'preflight' ? (
-            <PreflightView
-              report={preflight}
-              running={preflightRunning}
-              progress={preflightProgress}
-              error={preflightError}
-              gateReason={gate.reason}
-              onRun={() => void runPreflightNow()}
-              onHandOff={() => openClaudeCode(undefined, `Yayın öncesi denetim raporu ${REPORT_MD} dosyasında; önce onu oku, kırmızı adımları düzelt, sonra kullanıcıdan denetimi yeniden çalıştırmasını iste.`)}
-              onClose={() => setPanel(null)}
-            />
-          ) : panel ? (
-            <PolicyPanel
-              which={panel}
-              report={report}
-              loading={analysing}
-              error={analysisError}
-              onRun={() => void runAnalysis()}
-              onClose={() => setPanel(null)}
-            />
-          ) : state.tabs.length === 0 ? (
+          ) : state.tabs.length === 0 && state.views.length === 0 ? (
             <WelcomeScreen
               desktop={desktop}
               workspace={state.workspace}
@@ -938,12 +949,17 @@ export function App() {
                 setChatOpen(true);
               }}
               onOpenBuild={openBuild}
-              onOpenAppStore={() => setPanel('asr')}
+              onOpenAppStore={() => dispatch({ type: 'openView', id: 'appstore' })}
             />
           ) : (
           <EditorPane
             tabs={state.tabs}
             active={state.active}
+            views={state.views.map((id) => ({ id, title: VIEW_TITLE[id] }))}
+            activeView={state.activeView}
+            viewContent={viewContent}
+            onActivateView={(id: ViewId) => dispatch({ type: 'activateView', id })}
+            onCloseView={(id: ViewId) => dispatch({ type: 'closeView', id })}
             theme={theme}
             fontSize={settings.fontSize}
             onActivate={(path) => dispatch({ type: 'activate', path })}
