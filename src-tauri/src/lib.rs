@@ -2,6 +2,7 @@ mod ai;
 mod cli_ai;
 mod doctor;
 mod fs_engine;
+mod png;
 mod pty;
 mod reveal;
 mod runner;
@@ -160,8 +161,9 @@ async fn xtool_run(
     on_event: Channel<RunEvent>,
 ) -> Result<(), String> {
     let path = tool_path();
-    let program = xtool::find_in_path("xtool", &path)
-        .ok_or_else(|| "xtool was not found on PATH.".to_owned())?;
+    let program_name = xtool::program_for_op(&op);
+    let program = xtool::find_in_path(program_name, &path)
+        .ok_or_else(|| format!("{program_name} was not found on PATH."))?;
     let mut spec = with_workspace(&state, |ws| Ok(xtool::build_spec(&op, &args, &program, ws)))??;
     // xtool calls `swift`; give it the same widened PATH used for detection.
     spec.env
@@ -380,6 +382,31 @@ async fn cli_stream(
     Ok(())
 }
 
+/// PNG signature + IHDR of a workspace file (33 bytes), for the icon check. `None` when the file
+/// does not exist; an error when it exists but is not a PNG.
+#[tauri::command]
+fn read_png_header(
+    state: State<'_, AppState>,
+    path: String,
+) -> Result<Option<png::PngHeader>, String> {
+    use std::io::Read;
+    let abs = with_workspace(&state, |ws| ws.resolve(&path))?;
+    if std::fs::symlink_metadata(&abs).is_err() {
+        return Ok(None);
+    }
+    let mut file = std::fs::File::open(&abs).map_err(|e| e.to_string())?;
+    let mut buf = [0u8; 33];
+    let mut read = 0;
+    while read < buf.len() {
+        let n = file.read(&mut buf[read..]).map_err(|e| e.to_string())?;
+        if n == 0 {
+            break;
+        }
+        read += n;
+    }
+    png::parse_png_header(&buf[..read]).map(Some)
+}
+
 /// Copies the bundled agent skills into `<workspace>/.claude/skills/` (never overwriting edited files).
 #[tauri::command]
 fn skills_install_bundled(state: State<'_, AppState>) -> Result<skills::InstallReport, String> {
@@ -496,7 +523,8 @@ pub fn run() {
             update_check,
             update_download,
             update_apply_appimage,
-            update_reveal
+            update_reveal,
+            read_png_header
         ])
         .run(tauri::generate_context!())
         .expect("error while running Open iOS Studio");

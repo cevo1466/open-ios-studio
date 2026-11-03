@@ -1,5 +1,6 @@
 import { Channel, invoke } from '@tauri-apps/api/core';
 import type { AiEvent, ChatRequest, CliProviderId, CliStatus, ModelInfo, ProviderId, PtyEvent, PtyKind, PtyOptions } from './ai/types';
+import type { PngHeader } from './preflight/icon';
 import type { DoctorCheck } from './xtool/doctor';
 import type { RunEvent, XtoolInfo, XtoolOp, XtoolRunArgs } from './xtool/types';
 
@@ -91,6 +92,8 @@ export const ipc = {
   revealPath: (path: string, parent: boolean) => invoke<void>('reveal_path', { path, parent }),
   /** Copies the bundled agent skills into the open project's .claude/skills (edited files are kept). */
   skillsInstallBundled: () => invoke<SkillsInstallReport>('skills_install_bundled'),
+  /** PNG signature + IHDR of a workspace file; null when the file does not exist. */
+  readPngHeader: (path: string) => invoke<PngHeader | null>('read_png_header', { path }),
   /** Latest GitHub release of this project compared with the running version (read-only). */
   updateCheck: () => invoke<UpdateInfo>('update_check'),
   /** Downloads the DEB or AppImage into the downloads folder and verifies it against SHA256SUMS.txt. */

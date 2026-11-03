@@ -64,6 +64,23 @@ pub struct PtyOptions {
     pub skip_permissions: bool,
     /// Optional live website the user wants Claude Code to study (read-only by instruction).
     pub remote: Option<RemoteSite>,
+    /// One extra sentence for the fixed context (for example where the pre-submission report is).
+    /// Validated: at most 2000 characters, no control characters other than newline.
+    pub extra_context: Option<String>,
+}
+
+const MAX_EXTRA_CONTEXT: usize = 2000;
+
+pub fn validate_extra_context(text: &str) -> Result<(), String> {
+    if text.chars().count() > MAX_EXTRA_CONTEXT {
+        return Err(format!(
+            "extra context is longer than {MAX_EXTRA_CONTEXT} characters"
+        ));
+    }
+    if text.chars().any(|c| c.is_control() && c != '\n') {
+        return Err("extra context contains control characters".to_owned());
+    }
+    Ok(())
 }
 
 /// Connection details for the user's own website. Handed to one Claude Code session as
@@ -254,10 +271,19 @@ pub fn command_for(kind: PtyKind, options: &PtyOptions) -> Result<(PathBuf, Vec<
             if let Some(remote) = &options.remote {
                 validate_remote(remote)?;
             }
+            if let Some(extra) = &options.extra_context {
+                validate_extra_context(extra)?;
+            }
             let (program, _) = cli(CliKind::Claude)?;
             let mut context = STUDIO_CONTEXT.to_owned();
             if options.remote.is_some() {
                 context.push_str(REMOTE_CONTEXT);
+            }
+            if let Some(extra) = options.extra_context.as_deref().map(str::trim) {
+                if !extra.is_empty() {
+                    context.push(' ');
+                    context.push_str(extra);
+                }
             }
             let mut args = vec!["--append-system-prompt".to_owned(), context];
             let model = options.model.trim();
@@ -621,5 +647,31 @@ mod tests {
         assert!(text.contains("ois-pty-ok"), "output: {text}");
         state.close(id).expect("close");
         assert!(state.write(id, "x").is_err());
+    }
+
+    #[test]
+    fn extra_context_is_appended_and_validated() {
+        assert!(validate_extra_context("Rapor: .open-ios-studio/preflight/latest.md").is_ok());
+        assert!(validate_extra_context("ok\nsecond line").is_ok());
+        assert!(validate_extra_context(&"x".repeat(2001)).is_err());
+        assert!(validate_extra_context("bell\x07").is_err());
+        assert!(validate_extra_context("esc\x1b[31m").is_err());
+
+        let bad = PtyOptions {
+            extra_context: Some("bell\x07".into()),
+            ..PtyOptions::default()
+        };
+        assert!(command_for(PtyKind::ClaudeCode, &bad).is_err());
+
+        let good = PtyOptions {
+            extra_context: Some("Rapor: .open-ios-studio/preflight/latest.md".into()),
+            ..PtyOptions::default()
+        };
+        // `claude` may be missing on the test host; the argv is only checked when it is found.
+        if let Ok((_, args)) = command_for(PtyKind::ClaudeCode, &good) {
+            let ctx = &args[1];
+            assert!(ctx.starts_with(STUDIO_CONTEXT));
+            assert!(ctx.ends_with(" Rapor: .open-ios-studio/preflight/latest.md"));
+        }
     }
 }

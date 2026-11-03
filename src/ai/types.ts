@@ -28,6 +28,8 @@ export interface PtyOptions {
   skipPermissions?: boolean;
   /** Live website Claude Code may study. Handed to that one session only; never stored. */
   remote?: RemoteSite;
+  /** One extra sentence for the fixed Claude Code context (≤ 2000 chars, no control characters). */
+  extraContext?: string;
 }
 
 export type RemoteProtocol = 'sftp' | 'ftp' | 'ftps';
