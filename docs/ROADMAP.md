@@ -48,4 +48,4 @@ Goal: a developer who installs the DEB/AppImage can go from an empty folder to a
 - ◐ Verification tour: `docs/VERIFICATION_TOUR.md` written with 13 items and a STATUS table; the owner's run is pending.
 - ☑ Release automation: `auto-tag.yml` tags `chore(release): X.Y.Z` merges and starts the Release workflow (rules in `scripts/release-tag-check.sh`).
 - ☐ Turkish text in the embedded Claude Code terminal: 0.1.11 (#49) ships the fix; the owner reported it works; tour item T8 records it.
-- ☐ Swift language support: sourcekit-lsp client for Monaco (completion, diagnostics) once a Linux toolchain with sourcekit-lsp is confirmed on the owner's machine.
+- ◐ Swift language support (PR #53): sourcekit-lsp session from Rust, Monaco completion/hover/markers, Sorunlar rows and a status-bar segment. Tested against a fake server; a real `sourcekit-lsp` on the owner's machine is tour item T13.
