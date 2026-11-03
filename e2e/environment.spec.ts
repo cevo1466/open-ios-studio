@@ -183,6 +183,8 @@ test('Swift language support starts for the workspace and lists server diagnosti
   expect(String((await didOpens())[0].args.json)).toContain('file:///work/demo/Sources/Demo/ContentView.swift');
   await page.getByRole('tab', { name: /Sorunlar/ }).click();
   await expect(page.getByRole('list', { name: 'Sorunlar' })).toContainText('unused variable (sourcekit-lsp)');
+  // The same diagnostic is painted as an inline marker on the Monaco model.
+  await expect(page.locator('.monaco-editor .squiggly-warning').first()).toBeVisible();
 
   // A non-Swift file is never sent to the server.
   await page.getByRole('tree').getByRole('button', { name: 'xtool.yml', exact: true }).click();

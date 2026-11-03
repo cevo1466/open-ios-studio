@@ -179,10 +179,24 @@ export function useSwiftLsp({
       if (monacoRef.current === monaco) return;
       providersRef.current?.dispose();
       monacoRef.current = monaco;
-      providersRef.current = registerSwiftProviders(monaco, {
+      const providers = registerSwiftProviders(monaco, {
         current: () => clientRef.current,
         resolvePath,
       });
+      // Diagnostics often arrive before Monaco creates the file's model: paint them on creation too.
+      const paint = (model: Monaco.editor.ITextModel) => {
+        const path = resolvePath(model.uri);
+        const raw = path === null ? undefined : rawRef.current.get(path);
+        if (path !== null && raw) setSwiftMarkers(monaco, resolvePath, path, raw);
+      };
+      monaco.editor.getModels().forEach(paint);
+      const created = monaco.editor.onDidCreateModel(paint);
+      providersRef.current = {
+        dispose: () => {
+          providers.dispose();
+          created.dispose();
+        },
+      };
     },
     [resolvePath],
   );
