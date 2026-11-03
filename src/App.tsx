@@ -28,6 +28,7 @@ import { AppStoreReadiness, SecurityCenter } from './components/PolicyPanels';
 import { buildCommands } from './app/commands';
 import { useCloseGuard } from './app/useCloseGuard';
 import { usePreflight } from './app/usePreflight';
+import { useXtool } from './app/useXtool';
 import { PreflightView } from './components/PreflightView';
 import { REPORT_MD } from './preflight';
 import { CloseGuardDialog } from './components/CloseGuard';
@@ -41,10 +42,7 @@ import { loadSettings, saveSettings, type Settings } from './settings';
 import { analyzeProject } from './policy';
 import type { EvaluationReport } from './policy/types';
 import { initialState, isDirty, reducer, tabToClose, VIEW_TITLE, type ViewId } from './state/store';
-import { buildReducer, initialBuildState } from './xtool/buildState';
-import { compatibility, parseAuthStatus, parseDevices, parseDiagnostics, parseSwiftVersion, parseXtoolVersion, redactLine } from './xtool/parse';
-import type { DoctorCheck } from './xtool/doctor';
-import type { Device, RunEvent, XtoolInfo, XtoolOp, XtoolRunArgs } from './xtool/types';
+import { compatibility, parseSwiftVersion } from './xtool/parse';
 
 const SIDEBAR_TITLES: Record<SidebarView, string> = {
   files: 'Dosyalar',
@@ -96,32 +94,37 @@ export function App() {
     setTerminal((t) => (kind === 'user-shell' && t?.kind === 'user-shell' ? t : { kind, options, key: (t?.key ?? 0) + 1 }));
     showBottom('terminal');
   };
-  const [build, buildDispatch] = useReducer(buildReducer, initialBuildState);
-  /** Build + install + launch on a device keeps its own log, shown as "Cihaz günlükleri". */
-  const [deviceRun, deviceDispatch] = useReducer(buildReducer, initialBuildState);
-  const [xtoolInfo, setXtoolInfo] = useState<XtoolInfo | null>(null);
-  const [doctor, setDoctor] = useState<DoctorCheck[] | null>(null);
-  const [doctorLoading, setDoctorLoading] = useState(false);
-  const [doctorError, setDoctorError] = useState<string | null>(null);
-  const runDoctor = useCallback(async () => {
-    setDoctorLoading(true);
-    setDoctorError(null);
-    try {
-      setDoctor(await ipc.envDoctor());
-    } catch (e) {
-      setDoctorError(String(e));
-    } finally {
-      setDoctorLoading(false);
-    }
-  }, []);
-  const [xtoolLoading, setXtoolLoading] = useState(false);
-  const [devices, setDevices] = useState<Device[] | null>(null);
-  const [authText, setAuthText] = useState<string | null>(null);
-  const [authLoggedIn, setAuthLoggedIn] = useState<boolean | null>(null);
-  const [devicesLoading, setDevicesLoading] = useState(false);
-  const [devicesError, setDevicesError] = useState<string | null>(null);
-  const [selectedUdid, setSelectedUdid] = useState<string | null>(null);
   const desktop = inDesktopApp();
+  const onNewProject = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+    void refreshFingerprint();
+  }, [refreshFingerprint]);
+  const xt = useXtool({ workspace: state.workspace, desktop, showBottom, setBuildOpen, setDeviceLogOpen, setNotice, onNewProject });
+  const {
+    build,
+    buildDispatch,
+    deviceRun,
+    deviceDispatch,
+    xtoolInfo,
+    xtoolLoading,
+    detectXtool,
+    doctor,
+    doctorLoading,
+    doctorError,
+    runDoctor,
+    devices,
+    authText,
+    authLoggedIn,
+    devicesLoading,
+    devicesError,
+    selectedUdid,
+    setSelectedUdid,
+    gateRef,
+    runXtool,
+    refreshDevices,
+    diagnostics,
+    parsedVersion,
+  } = xt;
 
   const themeDef = resolveTheme(settings.theme, prefersDark);
   const theme = themeDef.mode;
@@ -212,110 +215,16 @@ export function App() {
     }
   }, [state.workspace]);
 
-  const detectXtool = useCallback(async () => {
-    setXtoolLoading(true);
-    try {
-      setXtoolInfo(await ipc.xtoolDetect());
-    } catch (e) {
-      setXtoolInfo({ found: false, path: null, versionOutput: null, swiftVersionOutput: null, error: String(e) });
-    } finally {
-      setXtoolLoading(false);
-    }
-  }, []);
-
-  const gateRef = useRef<{ allowed: boolean; reason: string | null }>({ allowed: false, reason: null });
-  const runXtool = useCallback(
-    async (op: XtoolOp, args: XtoolRunArgs) => {
-      const onDevice = op === 'run-device' || op === 'launch';
-      if (onDevice && !gateRef.current.allowed) {
-        setNotice(gateRef.current.reason ?? 'Yayın öncesi denetim geçilmedi.');
-        return;
-      }
-      const dispatchRun = onDevice ? deviceDispatch : buildDispatch;
-      dispatchRun({ type: 'start', op });
-      if (onDevice) setDeviceLogOpen(true);
-      else setBuildOpen(true);
-      showBottom(onDevice ? 'devicelog' : 'output');
-      const onEvent = (event: RunEvent) =>
-        dispatchRun({ type: 'event', event: event.kind === 'line' ? { ...event, text: redactLine(event.text) } : event });
-      try {
-        await ipc.xtoolRun(op, args, onEvent);
-        if (op === 'new') {
-          setRefreshKey((k) => k + 1);
-          void refreshFingerprint();
-        }
-      } catch (e) {
-        onEvent({ kind: 'line', stream: 'stderr', text: String(e) });
-        onEvent({ kind: 'exit', code: null, cancelled: false, timedOut: false, droppedLines: 0 });
-      }
-    },
-    [showBottom, refreshFingerprint],
-  );
-
-
-  /** Run a short xtool operation and return its output without touching the build log. */
-  const collectXtool = useCallback(async (op: XtoolOp, args: XtoolRunArgs = {}) => {
-    const lines: string[] = [];
-    let code: number | null = null;
-    await ipc.xtoolRun(op, args, (e) => {
-      if (e.kind === 'line') lines.push(redactLine(e.text));
-      else code = e.code;
-    });
-    return { text: lines.join('\n'), code };
-  }, []);
-
-  const refreshDevices = useCallback(async () => {
-    setDevicesError(null);
-    if (state.workspace === null) {
-      setDevicesError('Önce bir klasör açın: xtool çalışma klasörünüzün içinde çalışır.');
-      return;
-    }
-    setDevicesLoading(true);
-    try {
-      const info = xtoolInfo ?? (await ipc.xtoolDetect());
-      setXtoolInfo(info);
-      if (!info.found) {
-        setDevices([]);
-        return;
-      }
-      const auth = await collectXtool('auth-status');
-      const parsedAuth = parseAuthStatus(auth.text);
-      setAuthText(parsedAuth.detail);
-      setAuthLoggedIn(auth.code === 0 ? parsedAuth.loggedIn : null);
-      const listed = await collectXtool('devices');
-      if (listed.code !== 0) throw new Error(listed.text || 'xtool devices failed');
-      setDevices(parseDevices(listed.text));
-    } catch (e) {
-      setDevices(null);
-      setDevicesError(String(e));
-    } finally {
-      setDevicesLoading(false);
-    }
-  }, [state.workspace, xtoolInfo, collectXtool]);
-
   const openDevices = useCallback(() => {
     setView('devices');
     void refreshDevices();
   }, [refreshDevices]);
-
-  useEffect(() => {
-    if (!desktop) return;
-    ipc
-      .xtoolDetect()
-      .then(setXtoolInfo)
-      .catch(() => {
-        /* the Build panel shows the detection error when opened */
-      });
-  }, [desktop]);
 
   const openBuild = useCallback(() => {
     setView('build');
     if (xtoolInfo === null) void detectXtool();
     void refreshDevices();
   }, [xtoolInfo, detectXtool, refreshDevices]);
-
-  const diagnostics = useMemo(() => parseDiagnostics(build.lines.map((l) => l.text)), [build.lines]);
-  const parsedVersion = parseXtoolVersion(xtoolInfo?.versionOutput ?? '');
 
   const [chatOpen, setChatOpen] = useState(false);
   const buildFailed = build.outcome !== null && build.outcome.code !== 0;
