@@ -2,6 +2,7 @@ mod ai;
 mod cli_ai;
 mod doctor;
 mod fs_engine;
+mod lsp;
 mod png;
 mod pty;
 mod reveal;
@@ -29,6 +30,8 @@ struct AppState {
     ai_run: Mutex<Option<runner::CancelToken>>,
     /// Embedded terminal sessions (ADR-0009).
     pty: pty::PtyState,
+    /// The sourcekit-lsp session of the open workspace, if any.
+    lsp: lsp::LspState,
 }
 
 #[derive(Debug, Serialize)]
@@ -407,6 +410,50 @@ fn read_png_header(
     png::parse_png_header(&buf[..read]).map(Some)
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LspStarted {
+    id: u32,
+    program: String,
+    /// Whether the workspace root has `.bsp/xtool.json` (xtool's build server for sourcekit-lsp).
+    bsp: bool,
+}
+
+/// Starts `sourcekit-lsp` for the open workspace (stdio, no shell, scrubbed environment).
+/// Replaces a running session; the webview drives the protocol over `on_event` + `lsp_send`.
+#[tauri::command]
+fn lsp_start(
+    state: State<'_, AppState>,
+    on_event: Channel<lsp::LspEvent>,
+) -> Result<LspStarted, String> {
+    let program = lsp::resolve_program(&tool_path())
+        .ok_or_else(|| "sourcekit-lsp was not found".to_owned())?;
+    let root = with_workspace(&state, |ws| Ok(ws.root().to_path_buf()))?;
+    let bsp = root.join(".bsp").join("xtool.json").is_file();
+    let env = cli_ai::env_pairs()
+        .into_iter()
+        .map(|(k, v)| (k.to_owned(), v))
+        .collect();
+    let id = state.lsp.start(&program, &[], &root, env, move |event| {
+        let _ = on_event.send(event);
+    })?;
+    Ok(LspStarted {
+        id,
+        program: program.to_string_lossy().into_owned(),
+        bsp,
+    })
+}
+
+#[tauri::command]
+fn lsp_send(state: State<'_, AppState>, id: u32, json: String) -> Result<(), String> {
+    state.lsp.send(id, &json)
+}
+
+#[tauri::command]
+fn lsp_stop(state: State<'_, AppState>) {
+    state.lsp.stop();
+}
+
 /// Copies the bundled agent skills into `<workspace>/.claude/skills/` (never overwriting edited files).
 #[tauri::command]
 fn skills_install_bundled(state: State<'_, AppState>) -> Result<skills::InstallReport, String> {
@@ -524,7 +571,10 @@ pub fn run() {
             update_download,
             update_apply_appimage,
             update_reveal,
-            read_png_header
+            read_png_header,
+            lsp_start,
+            lsp_send,
+            lsp_stop
         ])
         .run(tauri::generate_context!())
         .expect("error while running Open iOS Studio");
