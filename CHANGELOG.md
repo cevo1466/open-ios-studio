@@ -10,7 +10,8 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 - `docs/VERIFICATION_TOUR.md`: the owner's 13-item real-desktop checklist, tracked in STATUS.
 
 ### Changed
-- `ai.rs` split into `ai/{types,endpoints,stream,http}.rs` (no behaviour change).
+- App Store Hazırlığı, Güvenlik Merkezi and Yayın öncesi denetim open as editor tabs next to files; Ctrl+W closes the tab in front; the command palette now lists every panel and action (side panels, terminal, chat, views, checks, updates, Claude Code, bottom-panel tabs, re-detect).
+- `ai.rs` split into `ai/{types,endpoints,stream,http}.rs`; `App.tsx` split into `app/{usePreflight,useCloseGuard,useXtool,commands}` (no behaviour change).
 - Opening a file from the explorer brings the editor back in front of an open policy/preflight view.
 
 ### Fixed
