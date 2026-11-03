@@ -4,6 +4,12 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+### Added
+- Environment check: optional `screen-mirror` item (uxplay) with the install command and the iPhone steps, in the Derle panel and in `scripts/doctor.sh`.
+
+### Fixed
+- Terminal: copy and paste. Ctrl+Shift+C / Ctrl+Insert copy the selection, Ctrl+V / Ctrl+Shift+V / Shift+Insert paste (xterm used to send Ctrl+V to the program as a literal `^V`). Plain Ctrl+C still interrupts.
+
 ## [0.1.11] - 2026-11-03
 
 ### Fixed

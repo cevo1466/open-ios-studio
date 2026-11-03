@@ -5,7 +5,7 @@ const c = (id: string, status: DoctorCheck['status'], detail = ''): DoctorCheck 
 
 describe('doctor labels', () => {
   it('has a Turkish name and a hint for every id the Rust side emits', () => {
-    for (const id of ['swift', 'darwin-sdk', 'xtool', 'xtool-sdk', 'apple-account', 'device', 'usbmuxd', 'git']) {
+    for (const id of ['swift', 'darwin-sdk', 'xtool', 'xtool-sdk', 'apple-account', 'device', 'usbmuxd', 'screen-mirror', 'git']) {
       expect(DOCTOR_LABELS[id]?.name, id).toBeTruthy();
       expect(DOCTOR_LABELS[id]?.hint, id).toBeTruthy();
     }
