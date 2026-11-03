@@ -1,5 +1,11 @@
 # Status
 
+## Unreleased (branch feature/launch-readiness-2, PR #53): pre-submission check + maintenance
+- **Yayın öncesi denetim** (`src/preflight/`, `PreflightView`, Derle panel summary, palette): six steps in order — build (`xtool dev build`), tests (`swift test`, NOT_VERIFIED without `Tests/`), policy (engine), secrets (catalog category `Secrets`), manifest (xtool.yml / Info.plist usage keys / PrivacyInfo.xcprivacy), icon (1024×1024 PNG, no alpha via `read_png_header`). Verdict green/red bound to a SHA-256 fingerprint of the scanned files; report written to `.open-ios-studio/preflight/latest.{json,md}` and reloaded on workspace open. **Gate (owner decision):** red, not run or stale blocks "Derle ve Yükle", `run-device` and `launch` with the reason; `build`/`new` stay available. "Raporu Claude Code'a ver" starts Claude Code with one extra context sentence naming the report (validated ≤ 2000 chars, no control characters).
+- Tests: Vitest 396 (preflight 44 + gate precedence), Rust 122 (swift-test spec, PNG header, extra context), Playwright 58 incl. the end-to-end scenario against the mocked IPC (run → six steps → gate reopens on save → hand-off). NOT VERIFIED: a real `xtool dev build` / `swift test` through the check, a real red → fix → green loop with Claude Code, the icon reader on a real project.
+- Maintenance: `auto-tag.yml` + `scripts/release-tag-check.sh` (release on `chore(release): X.Y.Z` merges), `ai.rs` split into modules (117 → 117 tests at the time), `docs/VERIFICATION_TOUR.md`.
+- Known: the preflight runs at the workspace root (the Derle panel's advanced "Proje klasörü" field is not used by it yet); views still replace the editor region (tabs come with sub-project 2); PR #41's own `src/release/preflight.ts` should fold into `src/preflight/` on rebase.
+
 ## Verification tour (owner, real desktop + iPhone)
 Checklist: `docs/VERIFICATION_TOUR.md`. Every row stays `NOT VERIFIED` until the owner records a run.
 
@@ -16,7 +22,7 @@ Checklist: `docs/VERIFICATION_TOUR.md`. Every row stays `NOT VERIFIED` until the
 | T9 | Updates check says up to date | NOT VERIFIED | | |
 | T10 | App Store readiness on a real project | NOT VERIFIED | | |
 | T11 | Terminal copy/paste | NOT VERIFIED | | after PR #52 |
-| T12 | Pre-submission check green on a new project | NOT VERIFIED | | after the preflight PR |
+| T12 | Pre-submission check green on a new project | NOT VERIFIED | | PR #53 |
 | T13 | Swift completion and diagnostics | NOT VERIFIED | | after the LSP PR |
 
 ## v0.1.10 (pre-release candidate, PR #42): launch-readiness slice 1

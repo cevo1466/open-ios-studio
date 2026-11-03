@@ -51,6 +51,10 @@ When "Claude Code'u bu projede aç" starts, the app copies the bundled skills in
 
 Files you edited are never overwritten. See `skills/README.md` for provenance and licences.
 
+## Pre-submission check ("Yayın öncesi denetim")
+
+Derle panel → "Denetimi çalıştır" (or the command palette). Six steps run in order: `xtool dev build`, `swift test` (skipped as NOT_VERIFIED when the project has no `Tests/`), the policy engine, the secrets rules, the manifest (xtool.yml bundle id, usage descriptions required by imported frameworks, PrivacyInfo.xcprivacy) and the icon (1024×1024 PNG without alpha). Green means every step that ran passed; it is not App Store approval. While the result is red, not run, or the files changed since, "Derle ve Yükle" and device install/launch stay disabled with the reason; "Yalnızca derle" keeps working so you can fix things. The report lives in `.open-ios-studio/preflight/latest.md`; "Raporu Claude Code'a ver" opens Claude Code with that path in its context.
+
 ## Updating the app
 
 Ayarlar → Güncellemeler → "Güncellemeleri denetle". The app asks the GitHub Releases API of this repository (pre-releases included, drafts skipped), shows the newest version next to the installed one, and offers the DEB or the AppImage (the one matching your install first). The download goes to `$XDG_DOWNLOAD_DIR`, `~/Downloads` or `~`, is hashed while it streams and compared with the release's `SHA256SUMS.txt`; a mismatch deletes the file. A DEB is never installed by the app (that needs root): copy the shown `sudo apt install ./…deb` command. An AppImage can replace the running one in place after a second checksum; restart the app afterwards. Only `https://github.com/cevo1466/open-ios-studio/releases/download/…` URLs are accepted.

@@ -4,6 +4,15 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+### Added
+- "Yayın öncesi denetim" (pre-submission check): build, `swift test`, policy, secrets, manifest and icon steps with a green/red verdict bound to the project's files; the report is saved to `.open-ios-studio/preflight/` and can be handed to Claude Code in one click. Red, not run or stale blocks "Derle ve Yükle" and device install/launch until green (Derle panel, command palette).
+- Releases tag themselves: merging a `chore(release): X.Y.Z` pull request creates the tag and starts the Release workflow (`scripts/release-tag-check.sh`, `auto-tag.yml`).
+- `docs/VERIFICATION_TOUR.md`: the owner's 13-item real-desktop checklist, tracked in STATUS.
+
+### Changed
+- `ai.rs` split into `ai/{types,endpoints,stream,http}.rs` (no behaviour change).
+- Opening a file from the explorer brings the editor back in front of an open policy/preflight view.
+
 ### Fixed
 - Ayarlar → Güncellemeler: when the GitHub REST API answers 403 (the 60-requests-per-hour limit for unauthenticated clients), the update check now falls back to the public release feed (`releases.atom`) and the release's `SHA256SUMS.txt`, so "Güncellemeleri denetle" keeps working. Package sizes are shown as unknown in that case; downloads are still verified against `SHA256SUMS.txt`.
 
