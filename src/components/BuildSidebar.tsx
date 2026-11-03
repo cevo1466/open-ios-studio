@@ -3,6 +3,7 @@ import type { BuildState } from '../xtool/buildState';
 import { validateProjectName } from '../xtool/parse';
 import { stageProgress } from '../xtool/stages';
 import { summarize } from '../xtool/summary';
+import { DOCTOR_STATUS_LABEL, doctorHint, doctorName, summarizeDoctor, type DoctorCheck } from '../xtool/doctor';
 import type { Diagnostic, XtoolInfo, XtoolOp, XtoolRunArgs } from '../xtool/types';
 import '../build-panel.css';
 
@@ -22,6 +23,11 @@ export interface BuildSidebarProps {
   deviceName: string | null;
   /** Why "Derle ve Yükle" is not possible, or null when it is. */
   installBlocked: string | null;
+  /** Environment check results (null = not run yet). */
+  doctor: DoctorCheck[] | null;
+  doctorLoading: boolean;
+  doctorError: string | null;
+  onDoctor(): void;
   onRedetect(): void;
   onRun(op: XtoolOp, args: XtoolRunArgs): void;
   onInstall(configuration: 'debug' | 'release'): void;
@@ -42,6 +48,30 @@ function Row({ label, tone, children }: { label: string; tone?: 'ok' | 'warn' | 
         {children}
       </dd>
     </div>
+  );
+}
+
+function DoctorList({ checks }: { checks: DoctorCheck[] }) {
+  const summary = summarizeDoctor(checks);
+  return (
+    <>
+      <p className={`bs-doctor-summary bs-${summary.tone}`} role="status">
+        {summary.text}
+      </p>
+      <ul className="bs-doctor-list">
+        {checks.map((c) => {
+          const hint = doctorHint(c);
+          return (
+            <li key={c.id} className={`bs-doctor-item bs-doctor-${c.status}`}>
+              <span className={`bs-doctor-badge bs-doctor-badge-${c.status}`}>{DOCTOR_STATUS_LABEL[c.status]}</span>
+              <span className="bs-doctor-name">{doctorName(c.id)}</span>
+              <span className="bs-doctor-detail">{c.detail}</span>
+              {hint && <span className="bs-doctor-hint">{hint}</span>}
+            </li>
+          );
+        })}
+      </ul>
+    </>
   );
 }
 
@@ -122,6 +152,22 @@ export function BuildSidebar(p: BuildSidebarProps) {
             <p>Komut seçenekleri ve çıktı biçimi Studio ile doğrulanmadı; hata ayrıştırma farklı olabilir.</p>
           </details>
         )}
+      </section>
+
+      <section className="bs-doctor" aria-label="Ortam denetimi">
+        <div className="bs-doctor-head">
+          <span className="bs-label">Ortam denetimi</span>
+          <button type="button" onClick={p.onDoctor} disabled={p.doctorLoading || running} title="Swift, Darwin SDK, xtool, Apple hesabı, cihaz ve USB desteğini salt okunur komutlarla denetler">
+            {p.doctorLoading ? 'Denetleniyor…' : p.doctor ? 'Yeniden denetle' : 'Ortamı denetle'}
+          </button>
+        </div>
+        {p.doctorError && (
+          <p className="bs-field-error" role="alert">
+            {p.doctorError}
+          </p>
+        )}
+        {p.doctor && <DoctorList checks={p.doctor} />}
+        {!p.doctor && !p.doctorError && <p className="bs-muted">Kurulumun eksiklerini ve her biri için yapılacak adımı listeler. Hiçbir şey kurmaz, giriş yapmaz.</p>}
       </section>
 
       <section className="bs-target" aria-label="Hedef">

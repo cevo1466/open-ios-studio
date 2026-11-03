@@ -1,5 +1,6 @@
 import { Channel, invoke } from '@tauri-apps/api/core';
 import type { AiEvent, ChatRequest, CliProviderId, CliStatus, ModelInfo, ProviderId, PtyEvent, PtyKind, PtyOptions } from './ai/types';
+import type { DoctorCheck } from './xtool/doctor';
 import type { RunEvent, XtoolInfo, XtoolOp, XtoolRunArgs } from './xtool/types';
 
 export interface Entry {
@@ -15,6 +16,34 @@ export interface ScanResult {
   skipped: number;
 }
 
+export interface SkillsInstallReport {
+  installed: string[];
+  unchanged: string[];
+  kept: string[];
+}
+
+export type UpdateAssetKind = 'deb' | 'app-image';
+export type InstallKind = 'app-image' | 'deb' | 'unknown';
+
+export interface UpdateInfo {
+  current: string;
+  latest: string;
+  newer: boolean;
+  prerelease: boolean;
+  publishedAt: string | null;
+  htmlUrl: string;
+  assets: { name: string; size: number; kind: UpdateAssetKind | 'checksums' | 'other' }[];
+  installKind: InstallKind;
+}
+
+export interface UpdateDownload {
+  path: string;
+  name: string;
+  sha256: string;
+  installCommand: string | null;
+  canReplaceRunningAppimage: boolean;
+}
+
 export const inDesktopApp = (): boolean => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
 export const ipc = {
@@ -24,6 +53,8 @@ export const ipc = {
   writeFile: (path: string, content: string) => invoke<void>('write_file', { path, content }),
   scanWorkspace: () => invoke<ScanResult>('scan_workspace'),
   xtoolDetect: () => invoke<XtoolInfo>('xtool_detect'),
+  /** Read-only environment check: Swift, Darwin SDK, xtool, SDK/auth status, device, usbmuxd, git. */
+  envDoctor: () => invoke<DoctorCheck[]>('env_doctor'),
   xtoolRun: (op: XtoolOp, args: XtoolRunArgs, onEvent: (event: RunEvent) => void) => {
     const channel = new Channel<RunEvent>();
     channel.onmessage = onEvent;
@@ -58,5 +89,14 @@ export const ipc = {
   ptyResize: (id: number, rows: number, cols: number) => invoke<void>('pty_resize', { id, rows, cols }),
   ptyClose: (id: number) => invoke<void>('pty_close', { id }),
   revealPath: (path: string, parent: boolean) => invoke<void>('reveal_path', { path, parent }),
+  /** Copies the bundled agent skills into the open project's .claude/skills (edited files are kept). */
+  skillsInstallBundled: () => invoke<SkillsInstallReport>('skills_install_bundled'),
+  /** Latest GitHub release of this project compared with the running version (read-only). */
+  updateCheck: () => invoke<UpdateInfo>('update_check'),
+  /** Downloads the DEB or AppImage into the downloads folder and verifies it against SHA256SUMS.txt. */
+  updateDownload: (kind: UpdateAssetKind) => invoke<UpdateDownload>('update_download', { kind }),
+  /** Replaces the running AppImage with a verified download; the app must be restarted afterwards. */
+  updateApplyAppimage: (path: string, sha256: string) => invoke<string>('update_apply_appimage', { path, sha256 }),
+  updateReveal: (path: string) => invoke<void>('update_reveal', { path }),
   createFile: (path: string) => invoke<void>('create_file', { path }),
 };

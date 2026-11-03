@@ -1,13 +1,15 @@
 import type { Settings, ThemeChoice } from '../settings';
 import { THEMES } from '../theme/themes';
+import { UpdatesSection } from './UpdatesSection';
 
 interface Props {
   settings: Settings;
+  desktop: boolean;
   onChange: (next: Settings) => void;
   onClose: () => void;
 }
 
-export function SettingsDialog({ settings, onChange, onClose }: Props) {
+export function SettingsDialog({ settings, desktop, onChange, onClose }: Props) {
   return (
     <div className="overlay" onMouseDown={onClose}>
       <div
@@ -57,6 +59,7 @@ export function SettingsDialog({ settings, onChange, onClose }: Props) {
             onChange={(e) => onChange({ ...settings, fontSize: Number(e.target.value) || settings.fontSize })}
           />
         </label>
+        <UpdatesSection desktop={desktop} />
         <p className="muted">Ayarlar bu uygulamada yerel olarak saklanır. Burada API anahtarı veya kimlik bilgisi saklanmaz.</p>
         <button type="button" onClick={onClose}>
           Kapat

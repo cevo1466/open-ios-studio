@@ -1,10 +1,13 @@
 mod ai;
 mod cli_ai;
+mod doctor;
 mod fs_engine;
 mod pty;
 mod reveal;
 mod runner;
 mod secrets;
+mod skills;
+mod update;
 mod xtool;
 
 use std::sync::Mutex;
@@ -130,6 +133,19 @@ async fn xtool_detect(state: State<'_, AppState>) -> Result<xtool::XtoolInfo, St
     tauri::async_runtime::spawn_blocking(move || {
         let path = tool_path();
         xtool::detect(&path, &cwd)
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+
+/// Read-only environment check (Swift, Darwin SDK, xtool, SDK/auth status, device, usbmuxd, git).
+#[tauri::command]
+async fn env_doctor(state: State<'_, AppState>) -> Result<Vec<doctor::Check>, String> {
+    let cwd = with_workspace(&state, |ws| Ok(ws.root().to_path_buf()))
+        .unwrap_or_else(|_| std::env::temp_dir());
+    tauri::async_runtime::spawn_blocking(move || {
+        let path = tool_path();
+        doctor::run(&path, &cwd)
     })
     .await
     .map_err(|e| e.to_string())
@@ -364,6 +380,44 @@ async fn cli_stream(
     Ok(())
 }
 
+/// Copies the bundled agent skills into `<workspace>/.claude/skills/` (never overwriting edited files).
+#[tauri::command]
+fn skills_install_bundled(state: State<'_, AppState>) -> Result<skills::InstallReport, String> {
+    with_workspace(&state, skills::install)
+}
+
+/// Latest GitHub release compared with this build's version (network, read-only).
+#[tauri::command]
+async fn update_check(app: tauri::AppHandle) -> Result<update::UpdateInfo, String> {
+    let current = app.package_info().version.to_string();
+    update::check(&current).await
+}
+
+/// Downloads the DEB or AppImage of the latest release into the downloads folder and verifies
+/// it against the release's SHA256SUMS.txt.
+#[tauri::command]
+async fn update_download(kind: update::AssetKind) -> Result<update::DownloadResult, String> {
+    update::download(kind).await
+}
+
+/// Replaces the running AppImage with a verified download (the checksum is recomputed first).
+#[tauri::command]
+async fn update_apply_appimage(path: String, sha256: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        update::apply_appimage(std::path::Path::new(&path), &sha256)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Shows a downloaded package in the file manager (only files inside the downloads folder).
+#[tauri::command]
+fn update_reveal(path: String) -> Result<(), String> {
+    let p = std::path::PathBuf::from(&path);
+    let dir = reveal::reveal_target(&p, true)?;
+    reveal::open_in_file_manager(&dir)
+}
+
 #[tauri::command]
 fn pty_open(
     state: State<'_, AppState>,
@@ -419,6 +473,7 @@ pub fn run() {
             create_file,
             scan_workspace,
             xtool_detect,
+            env_doctor,
             xtool_run,
             xtool_cancel,
             read_file_if_exists,
@@ -436,7 +491,12 @@ pub fn run() {
             pty_open,
             pty_write,
             pty_resize,
-            pty_close
+            pty_close,
+            skills_install_bundled,
+            update_check,
+            update_download,
+            update_apply_appimage,
+            update_reveal
         ])
         .run(tauri::generate_context!())
         .expect("error while running Open iOS Studio");

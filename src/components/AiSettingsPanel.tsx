@@ -169,6 +169,10 @@ export function AiSettingsPanel(props: AiSettingsPanelProps) {
                 <p className="ai-warn">Claude Code dosya yazma ve komut çalıştırma için sizden onay istemez. Yalnızca güvendiğiniz projelerde ve sitelerde kullanın; kapatmak için kutuyu kaldırın.</p>
               )}
               <p className="ai-note">Gömülü terminalde, proje klasöründe ve seçtiğiniz model/eforla başlar. Claude proje türünü ve xtool'u önceden bilir.</p>
+              <p className="ai-note">
+                Açılışta projeye hazır skill'ler kopyalanır (<code>.claude/skills</code>): <strong>ios-app-xtool</strong> (bu ortamda derleme, test ve App Store adımları),{' '}
+                <strong>mobile-ios-design</strong> (Apple HIG ve SwiftUI tasarım kalıpları), <strong>find-skills</strong> (skills.sh'ten yeni skill bulma). Düzenlediğiniz dosyaların üzerine yazılmaz.
+              </p>
               <details className="ai-info remote-site">
                 <summary>Uzak site (FTP / SSH) · isteğe bağlı</summary>
                 <p className="ai-note">Canlı sitenizin bilgilerini verirseniz Claude bağlanıp site yapısını ve mobil (responsive) tasarımı inceler, uygulamayı ona göre yazar. Yalnızca okur; değiştirmesini siz istemedikçe sitede bir şey yapmaz.</p>

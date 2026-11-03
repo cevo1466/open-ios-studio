@@ -7,6 +7,8 @@ interface Props {
   view: SidebarView;
   desktop: boolean;
   terminalOpen: boolean;
+  /** Which policy view is open in the editor region, if any. */
+  policyView: 'asr' | 'msec' | null;
   onView(v: SidebarView): void;
   onTerminal(): void;
   onStore(): void;
@@ -49,7 +51,7 @@ function Item({
 }
 
 /** Left activity bar: the section switch. Each entry shows one thing in the side panel, or acts. */
-export function ActivityBar({ view, desktop, terminalOpen, onView, onTerminal, onStore, onSecurity, onSettings }: Props) {
+export function ActivityBar({ view, desktop, terminalOpen, policyView, onView, onTerminal, onStore, onSecurity, onSettings }: Props) {
   const only = desktop ? undefined : 'Yalnızca masaüstü uygulaması';
   return (
     <nav className="activity" aria-label="Bölümler">
@@ -59,8 +61,8 @@ export function ActivityBar({ view, desktop, terminalOpen, onView, onTerminal, o
       <Item icon={<IconSparkle />} label="Yapay zekâ" title={only ?? 'Yapay zekâ ayarları ve sohbet'} disabled={!desktop} active={view === 'ai'} onClick={() => onView('ai')} />
       <Item icon={<IconTerminal />} label="Terminal" title={only ?? 'Gömülü terminal (Ctrl+J paneli gösterir/gizler)'} disabled={!desktop} active={terminalOpen} onClick={onTerminal} />
       <span className="act-sep" aria-hidden="true" />
-      <Item icon={<IconStore />} label="App Store" name="App Store hazırlığı" title="App Store hazırlık denetimi (kaynak düzeyinde)" onClick={onStore} />
-      <Item icon={<IconLock />} label="Güvenlik" name="Güvenlik merkezi" title="Güvenlik denetimi (kaynak düzeyinde)" onClick={onSecurity} />
+      <Item icon={<IconStore />} label="App Store" name="App Store hazırlığı" title="App Store hazırlık denetimi (kaynak düzeyinde)" active={policyView === 'asr'} onClick={onStore} />
+      <Item icon={<IconLock />} label="Güvenlik" name="Güvenlik merkezi" title="Güvenlik denetimi (kaynak düzeyinde)" active={policyView === 'msec'} onClick={onSecurity} />
       <Item icon={<IconSettings />} label="Ayarlar" onClick={onSettings} />
     </nav>
   );

@@ -143,3 +143,14 @@ button.sb-seg:hover { background: var(--bg3); color: var(--fg); border: 0; }
 .tree-children { position: relative; }
 .tree-children::before { content: ''; position: absolute; left: var(--guide-x, 15px); top: 0; bottom: 0; width: 1px; background: var(--border); opacity: 0.7; pointer-events: none; }
 .tree-group-hint { margin: 0; padding: 2px 12px 6px 28px; font-size: 11px; line-height: 1.4; color: var(--muted); }
+
+/* Settings: updates */
+.upd { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); padding-top: 10px; }
+.upd h3 { margin: 0; font-size: 13px; }
+.dialog .upd-row { justify-content: space-between; align-items: center; }
+.upd-new, .upd-done { display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--border); border-radius: var(--r1); padding: 8px 10px; background: var(--bg); }
+.upd-new p, .upd-done p { margin: 0; }
+.dialog .upd-new .row, .dialog .upd-done .row { justify-content: flex-start; }
+.upd-ok { margin: 0; color: var(--accent); }
+.upd-path { overflow-wrap: anywhere; font-size: 12px; }
+.upd-cmd { margin: 0; padding: 6px 8px; border-radius: var(--r1); background: var(--bg3); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: all; }
