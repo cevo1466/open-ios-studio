@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createOrderedWriter, splitTerminalInput } from './terminalInput';
+import { clipboardAction, createOrderedWriter, splitTerminalInput } from './terminalInput';
 
 describe('splitTerminalInput', () => {
   it('sends Turkish letters one code point at a time', () => {
@@ -41,5 +41,39 @@ describe('createOrderedWriter', () => {
     write('abc');
     await new Promise((r) => setTimeout(r, 20));
     expect(seen).toEqual(['b', 'c']);
+  });
+});
+
+describe('clipboardAction', () => {
+  const key = (k: string, mods: Partial<Record<'ctrlKey' | 'shiftKey' | 'altKey' | 'metaKey', boolean>> = {}, type = 'keydown') => ({
+    type,
+    key: k,
+    ctrlKey: false,
+    shiftKey: false,
+    altKey: false,
+    metaKey: false,
+    ...mods,
+  });
+
+  it('copies on Ctrl+Shift+C and Ctrl+Insert', () => {
+    expect(clipboardAction(key('C', { ctrlKey: true, shiftKey: true }))).toBe('copy');
+    expect(clipboardAction(key('Insert', { ctrlKey: true }))).toBe('copy');
+  });
+
+  it('pastes on Ctrl+V, Ctrl+Shift+V and Shift+Insert', () => {
+    expect(clipboardAction(key('v', { ctrlKey: true }))).toBe('paste');
+    expect(clipboardAction(key('V', { ctrlKey: true, shiftKey: true }))).toBe('paste');
+    expect(clipboardAction(key('Insert', { shiftKey: true }))).toBe('paste');
+  });
+
+  it('leaves Ctrl+C alone so it still interrupts the program', () => {
+    expect(clipboardAction(key('c', { ctrlKey: true }))).toBeNull();
+  });
+
+  it('ignores ordinary keys, key releases, Alt and Meta combinations', () => {
+    expect(clipboardAction(key('v'))).toBeNull();
+    expect(clipboardAction(key('v', { ctrlKey: true }, 'keyup'))).toBeNull();
+    expect(clipboardAction(key('v', { ctrlKey: true, altKey: true }))).toBeNull();
+    expect(clipboardAction(key('c', { ctrlKey: true, shiftKey: true, metaKey: true }))).toBeNull();
   });
 });

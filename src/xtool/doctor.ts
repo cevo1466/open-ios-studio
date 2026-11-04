@@ -29,6 +29,7 @@ export const DOCTOR_LABELS: Record<string, Label> = {
   'apple-account': { name: 'Apple hesabı (imza)', hint: 'Derleme çalışır; iPhone’a yüklemek için `xtool setup` veya `xtool auth login` ile kendi terminalinizde giriş yapın.' },
   device: { name: 'Bağlı iPhone', hint: 'Veri kablosuyla bağlayın, kilidi açın, "Bu bilgisayara güven" deyin ve Ayarlar > Gizlilik ve Güvenlik altından Geliştirici Modu’nu açın.' },
   usbmuxd: { name: 'usbmuxd (USB bağlantısı)', hint: 'sudo apt install usbmuxd' },
+  'screen-mirror': { name: 'Ekran yansıtma (uxplay)', hint: 'İsteğe bağlı: iPhone ekranını bilgisayarda görmek için `sudo apt install -y uxplay`. Sonra `uxplay` çalıştırın ve iPhone’da Denetim Merkezi > Ekran Yansıtma > uxplay seçin; iki cihaz aynı Wi-Fi’de olmalı.' },
   git: { name: 'git', hint: 'sudo apt install git' },
 };
 

@@ -235,6 +235,12 @@ else
   report INFO "iPhone over USB (idevice_id)" "libimobiledevice-utils not installed (optional, helps diagnosing USB problems)" "sudo apt install libimobiledevice-utils"
 fi
 
+if command -v uxplay >/dev/null 2>&1 || [ -x /usr/bin/uxplay ]; then
+  report PASS "screen mirroring (uxplay)" "installed (optional: shows the iPhone screen on this desktop)"
+else
+  report WARN "screen mirroring (uxplay)" "not installed (optional)" "sudo apt install -y uxplay, then run 'uxplay' and pick it under Screen Mirroring on the iPhone (same Wi-Fi)"
+fi
+
 # 8. Devices seen by xtool --------------------------------------------------------------------
 if [ "$xtool_ok" -eq 1 ]; then
   if out="$(run_quiet xtool devices --no-wait)"; then

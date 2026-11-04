@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { PtyKind, PtyOptions } from '../ai/types';
 import { ipc } from '../ipc';
 import { useThemeDef } from '../theme/ThemeContext';
-import { createOrderedWriter } from './terminalInput';
+import { clipboardAction, createOrderedWriter } from './terminalInput';
 import '@xterm/xterm/css/xterm.css';
 import '../terminal-panel.css';
 
@@ -31,6 +31,27 @@ interface Props {
 }
 
 type Phase = 'starting' | 'running' | 'exited' | 'error';
+
+/** Puts text on the clipboard; falls back to a hidden textarea when the async API is refused. */
+async function copyToClipboard(text: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return;
+  } catch {
+    /* WebKitGTK may refuse the async API; try the legacy path below */
+  }
+  const area = document.createElement('textarea');
+  area.value = text;
+  area.style.position = 'fixed';
+  area.style.opacity = '0';
+  document.body.appendChild(area);
+  area.select();
+  try {
+    document.execCommand('copy');
+  } finally {
+    area.remove();
+  }
+}
 
 
 /**
@@ -77,6 +98,20 @@ export function TerminalPanel({ kind, options, runKey, theme, onExit, onClose, o
     // One keystroke must reach the PTY as one small write (see terminalInput.ts).
     const send = createOrderedWriter((piece) => (id === null ? Promise.resolve() : ipc.ptyWrite(id, piece)));
     const input = term.onData(send);
+    // Copy: xterm keeps its selection outside the DOM, so write it to the clipboard ourselves.
+    // Paste: returning false stops xterm from sending ^V to the PTY, and not calling
+    // preventDefault lets the WebView fire its own paste event, which xterm turns into a
+    // (bracketed) paste.
+    term.attachCustomKeyEventHandler((e) => {
+      const action = clipboardAction(e);
+      if (action === 'copy') {
+        e.preventDefault();
+        const selected = term.getSelection();
+        if (selected) void copyToClipboard(selected);
+        return false;
+      }
+      return action === 'paste' ? false : true;
+    });
     // WebKitGTK keeps composed text (ı ş ğ …) in xterm's hidden textarea; stale content is then
     // re-sent with later keystrokes and looks like a paste. Empty it once xterm has read it.
     const ta = term.textarea;

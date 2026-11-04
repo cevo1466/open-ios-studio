@@ -230,6 +230,19 @@ pub fn run(path_var: &OsStr, cwd: &Path) -> Vec<Check> {
         check("usbmuxd", Status::Warn, "not installed")
     });
 
+    // Optional: lets the iPhone screen be mirrored to this desktop (AirPlay receiver).
+    let uxplay =
+        find_in_path("uxplay", path_var).is_some() || Path::new("/usr/bin/uxplay").is_file();
+    out.push(if uxplay {
+        check("screen-mirror", Status::Pass, "uxplay installed")
+    } else {
+        check(
+            "screen-mirror",
+            Status::Warn,
+            "uxplay not installed (optional)",
+        )
+    });
+
     out.push(match find_in_path("git", path_var) {
         Some(_) => check("git", Status::Pass, "installed"),
         None => check("git", Status::Warn, "not installed"),
@@ -315,6 +328,7 @@ mod tests {
                 "apple-account",
                 "device",
                 "usbmuxd",
+                "screen-mirror",
                 "git"
             ]
         );

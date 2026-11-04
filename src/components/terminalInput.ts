@@ -23,3 +23,28 @@ export function createOrderedWriter(write: (piece: string) => Promise<unknown>):
     }
   };
 }
+
+export type ClipboardAction = 'copy' | 'paste';
+
+/**
+ * Which clipboard action a key press asks for in the terminal, or null when it is an ordinary key.
+ * Plain Ctrl+C stays an interrupt for the program in the PTY; copying needs Ctrl+Shift+C (or
+ * Ctrl+Insert). xterm would otherwise send Ctrl+V to the PTY as a literal ^V and never paste, so
+ * Ctrl+V, Ctrl+Shift+V and Shift+Insert are treated as paste.
+ */
+export function clipboardAction(e: {
+  type: string;
+  key: string;
+  ctrlKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+  metaKey: boolean;
+}): ClipboardAction | null {
+  if (e.type !== 'keydown' || e.altKey || e.metaKey) return null;
+  const key = e.key.toLowerCase();
+  if (e.ctrlKey && e.shiftKey && key === 'c') return 'copy';
+  if (e.ctrlKey && !e.shiftKey && key === 'insert') return 'copy';
+  if (e.ctrlKey && key === 'v') return 'paste';
+  if (e.shiftKey && !e.ctrlKey && key === 'insert') return 'paste';
+  return null;
+}
