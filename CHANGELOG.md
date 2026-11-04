@@ -16,6 +16,7 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 - Opening a file from the explorer brings the editor back in front of an open policy/preflight view.
 
 ### Fixed
+- The Terminal button (activity bar, palette, Ctrl+J on an empty panel) no longer kills a running Claude Code session: it only brings the terminal panel forward. Starting a new Claude Code or login session over a running Claude Code now asks for confirmation first; the "Yeni ayarla yeniden başlat" button restarts without asking.
 - Ayarlar → Güncellemeler: when the GitHub REST API answers 403 (the 60-requests-per-hour limit for unauthenticated clients), the update check now falls back to the public release feed (`releases.atom`) and the release's `SHA256SUMS.txt`, so "Güncellemeleri denetle" keeps working. Package sizes are shown as unknown in that case; downloads are still verified against `SHA256SUMS.txt`.
 
 ## [0.1.11] - 2026-11-03

@@ -191,3 +191,23 @@ test('Swift language support starts for the workspace and lists server diagnosti
   await expect(page.getByRole('tab', { name: /xtool\.yml/ })).toHaveAttribute('aria-selected', 'true');
   expect(await didOpens()).toHaveLength(1);
 });
+
+test('the Terminal button brings a running Claude Code session forward instead of killing it', async ({ page }) => {
+  await openWorkspace(page);
+  await activity(page, /^Yapay zekâ/).click();
+  await page.getByLabel('Sağlayıcı').selectOption('claude-cli');
+  await page.locator('.sidebar').getByRole('button', { name: /^Claude Code'u bu projede aç/ }).click();
+  const claude = page.getByRole('region', { name: 'Claude Code' });
+  await expect(claude).toBeVisible();
+  const ptyCalls = async () => (await calls(page)).filter((c) => c.cmd === 'pty_open' || c.cmd === 'pty_close').map((c) => c.cmd);
+  await expect.poll(ptyCalls).toContain('pty_open');
+  const before = await ptyCalls();
+
+  // Hide the panel, then press Terminal: the same session comes back; no new pty_open, no pty_close.
+  await page.locator('.status').getByRole('button', { name: 'Paneli gizle' }).click();
+  await expect(claude).toBeHidden();
+  await activity(page, /^Terminal/).click();
+  await expect(claude).toBeVisible();
+  await expect(page.getByRole('tab', { name: /Terminal|Claude Code/ }).first()).toBeVisible();
+  expect(await ptyCalls()).toEqual(before);
+});

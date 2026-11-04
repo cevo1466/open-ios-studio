@@ -30,6 +30,7 @@ import { useCloseGuard } from './app/useCloseGuard';
 import { usePreflight } from './app/usePreflight';
 import { useXtool } from './app/useXtool';
 import { useSwiftLsp } from './app/useSwiftLsp';
+import { nextTerminal, type TerminalSession } from './app/terminalOpen';
 import { PreflightView } from './components/PreflightView';
 import { REPORT_MD } from './preflight';
 import { CloseGuardDialog } from './components/CloseGuard';
@@ -74,7 +75,7 @@ export function App() {
   const [view, setView] = useState<SidebarView>('files');
   const [binary, setBinary] = useState<{ path: string; kind: Exclude<FileKind, 'text'>; error: string | null } | null>(null);
   const [revealArtifacts, setRevealArtifacts] = useState(0);
-  const [terminal, setTerminal] = useState<{ kind: PtyKind; key: number; options?: PtyOptions } | null>(null);
+  const [terminal, setTerminal] = useState<TerminalSession | null>(null);
   const [layout, setLayout] = useState<LayoutState>(loadLayout);
   const [bottomActive, setBottomActive] = useState<BottomTabId>('output');
   const [bottomHidden, setBottomHidden] = useState(false);
@@ -90,9 +91,13 @@ export function App() {
     setBottomActive(id);
     setBottomHidden(false);
   }, []);
-  const openTerminal = (kind: PtyKind, options?: PtyOptions) => {
-    // The plain shell is reused if it is already running; login and Claude Code sessions start fresh.
-    setTerminal((t) => (kind === 'user-shell' && t?.kind === 'user-shell' ? t : { kind, options, key: (t?.key ?? 0) + 1 }));
+  const openTerminal = (kind: PtyKind, options?: PtyOptions, force = false) => {
+    // The Terminal button only brings the running session forward; a new Claude Code or login
+    // session over a running Claude Code asks first, because starting it kills that session.
+    // `force` is for the explicit "restart with the new settings" button.
+    const decision = nextTerminal(terminal, kind, options);
+    if (decision.replaces !== null && !force && !window.confirm('Çalışan Claude Code oturumu kapatılacak ve yeni bir oturum başlayacak. Devam edilsin mi?')) return;
+    setTerminal(decision.terminal);
     showBottom('terminal');
   };
   const desktop = inDesktopApp();
@@ -423,12 +428,12 @@ export function App() {
             (terminal.options?.effort ?? '') !== ai.settings.efforts['claude-cli'] ||
             (terminal.options?.skipPermissions === true) !== ai.settings.skipPermissions,
           // The remote site (and its password) is not kept for a restart: the form has to be filled again.
-          restart: () => openClaudeCode(),
+          restart: () => openClaudeCode(undefined, undefined, true),
         }
       : undefined;
-  function openClaudeCode(remote?: RemoteSite, extraContext?: string) {
+  function openClaudeCode(remote?: RemoteSite, extraContext?: string, force = false) {
     const start = () =>
-      openTerminal('claude-code', { model: ai.settings.models['claude-cli'], effort: ai.settings.efforts['claude-cli'], skipPermissions: ai.settings.skipPermissions, remote, extraContext });
+      openTerminal('claude-code', { model: ai.settings.models['claude-cli'], effort: ai.settings.efforts['claude-cli'], skipPermissions: ai.settings.skipPermissions, remote, extraContext }, force);
     if (!state.workspace) {
       start();
       return;
