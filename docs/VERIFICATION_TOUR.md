@@ -19,6 +19,7 @@ Prerequisites: Linux Mint 21+/Ubuntu 22.04+, the latest DEB from the Releases pa
 | 11 | Terminal: copy a line with the mouse, paste it with Ctrl+Shift+V. | The pasted text matches; Claude Code shows it as pasted text, not as keystrokes. (After PR #52.) | T11 |
 | 12 | After the pre-submission check ships: run "Yayın öncesi denetim" on `TourApp`. | Build and policy steps PASS, tests NOT_VERIFIED (no Tests/), manifest NOT_VERIFIED (xtool defaults), verdict green; "Derle ve Yükle" enabled. | T12 |
 | 13 | After Swift language support ships: open `ContentView.swift`, type `Text(` and wait. | A completion list appears; a deliberate typo shows a red squiggle and a row in Sorunlar within a few seconds. | T13 |
+| 14 | With Claude Code running in the terminal, hide the panel (Ctrl+J), then click Terminal in the activity bar. | The same Claude Code session comes back with its scrollback; nothing restarts. Clicking "Claude Code'u bu projede aç" again asks before replacing it. | T14 |
 
 ## When something fails
 

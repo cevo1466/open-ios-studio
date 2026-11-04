@@ -7,7 +7,7 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 ### Added
 - "Yayın öncesi denetim" (pre-submission check): build, `swift test`, policy, secrets, manifest and icon steps with a green/red verdict bound to the project's files; the report is saved to `.open-ios-studio/preflight/` and can be handed to Claude Code in one click. Red, not run or stale blocks "Derle ve Yükle" and device install/launch until green (Derle panel, command palette).
 - Releases tag themselves: merging a `chore(release): X.Y.Z` pull request creates the tag and starts the Release workflow (`scripts/release-tag-check.sh`, `auto-tag.yml`).
-- `docs/VERIFICATION_TOUR.md`: the owner's 13-item real-desktop checklist, tracked in STATUS.
+- `docs/VERIFICATION_TOUR.md`: the owner's 14-item real-desktop checklist, tracked in STATUS.
 - Swift language support: `sourcekit-lsp` is started per workspace (stdio, no shell, scrubbed environment) and gives Monaco completion, hover and inline diagnostics for `.swift` files; server diagnostics are listed in Sorunlar with an `N LSP` badge; the status bar shows `Swift LSP: çalışıyor / Linux hedefi / yok / durdu` and "Swift LSP'yi yeniden başlat" is in the command palette. NOT VERIFIED against a real server yet (tour item T13).
 
 ### Changed

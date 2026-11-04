@@ -45,7 +45,7 @@ Goal: a developer who installs the DEB/AppImage can go from an empty folder to a
 - ◐ App Store submission pipeline (separate PR, feature/appstore-release, ADR-0013/0014). Needs a paid Apple Developer Program account; NOT VERIFIED end to end.
 - ☑ Pre-submission check ("Yayın öncesi denetim", PR #53): build, `swift test`, policy, secrets, manifest, icon; green/red verdict bound to the files; red blocks install/launch until green; report hand-off to Claude Code. UI tests (XCUITest) stay impossible on Linux and are reported as NOT_VERIFIED.
 - ◐ VS Code parity, step 2: editor tabs for non-file views and palette entries for every panel are done (PR #53); still open: keyboard shortcuts list, Explorer context menu (rename/delete with confirmation), the release panel as a tab once #41 lands.
-- ◐ Verification tour: `docs/VERIFICATION_TOUR.md` written with 13 items and a STATUS table; the owner's run is pending.
+- ◐ Verification tour: `docs/VERIFICATION_TOUR.md` written with 14 items and a STATUS table; the owner's run is pending.
 - ☑ Release automation: `auto-tag.yml` tags `chore(release): X.Y.Z` merges and starts the Release workflow (rules in `scripts/release-tag-check.sh`).
 - ☐ Turkish text in the embedded Claude Code terminal: 0.1.11 (#49) ships the fix; the owner reported it works; tour item T8 records it.
 - ◐ Swift language support (PR #53): sourcekit-lsp session from Rust, Monaco completion/hover/markers, Sorunlar rows and a status-bar segment. Tested against a fake server; a real `sourcekit-lsp` on the owner's machine is tour item T13.
