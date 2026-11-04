@@ -9,6 +9,8 @@ useDefault = true
 description = "synthetic secrets in tests and captured fixtures"
 paths = [
   '''src/.*\.test\.ts''',
+  '''src-tauri/src/.*tests\.rs''',
+  '''src-tauri/tests/.*''',
   '''fixtures/.*''',
   '''e2e/.*''',
   '''docs/.*''',

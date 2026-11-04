@@ -2,6 +2,8 @@ mod ai;
 mod cli_ai;
 mod doctor;
 mod fs_engine;
+mod lsp;
+mod png;
 mod pty;
 mod reveal;
 mod runner;
@@ -28,6 +30,8 @@ struct AppState {
     ai_run: Mutex<Option<runner::CancelToken>>,
     /// Embedded terminal sessions (ADR-0009).
     pty: pty::PtyState,
+    /// The sourcekit-lsp session of the open workspace, if any.
+    lsp: lsp::LspState,
 }
 
 #[derive(Debug, Serialize)]
@@ -160,8 +164,9 @@ async fn xtool_run(
     on_event: Channel<RunEvent>,
 ) -> Result<(), String> {
     let path = tool_path();
-    let program = xtool::find_in_path("xtool", &path)
-        .ok_or_else(|| "xtool was not found on PATH.".to_owned())?;
+    let program_name = xtool::program_for_op(&op);
+    let program = xtool::find_in_path(program_name, &path)
+        .ok_or_else(|| format!("{program_name} was not found on PATH."))?;
     let mut spec = with_workspace(&state, |ws| Ok(xtool::build_spec(&op, &args, &program, ws)))??;
     // xtool calls `swift`; give it the same widened PATH used for detection.
     spec.env
@@ -380,6 +385,75 @@ async fn cli_stream(
     Ok(())
 }
 
+/// PNG signature + IHDR of a workspace file (33 bytes), for the icon check. `None` when the file
+/// does not exist; an error when it exists but is not a PNG.
+#[tauri::command]
+fn read_png_header(
+    state: State<'_, AppState>,
+    path: String,
+) -> Result<Option<png::PngHeader>, String> {
+    use std::io::Read;
+    let abs = with_workspace(&state, |ws| ws.resolve(&path))?;
+    if std::fs::symlink_metadata(&abs).is_err() {
+        return Ok(None);
+    }
+    let mut file = std::fs::File::open(&abs).map_err(|e| e.to_string())?;
+    let mut buf = [0u8; 33];
+    let mut read = 0;
+    while read < buf.len() {
+        let n = file.read(&mut buf[read..]).map_err(|e| e.to_string())?;
+        if n == 0 {
+            break;
+        }
+        read += n;
+    }
+    png::parse_png_header(&buf[..read]).map(Some)
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LspStarted {
+    id: u32,
+    program: String,
+    /// Whether the workspace root has `.bsp/xtool.json` (xtool's build server for sourcekit-lsp).
+    bsp: bool,
+}
+
+/// Starts `sourcekit-lsp` for the open workspace (stdio, no shell, scrubbed environment).
+/// Replaces a running session; the webview drives the protocol over `on_event` + `lsp_send`.
+#[tauri::command]
+fn lsp_start(
+    state: State<'_, AppState>,
+    on_event: Channel<lsp::LspEvent>,
+) -> Result<LspStarted, String> {
+    let program = lsp::resolve_program(&tool_path())
+        .ok_or_else(|| "sourcekit-lsp was not found".to_owned())?;
+    let root = with_workspace(&state, |ws| Ok(ws.root().to_path_buf()))?;
+    let bsp = root.join(".bsp").join("xtool.json").is_file();
+    let env = cli_ai::env_pairs()
+        .into_iter()
+        .map(|(k, v)| (k.to_owned(), v))
+        .collect();
+    let id = state.lsp.start(&program, &[], &root, env, move |event| {
+        let _ = on_event.send(event);
+    })?;
+    Ok(LspStarted {
+        id,
+        program: program.to_string_lossy().into_owned(),
+        bsp,
+    })
+}
+
+#[tauri::command]
+fn lsp_send(state: State<'_, AppState>, id: u32, json: String) -> Result<(), String> {
+    state.lsp.send(id, &json)
+}
+
+#[tauri::command]
+fn lsp_stop(state: State<'_, AppState>) {
+    state.lsp.stop();
+}
+
 /// Copies the bundled agent skills into `<workspace>/.claude/skills/` (never overwriting edited files).
 #[tauri::command]
 fn skills_install_bundled(state: State<'_, AppState>) -> Result<skills::InstallReport, String> {
@@ -496,7 +570,11 @@ pub fn run() {
             update_check,
             update_download,
             update_apply_appimage,
-            update_reveal
+            update_reveal,
+            read_png_header,
+            lsp_start,
+            lsp_send,
+            lsp_stop
         ])
         .run(tauri::generate_context!())
         .expect("error while running Open iOS Studio");

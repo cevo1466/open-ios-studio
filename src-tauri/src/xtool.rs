@@ -14,6 +14,7 @@ use crate::runner::{self, CancelToken, Spec, Stream};
 const DETECT_TIMEOUT: Duration = Duration::from_secs(30);
 const QUICK_TIMEOUT: Duration = Duration::from_secs(120);
 const BUILD_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+const TEST_TIMEOUT: Duration = Duration::from_secs(20 * 60);
 
 #[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -170,7 +171,17 @@ pub fn detect(path_var: &OsStr, cwd: &Path) -> XtoolInfo {
     info
 }
 
-/// Build the command for an allow-listed operation.
+/// Which program an operation runs: `swift test` is the only non-xtool op.
+pub fn program_for_op(op: &str) -> &'static str {
+    if op == "swift-test" {
+        "swift"
+    } else {
+        "xtool"
+    }
+}
+
+/// Build the command for an allow-listed operation. `program` is the binary `program_for_op`
+/// named, already resolved on PATH by the caller.
 pub fn build_spec(
     op: &str,
     args: &RunArgs,
@@ -205,6 +216,12 @@ pub fn build_spec(
             ))
         }
         "auth-status" => Ok(tool_spec(xtool, &["auth", "status"], root, QUICK_TIMEOUT)),
+        // Host-side unit tests of the package (ZetaCore-style UI-free targets); the pre-submission
+        // check runs it when the project has a Tests/ directory.
+        "swift-test" => {
+            let dir = project_dir(args, workspace)?;
+            Ok(tool_spec(xtool, &["test"], &dir, TEST_TIMEOUT))
+        }
         // `--no-wait` is essential: the default waits forever for a device to appear.
         "devices" => Ok(tool_spec(
             xtool,
@@ -432,5 +449,30 @@ mod tests {
                 "{op}"
             );
         }
+    }
+
+    #[test]
+    fn program_for_op_picks_swift_for_swift_test() {
+        assert_eq!(program_for_op("swift-test"), "swift");
+        assert_eq!(program_for_op("build"), "xtool");
+        assert_eq!(program_for_op("devices"), "xtool");
+    }
+
+    #[test]
+    fn swift_test_spec_runs_swift_test_in_the_project_dir() {
+        let (_d, ws) = ws();
+        let swift = Path::new("/usr/bin/swift");
+        assert!(build_spec("swift-test", &RunArgs::default(), swift, &ws).is_err());
+        fs::create_dir_all(ws.root().join("App")).expect("mkdir");
+        fs::write(ws.root().join("App/Package.swift"), "").expect("write");
+        let args = RunArgs {
+            project: Some("App".into()),
+            ..RunArgs::default()
+        };
+        let spec = build_spec("swift-test", &args, swift, &ws).expect("spec");
+        assert_eq!(spec.program, swift);
+        assert_eq!(spec.args, ["test"]);
+        assert!(spec.cwd.ends_with("App"));
+        assert_eq!(spec.timeout, Duration::from_secs(20 * 60));
     }
 }

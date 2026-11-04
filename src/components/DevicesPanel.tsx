@@ -13,6 +13,8 @@ export interface DevicesPanelProps {
   hasWorkspace: boolean;
   running: boolean;
   selectedUdid: string | null;
+  /** The pre-submission gate: when closed, install and launch stay disabled with its reason. */
+  preflight: { allowed: boolean; reason: string | null };
   onSelect(udid: string | null): void;
   onRefresh(): void;
   onRunOnDevice(udid: string | null, configuration: 'debug' | 'release'): void;
@@ -41,6 +43,7 @@ export function DevicesPanel(props: DevicesPanelProps) {
     authLoggedIn: props.authLoggedIn,
     devices,
     selectedUdid,
+    preflight: props.preflight,
   });
 
   const bundleOk = BUNDLE_ID_RE.test(bundleId);
@@ -49,6 +52,7 @@ export function DevicesPanel(props: DevicesPanelProps) {
     xtoolFound: props.xtoolFound,
     hasWorkspace: true,
     running,
+    preflight: props.preflight,
     authLoggedIn: props.authLoggedIn,
     devices,
     selectedUdid,

@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
-import type { Tab } from '../state/store';
+import type { Tab, ViewId } from '../state/store';
 import { isDirty } from '../state/store';
 import { useThemeDef } from '../theme/ThemeContext';
 import { monacoThemeName } from '../theme/themes';
@@ -24,17 +24,27 @@ export const languageFor = (path: string): string => {
 interface Props {
   tabs: Tab[];
   active: string | null;
+  /** Non-file views open as tabs after the files (singletons, no dirty state). */
+  views: { id: ViewId; title: string }[];
+  /** The view in front, or null when the active file is. */
+  activeView: ViewId | null;
+  /** Rendered instead of the editor while a view is in front. */
+  viewContent: ReactNode;
   theme: 'light' | 'dark';
   fontSize: number;
   onActivate: (path: string) => void;
   onClose: (path: string) => void;
+  onActivateView: (id: ViewId) => void;
+  onCloseView: (id: ViewId) => void;
   onChange: (path: string, content: string) => void;
   onSave: () => void;
+  /** Called once per editor mount with the Monaco instance (language providers register here). */
+  onEditorMount?: (editor: Parameters<OnMount>[0], monaco: Parameters<OnMount>[1]) => void;
 }
 
-export function EditorPane({ tabs, active, theme, fontSize, onActivate, onClose, onChange, onSave }: Props) {
+export function EditorPane({ tabs, active, views, activeView, viewContent, theme, fontSize, onActivate, onClose, onActivateView, onCloseView, onChange, onSave, onEditorMount }: Props) {
   const themeDef = useThemeDef(theme);
-  const current = tabs.find((t) => t.path === active);
+  const current = activeView === null ? tabs.find((t) => t.path === active) : undefined;
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const appliedRev = useRef(new Map<string, number>());
   const path = current?.path;
@@ -58,8 +68,8 @@ export function EditorPane({ tabs, active, theme, fontSize, onActivate, onClose,
     <section className="editor-pane" aria-label="Düzenleyici">
       <div className="tabs" role="tablist">
         {tabs.map((tab) => (
-          <div key={tab.path} className={`tab${tab.path === active ? ' active' : ''}`}>
-            <button type="button" role="tab" aria-selected={tab.path === active} onClick={() => onActivate(tab.path)}>
+          <div key={tab.path} className={`tab${activeView === null && tab.path === active ? ' active' : ''}`}>
+            <button type="button" role="tab" aria-selected={activeView === null && tab.path === active} onClick={() => onActivate(tab.path)}>
               {tab.path.split('/').pop()}
               {isDirty(tab) && <span className="dirty" title="Kaydedilmemiş değişiklikler"> ●</span>}
             </button>
@@ -68,8 +78,20 @@ export function EditorPane({ tabs, active, theme, fontSize, onActivate, onClose,
             </button>
           </div>
         ))}
+        {views.map((v) => (
+          <div key={v.id} className={`tab view${v.id === activeView ? ' active' : ''}`}>
+            <button type="button" role="tab" aria-selected={v.id === activeView} onClick={() => onActivateView(v.id)}>
+              {v.title}
+            </button>
+            <button type="button" className="tab-close" aria-label={`${v.title} sekmesini kapat`} onClick={() => onCloseView(v.id)}>
+              ×
+            </button>
+          </div>
+        ))}
       </div>
-      {current ? (
+      {activeView !== null ? (
+        viewContent
+      ) : current ? (
         <Editor
           path={current.path}
           language={languageFor(current.path)}
@@ -80,6 +102,7 @@ export function EditorPane({ tabs, active, theme, fontSize, onActivate, onClose,
           onMount={(editor, monaco) => {
             editorRef.current = editor;
             editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, onSave);
+            onEditorMount?.(editor, monaco);
           }}
         />
       ) : (

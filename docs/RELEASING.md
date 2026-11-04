@@ -15,12 +15,13 @@ Every release is published as a GitHub pre-release. It stays a pre-release until
    - `src-tauri/Cargo.toml` (`[package] version`)
 3. In `CHANGELOG.md`, move items from `[Unreleased]` into a new `## [X.Y.Z] - YYYY-MM-DD` section, keep the Known limitations list honest, and update the compare links.
 4. Update `docs/STATUS.md`. Open a PR, wait for green CI, merge.
-5. With the owner's approval, tag the merge commit and push the tag:
+5. Merging that pull request is the owner's approval. Its merge commit must be titled `chore(release): X.Y.Z` (GitHub's default squash title for a PR of that name): `.github/workflows/auto-tag.yml` then checks the three version files and the `CHANGELOG.md` section (`scripts/release-tag-check.sh`), creates the tag `vX.Y.Z` and starts the Release workflow. Any other commit on `main` is skipped, so merging an ordinary PR that happens to bump the version does not release.
+   Manual fallback when the workflow cannot run:
    ```sh
    git tag -a vX.Y.Z -m "Open iOS Studio vX.Y.Z"
    git push origin vX.Y.Z
    ```
-   Tag pushes are the only automatic trigger of `.github/workflows/release.yml`. It can also be run manually (Actions, "Release", input `tag`) for an existing tag.
+   The Release workflow can also be run by hand (Actions, "Release", input `tag`) for an existing tag.
 
 ## What the workflow does
 
