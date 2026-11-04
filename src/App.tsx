@@ -25,21 +25,26 @@ import type { PtyKind, PtyOptions, RemoteSite } from './ai/types';
 import { ChatPanel } from './components/ChatPanel';
 import { DevicesPanel } from './components/DevicesPanel';
 import { AppStoreReadiness, SecurityCenter } from './components/PolicyPanels';
+import { buildCommands } from './app/commands';
+import { useCloseGuard } from './app/useCloseGuard';
+import { usePreflight } from './app/usePreflight';
+import { useXtool } from './app/useXtool';
+import { useSwiftLsp } from './app/useSwiftLsp';
+import { nextTerminal, type TerminalSession } from './app/terminalOpen';
+import { PreflightView } from './components/PreflightView';
+import { REPORT_MD } from './preflight';
 import { CloseGuardDialog } from './components/CloseGuard';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { BinaryCard } from './components/BinaryCard';
 import { classifyPath, isNotTextError, type FileKind } from './files/kind';
 import { SettingsDialog } from './components/SettingsDialog';
-import { dirtyTabs, saveAllDirty } from './state/closeGuard';
+import { dirtyTabs } from './state/closeGuard';
 import { inDesktopApp, ipc } from './ipc';
 import { loadSettings, saveSettings, type Settings } from './settings';
 import { analyzeProject } from './policy';
 import type { EvaluationReport } from './policy/types';
-import { initialState, isDirty, reducer } from './state/store';
-import { buildReducer, initialBuildState } from './xtool/buildState';
-import { compatibility, parseAuthStatus, parseDevices, parseDiagnostics, parseSwiftVersion, parseXtoolVersion, redactLine } from './xtool/parse';
-import type { DoctorCheck } from './xtool/doctor';
-import type { Device, RunEvent, XtoolInfo, XtoolOp, XtoolRunArgs } from './xtool/types';
+import { initialState, isDirty, reducer, tabToClose, VIEW_TITLE, type ViewId } from './state/store';
+import { compatibility, parseSwiftVersion } from './xtool/parse';
 
 const SIDEBAR_TITLES: Record<SidebarView, string> = {
   files: 'Dosyalar',
@@ -58,7 +63,9 @@ export function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
   const [newName, setNewName] = useState<string | null>(null);
-  const [panel, setPanel] = useState<'asr' | 'msec' | null>(null);
+  const onReportWritten = useCallback(() => setRefreshKey((k) => k + 1), []);
+  const pf = usePreflight({ workspace: state.workspace, dispatch, onReportWritten });
+  const refreshFingerprint = pf.refreshFingerprint;
   const [report, setReport] = useState<EvaluationReport | null>(null);
   const [analysing, setAnalysing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -68,7 +75,7 @@ export function App() {
   const [view, setView] = useState<SidebarView>('files');
   const [binary, setBinary] = useState<{ path: string; kind: Exclude<FileKind, 'text'>; error: string | null } | null>(null);
   const [revealArtifacts, setRevealArtifacts] = useState(0);
-  const [terminal, setTerminal] = useState<{ kind: PtyKind; key: number; options?: PtyOptions } | null>(null);
+  const [terminal, setTerminal] = useState<TerminalSession | null>(null);
   const [layout, setLayout] = useState<LayoutState>(loadLayout);
   const [bottomActive, setBottomActive] = useState<BottomTabId>('output');
   const [bottomHidden, setBottomHidden] = useState(false);
@@ -84,37 +91,47 @@ export function App() {
     setBottomActive(id);
     setBottomHidden(false);
   }, []);
-  const openTerminal = (kind: PtyKind, options?: PtyOptions) => {
-    // The plain shell is reused if it is already running; login and Claude Code sessions start fresh.
-    setTerminal((t) => (kind === 'user-shell' && t?.kind === 'user-shell' ? t : { kind, options, key: (t?.key ?? 0) + 1 }));
+  const openTerminal = (kind: PtyKind, options?: PtyOptions, force = false) => {
+    // The Terminal button only brings the running session forward; a new Claude Code or login
+    // session over a running Claude Code asks first, because starting it kills that session.
+    // `force` is for the explicit "restart with the new settings" button.
+    const decision = nextTerminal(terminal, kind, options);
+    if (decision.replaces !== null && !force && !window.confirm('Çalışan Claude Code oturumu kapatılacak ve yeni bir oturum başlayacak. Devam edilsin mi?')) return;
+    setTerminal(decision.terminal);
     showBottom('terminal');
   };
-  const [build, buildDispatch] = useReducer(buildReducer, initialBuildState);
-  /** Build + install + launch on a device keeps its own log, shown as "Cihaz günlükleri". */
-  const [deviceRun, deviceDispatch] = useReducer(buildReducer, initialBuildState);
-  const [xtoolInfo, setXtoolInfo] = useState<XtoolInfo | null>(null);
-  const [doctor, setDoctor] = useState<DoctorCheck[] | null>(null);
-  const [doctorLoading, setDoctorLoading] = useState(false);
-  const [doctorError, setDoctorError] = useState<string | null>(null);
-  const runDoctor = useCallback(async () => {
-    setDoctorLoading(true);
-    setDoctorError(null);
-    try {
-      setDoctor(await ipc.envDoctor());
-    } catch (e) {
-      setDoctorError(String(e));
-    } finally {
-      setDoctorLoading(false);
-    }
-  }, []);
-  const [xtoolLoading, setXtoolLoading] = useState(false);
-  const [devices, setDevices] = useState<Device[] | null>(null);
-  const [authText, setAuthText] = useState<string | null>(null);
-  const [authLoggedIn, setAuthLoggedIn] = useState<boolean | null>(null);
-  const [devicesLoading, setDevicesLoading] = useState(false);
-  const [devicesError, setDevicesError] = useState<string | null>(null);
-  const [selectedUdid, setSelectedUdid] = useState<string | null>(null);
   const desktop = inDesktopApp();
+  const onNewProject = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+    void refreshFingerprint();
+  }, [refreshFingerprint]);
+  const xt = useXtool({ workspace: state.workspace, desktop, showBottom, setBuildOpen, setDeviceLogOpen, setNotice, onNewProject });
+  const {
+    build,
+    buildDispatch,
+    deviceRun,
+    deviceDispatch,
+    xtoolInfo,
+    xtoolLoading,
+    detectXtool,
+    doctor,
+    doctorLoading,
+    doctorError,
+    runDoctor,
+    devices,
+    authText,
+    authLoggedIn,
+    devicesLoading,
+    devicesError,
+    selectedUdid,
+    setSelectedUdid,
+    gateRef,
+    runXtool,
+    refreshDevices,
+    diagnostics,
+    parsedVersion,
+  } = xt;
+  const swift = useSwiftLsp({ workspace: state.workspace, desktop, tabs: state.tabs });
 
   const themeDef = resolveTheme(settings.theme, prefersDark);
   const theme = themeDef.mode;
@@ -164,14 +181,16 @@ export function App() {
         return;
       }
       try {
-        dispatch({ type: 'open', path, content: await ipc.readFile(path) });
+        const content = await ipc.readFile(path);
+        dispatch({ type: 'open', path, content });
+        swift.notifyOpen(path, content);
         setNotice(null);
       } catch (e) {
         if (isNotTextError(String(e))) setBinary({ path, kind: 'binary', error: null });
         else fail(`Dosya açılamadı (${path}): ${String(e)}`);
       }
     },
-    [state.tabs, fail],
+    [state.tabs, fail, swift],
   );
 
   const save = useCallback(async () => {
@@ -181,10 +200,11 @@ export function App() {
       await ipc.writeFile(tab.path, tab.content);
       dispatch({ type: 'saved', path: tab.path, content: tab.content });
       setNotice(null);
+      void refreshFingerprint();
     } catch (e) {
       fail(`Kaydedilemedi (${tab.path}): ${String(e)}`);
     }
-  }, [state.tabs, state.active, fail]);
+  }, [state.tabs, state.active, fail, refreshFingerprint]);
 
   const runAnalysis = useCallback(async () => {
     setAnalysisError(null);
@@ -204,92 +224,10 @@ export function App() {
     }
   }, [state.workspace]);
 
-  const detectXtool = useCallback(async () => {
-    setXtoolLoading(true);
-    try {
-      setXtoolInfo(await ipc.xtoolDetect());
-    } catch (e) {
-      setXtoolInfo({ found: false, path: null, versionOutput: null, swiftVersionOutput: null, error: String(e) });
-    } finally {
-      setXtoolLoading(false);
-    }
-  }, []);
-
-  const runXtool = useCallback(
-    async (op: XtoolOp, args: XtoolRunArgs) => {
-      const onDevice = op === 'run-device' || op === 'launch';
-      const dispatchRun = onDevice ? deviceDispatch : buildDispatch;
-      dispatchRun({ type: 'start', op });
-      if (onDevice) setDeviceLogOpen(true);
-      else setBuildOpen(true);
-      showBottom(onDevice ? 'devicelog' : 'output');
-      const onEvent = (event: RunEvent) =>
-        dispatchRun({ type: 'event', event: event.kind === 'line' ? { ...event, text: redactLine(event.text) } : event });
-      try {
-        await ipc.xtoolRun(op, args, onEvent);
-        if (op === 'new') setRefreshKey((k) => k + 1);
-      } catch (e) {
-        onEvent({ kind: 'line', stream: 'stderr', text: String(e) });
-        onEvent({ kind: 'exit', code: null, cancelled: false, timedOut: false, droppedLines: 0 });
-      }
-    },
-    [showBottom],
-  );
-
-  /** Run a short xtool operation and return its output without touching the build log. */
-  const collectXtool = useCallback(async (op: XtoolOp, args: XtoolRunArgs = {}) => {
-    const lines: string[] = [];
-    let code: number | null = null;
-    await ipc.xtoolRun(op, args, (e) => {
-      if (e.kind === 'line') lines.push(redactLine(e.text));
-      else code = e.code;
-    });
-    return { text: lines.join('\n'), code };
-  }, []);
-
-  const refreshDevices = useCallback(async () => {
-    setDevicesError(null);
-    if (state.workspace === null) {
-      setDevicesError('Önce bir klasör açın: xtool çalışma klasörünüzün içinde çalışır.');
-      return;
-    }
-    setDevicesLoading(true);
-    try {
-      const info = xtoolInfo ?? (await ipc.xtoolDetect());
-      setXtoolInfo(info);
-      if (!info.found) {
-        setDevices([]);
-        return;
-      }
-      const auth = await collectXtool('auth-status');
-      const parsedAuth = parseAuthStatus(auth.text);
-      setAuthText(parsedAuth.detail);
-      setAuthLoggedIn(auth.code === 0 ? parsedAuth.loggedIn : null);
-      const listed = await collectXtool('devices');
-      if (listed.code !== 0) throw new Error(listed.text || 'xtool devices failed');
-      setDevices(parseDevices(listed.text));
-    } catch (e) {
-      setDevices(null);
-      setDevicesError(String(e));
-    } finally {
-      setDevicesLoading(false);
-    }
-  }, [state.workspace, xtoolInfo, collectXtool]);
-
   const openDevices = useCallback(() => {
     setView('devices');
     void refreshDevices();
   }, [refreshDevices]);
-
-  useEffect(() => {
-    if (!desktop) return;
-    ipc
-      .xtoolDetect()
-      .then(setXtoolInfo)
-      .catch(() => {
-        /* the Build panel shows the detection error when opened */
-      });
-  }, [desktop]);
 
   const openBuild = useCallback(() => {
     setView('build');
@@ -297,25 +235,26 @@ export function App() {
     void refreshDevices();
   }, [xtoolInfo, detectXtool, refreshDevices]);
 
-  const diagnostics = useMemo(() => parseDiagnostics(build.lines.map((l) => l.text)), [build.lines]);
-  const parsedVersion = parseXtoolVersion(xtoolInfo?.versionOutput ?? '');
-
   const [chatOpen, setChatOpen] = useState(false);
   const buildFailed = build.outcome !== null && build.outcome.code !== 0;
   const dirtyPaths = useMemo(() => state.tabs.filter(isDirty).map((t) => t.path), [state.tabs]);
   const openPaths = useMemo(() => state.tabs.map((t) => t.path), [state.tabs]);
 
-  const onApplied = useCallback(async (paths: string[]) => {
-    setRefreshKey((k) => k + 1);
-    for (const path of paths) {
-      try {
-        const content = await ipc.readFile(path);
-        dispatch({ type: 'reloaded', path, content });
-      } catch {
-        /* file not open or unreadable: the explorer refresh is enough */
+  const onApplied = useCallback(
+    async (paths: string[]) => {
+      setRefreshKey((k) => k + 1);
+      for (const path of paths) {
+        try {
+          const content = await ipc.readFile(path);
+          dispatch({ type: 'reloaded', path, content });
+          swift.notifyChange(path, content);
+        } catch {
+          /* file not open or unreadable: the explorer refresh is enough */
+        }
       }
-    }
-  }, []);
+    },
+    [swift],
+  );
 
   const ai = useAi({
     workspace: state.workspace,
@@ -338,72 +277,20 @@ export function App() {
       const tab = state.tabs.find((t) => t.path === path);
       if (tab && isDirty(tab) && !window.confirm(`${path} dosyasında kaydedilmemiş değişiklikler var. Yine de kapatılsın mı?`)) return;
       dispatch({ type: 'close', path });
+      swift.notifyClose(path);
     },
-    [state.tabs],
+    [state.tabs, swift],
   );
 
-  const tabsRef = useRef(state.tabs);
-  useEffect(() => {
-    tabsRef.current = state.tabs;
-  }, [state.tabs]);
-  const [closePrompt, setClosePrompt] = useState(false);
-  const [closeBusy, setCloseBusy] = useState(false);
-  const [closeError, setCloseError] = useState<string | null>(null);
-
-  // Ask before the window closes with unsaved changes (desktop app only).
-  useEffect(() => {
-    if (!desktop) return;
-    let cancelled = false;
-    let unlisten: (() => void) | undefined;
-    import('@tauri-apps/api/window')
-      .then(({ getCurrentWindow }) =>
-        getCurrentWindow().onCloseRequested((event) => {
-          if (dirtyTabs(tabsRef.current).length > 0) {
-            event.preventDefault();
-            setClosePrompt(true);
-          }
-        }),
-      )
-      .then((fn) => {
-        if (cancelled) fn();
-        else unlisten = fn;
-      })
-      .catch(() => {
-        /* window API unavailable: closing is not guarded */
-      });
-    return () => {
-      cancelled = true;
-      unlisten?.();
-    };
-  }, [desktop]);
-
-  const forceClose = async () => {
-    try {
-      const { getCurrentWindow } = await import('@tauri-apps/api/window');
-      await getCurrentWindow().destroy();
-    } catch (e) {
-      setCloseBusy(false);
-      setCloseError(`Pencere kapatılamadı: ${String(e)}`);
-    }
+  /** Ctrl+W: the view in front, else the active file (dirty files still ask). */
+  const closeActiveRef = useRef<() => void>(() => undefined);
+  closeActiveRef.current = () => {
+    const target = tabToClose(state);
+    if (!target) return;
+    if (target.kind === 'view') dispatch({ type: 'closeView', id: target.id });
+    else closeTab(target.path);
   };
-
-  const saveAndClose = async () => {
-    setCloseBusy(true);
-    setCloseError(null);
-    const result = await saveAllDirty(state.tabs, ipc.writeFile);
-    for (const s of result.saved) dispatch({ type: 'saved', path: s.path, content: s.content });
-    if (result.failed.length > 0) {
-      setCloseBusy(false);
-      setCloseError(`Kaydedilemedi: ${result.failed.map((f) => `${f.path} (${f.error})`).join(', ')}`);
-      return;
-    }
-    await forceClose();
-  };
-
-  const discardAndClose = () => {
-    setCloseBusy(true);
-    void forceClose();
-  };
+  const closeGuard = useCloseGuard(desktop, state.tabs, dispatch);
 
   const createFile = useCallback(
     async (name: string) => {
@@ -433,6 +320,9 @@ export function App() {
       } else if (mod && !e.shiftKey && e.key.toLowerCase() === 'j') {
         e.preventDefault();
         toggleBottomRef.current();
+      } else if (mod && !e.shiftKey && e.key.toLowerCase() === 'w') {
+        e.preventDefault();
+        closeActiveRef.current();
       }
     };
     window.addEventListener('keydown', handler);
@@ -441,27 +331,49 @@ export function App() {
 
   const hasWorkspace = state.workspace !== null;
   const commands: Command[] = useMemo(
-    () => [
-      { id: 'open', title: 'Klasör aç…', enabled: desktop, run: () => void openFolder() },
-      { id: 'new', title: 'Yeni dosya…', enabled: hasWorkspace, run: () => setNewName('') },
-      { id: 'save', title: 'Dosyayı kaydet', enabled: hasWorkspace, hint: 'Ctrl+S', run: () => void saveRef.current() },
-      { id: 'settings', title: 'Ayarları aç', enabled: true, run: () => setShowSettings(true) },
-      { id: 'panel', title: 'Alt paneli göster/gizle', enabled: desktop, hint: 'Ctrl+J', run: () => toggleBottomRef.current() },
-      {
-        id: 'theme',
-        title: 'Açık/koyu temayı değiştir',
-        enabled: true,
-        run: () => setSettings((s) => ({ ...s, theme: theme === 'dark' ? 'light' : 'dark' })),
-      },
-      { id: 'theme-pick', title: 'Renk temasını seç…', enabled: true, run: () => setShowSettings(true) },
-    ],
-    [desktop, hasWorkspace, openFolder, theme],
+    () =>
+      buildCommands({
+        desktop,
+        hasWorkspace,
+        chatOpen,
+        terminalOpen: terminal !== null,
+        actions: {
+          openFolder: () => void openFolder(),
+          newFile: () => setNewName(''),
+          save: () => void saveRef.current(),
+          settings: () => setShowSettings(true),
+          togglePanel: () => toggleBottomRef.current(),
+          toggleTheme: () => setSettings((s) => ({ ...s, theme: theme === 'dark' ? 'light' : 'dark' })),
+          sidebar: (v) => {
+            if (v === 'build') openBuild();
+            else if (v === 'devices') openDevices();
+            else if (v === 'ai') {
+              setView('ai');
+              setChatOpen(true);
+            } else setView('files');
+          },
+          terminal: () => openTerminal('user-shell'),
+          toggleChat: () => setChatOpen((v) => !v),
+          openView: (id) => dispatch({ type: 'openView', id }),
+          runPreflight: () => void pf.run(),
+          runDoctor: () => void runDoctor(),
+          restartLsp: () => swift.restart(),
+          claudeCode: () => openClaudeCode(),
+          bottom: (tab) => showBottom(tab),
+          redetect: () => void detectXtool(),
+        },
+      }),
+    // openTerminal/openClaudeCode are plain functions of the render; the list is rebuilt on these inputs only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [desktop, hasWorkspace, chatOpen, terminal, openFolder, theme, openBuild, openDevices, pf.run, runDoctor, showBottom, detectXtool, swift.restart],
   );
 
   const errorCount = diagnostics.filter((d) => d.severity === 'error').length;
   const warningCount = diagnostics.filter((d) => d.severity === 'warning').length;
   const anyRunning = build.running || deviceRun.running;
   const selectedDevice = devices?.find((d) => d.udid === selectedUdid) ?? (devices && devices.length === 1 ? devices[0] : null);
+  const gate = pf.gate;
+  gateRef.current = gate;
   const installCheck = canRunOnDevice({
     xtoolFound: xtoolInfo?.found === true,
     hasWorkspace,
@@ -469,33 +381,40 @@ export function App() {
     authLoggedIn,
     devices,
     selectedUdid,
+    preflight: gate,
   });
   const showOutput = () => showBottom(deviceRun.op !== null && deviceRun.nextId >= build.nextId ? 'devicelog' : 'output');
   const session = sessionState({ provider: ai.settings.provider, keyStored: ai.keyStored, cliStatus: ai.cliStatus });
 
   // Bottom panel tabs, in a fixed order: Çıktı, Sorunlar, Terminal, Cihaz günlükleri.
+  // Server (sourcekit-lsp) rows join the build rows in Sorunlar; they never change the build counts.
+  const lspCount = swift.diagnostics.length;
+  const allDiagnostics = lspCount === 0 ? diagnostics : [...diagnostics, ...swift.diagnostics];
+  const problemsBadge =
+    [errorCount > 0 ? `${errorCount} hata` : warningCount > 0 ? `${warningCount} uyarı` : null, lspCount > 0 ? `${lspCount} LSP` : null].filter(Boolean).join(' · ') || undefined;
   const bottomTabs: BottomTab[] = [];
-  if (buildOpen) {
-    bottomTabs.push({
-      id: 'output',
-      label: 'Çıktı',
-      badge: build.running ? 'çalışıyor' : undefined,
-      tone: build.running ? 'busy' : undefined,
-      content: (
-        <LogView
-          state={build}
-          emptyText="Henüz çıktı yok. Derle bölümünden “Derle ve Yükle” ya da “Yalnızca derle”ye basın."
-          onClear={() => buildDispatch({ type: 'clear' })}
-          onCancel={() => void ipc.xtoolCancel()}
-        />
-      ),
-    });
+  if (buildOpen || lspCount > 0) {
+    if (buildOpen)
+      bottomTabs.push({
+        id: 'output',
+        label: 'Çıktı',
+        badge: build.running ? 'çalışıyor' : undefined,
+        tone: build.running ? 'busy' : undefined,
+        content: (
+          <LogView
+            state={build}
+            emptyText="Henüz çıktı yok. Derle bölümünden “Derle ve Yükle” ya da “Yalnızca derle”ye basın."
+            onClear={() => buildDispatch({ type: 'clear' })}
+            onCancel={() => void ipc.xtoolCancel()}
+          />
+        ),
+      });
     bottomTabs.push({
       id: 'problems',
       label: 'Sorunlar',
-      badge: errorCount > 0 ? `${errorCount} hata` : warningCount > 0 ? `${warningCount} uyarı` : undefined,
-      tone: errorCount > 0 ? 'error' : warningCount > 0 ? 'warn' : undefined,
-      content: <ProblemsList diagnostics={diagnostics} onOpenFile={(path) => void openFile(path)} />,
+      badge: problemsBadge,
+      tone: errorCount > 0 ? 'error' : warningCount > 0 || lspCount > 0 ? 'warn' : undefined,
+      content: <ProblemsList diagnostics={allDiagnostics} onOpenFile={(path) => void openFile(path)} />,
     });
   }
   const claudeCodeLabel = `Claude Code'u projeyle aç (${describeChoice('claude-cli', ai.settings.models['claude-cli'], ai.settings.efforts['claude-cli']) || 'varsayılan model'})`;
@@ -509,12 +428,12 @@ export function App() {
             (terminal.options?.effort ?? '') !== ai.settings.efforts['claude-cli'] ||
             (terminal.options?.skipPermissions === true) !== ai.settings.skipPermissions,
           // The remote site (and its password) is not kept for a restart: the form has to be filled again.
-          restart: () => openClaudeCode(),
+          restart: () => openClaudeCode(undefined, undefined, true),
         }
       : undefined;
-  function openClaudeCode(remote?: RemoteSite) {
+  function openClaudeCode(remote?: RemoteSite, extraContext?: string, force = false) {
     const start = () =>
-      openTerminal('claude-code', { model: ai.settings.models['claude-cli'], effort: ai.settings.efforts['claude-cli'], skipPermissions: ai.settings.skipPermissions, remote });
+      openTerminal('claude-code', { model: ai.settings.models['claude-cli'], effort: ai.settings.efforts['claude-cli'], skipPermissions: ai.settings.skipPermissions, remote, extraContext }, force);
     if (!state.workspace) {
       start();
       return;
@@ -583,6 +502,29 @@ export function App() {
     '--ai-w': `${layout.aiWidth}px`,
   } as CSSProperties;
 
+  const viewContent =
+    state.activeView === 'preflight' ? (
+      <PreflightView
+              report={pf.report}
+              running={pf.running}
+              progress={pf.progress}
+              error={pf.error}
+              gateReason={gate.reason}
+              onRun={() => void pf.run()}
+              onHandOff={() => openClaudeCode(undefined, `Yayın öncesi denetim raporu ${REPORT_MD} dosyasında; önce onu oku, kırmızı adımları düzelt, sonra kullanıcıdan denetimi yeniden çalıştırmasını iste.`)}
+              onClose={() => dispatch({ type: 'closeView', id: 'preflight' })}
+            />
+    ) : state.activeView !== null ? (
+      <PolicyPanel
+              which={state.activeView === 'appstore' ? 'asr' : 'msec'}
+              report={report}
+              loading={analysing}
+              error={analysisError}
+              onRun={() => void runAnalysis()}
+              onClose={() => dispatch({ type: 'closeView', id: state.activeView === 'appstore' ? 'appstore' : 'security' })}
+            />
+    ) : null;
+
   return (
     <ThemeContext.Provider value={themeDef}>
     <div className="app" ref={appRef} style={layoutVars}>
@@ -596,7 +538,7 @@ export function App() {
           view={view}
           desktop={desktop}
           terminalOpen={terminal !== null && bottomVisible && activeBottom === 'terminal'}
-          policyView={panel}
+          policyView={state.activeView === 'appstore' ? 'asr' : state.activeView === 'security' ? 'msec' : null}
           onView={(v) => {
             if (v === 'build') openBuild();
             else if (v === 'devices') openDevices();
@@ -606,8 +548,8 @@ export function App() {
             } else setView('files');
           }}
           onTerminal={() => openTerminal('user-shell')}
-          onStore={() => setPanel('asr')}
-          onSecurity={() => setPanel('msec')}
+          onStore={() => dispatch({ type: 'openView', id: 'appstore' })}
+          onSecurity={() => dispatch({ type: 'openView', id: 'security' })}
           onSettings={() => setShowSettings(true)}
         />
 
@@ -691,6 +633,9 @@ export function App() {
               diagnostics={diagnostics}
               deviceName={selectedDevice?.name ?? null}
               installBlocked={installCheck.reason}
+              preflight={{ verdict: pf.report?.verdict ?? null, running: pf.running, gateReason: gate.reason, finishedAt: pf.report?.finishedAt ?? null }}
+              onPreflight={() => void pf.run()}
+              onOpenPreflight={() => dispatch({ type: 'openView', id: 'preflight' })}
               doctor={doctor}
               doctorLoading={doctorLoading}
               doctorError={doctorError}
@@ -718,6 +663,7 @@ export function App() {
               hasWorkspace={hasWorkspace}
               running={anyRunning}
               selectedUdid={selectedUdid}
+              preflight={gate}
               onSelect={setSelectedUdid}
               onRefresh={() => void refreshDevices()}
               onRunOnDevice={(udid, configuration) => void runXtool('run-device', { configuration, udid: udid ?? undefined })}
@@ -783,16 +729,7 @@ export function App() {
               onShowArtifacts={() => setRevealArtifacts((n) => n + 1)}
               onClose={() => setBinary(null)}
             />
-          ) : panel ? (
-            <PolicyPanel
-              which={panel}
-              report={report}
-              loading={analysing}
-              error={analysisError}
-              onRun={() => void runAnalysis()}
-              onClose={() => setPanel(null)}
-            />
-          ) : state.tabs.length === 0 ? (
+          ) : state.tabs.length === 0 && state.views.length === 0 ? (
             <WelcomeScreen
               desktop={desktop}
               workspace={state.workspace}
@@ -806,18 +743,27 @@ export function App() {
                 setChatOpen(true);
               }}
               onOpenBuild={openBuild}
-              onOpenAppStore={() => setPanel('asr')}
+              onOpenAppStore={() => dispatch({ type: 'openView', id: 'appstore' })}
             />
           ) : (
           <EditorPane
             tabs={state.tabs}
             active={state.active}
+            views={state.views.map((id) => ({ id, title: VIEW_TITLE[id] }))}
+            activeView={state.activeView}
+            viewContent={viewContent}
+            onActivateView={(id: ViewId) => dispatch({ type: 'activateView', id })}
+            onCloseView={(id: ViewId) => dispatch({ type: 'closeView', id })}
             theme={theme}
             fontSize={settings.fontSize}
             onActivate={(path) => dispatch({ type: 'activate', path })}
             onClose={closeTab}
-            onChange={(path, content) => dispatch({ type: 'edit', path, content })}
+            onChange={(path, content) => {
+              dispatch({ type: 'edit', path, content });
+              swift.notifyChange(path, content);
+            }}
             onSave={() => void saveRef.current()}
+            onEditorMount={swift.attach}
           />
           )}
           </div>
@@ -914,6 +860,7 @@ export function App() {
         swift={parseSwiftVersion(xtoolInfo?.swiftVersionOutput ?? '')}
         device={selectedDevice?.name ?? null}
         ai={{ label: PROVIDER_LABELS[ai.settings.provider], state: session.label, tone: session.tone }}
+        lsp={desktop && hasWorkspace ? { ...swift.status, onClick: swift.restart } : undefined}
         errors={errorCount}
         warnings={warningCount}
         panelAvailable={bottomTabs.length > 0}
@@ -927,17 +874,14 @@ export function App() {
         }}
         onTogglePanel={() => toggleBottomRef.current()}
       />
-      {closePrompt && (
+      {closeGuard.prompt && (
         <CloseGuardDialog
           dirty={dirtyTabs(state.tabs)}
-          busy={closeBusy}
-          error={closeError}
-          onSaveAndClose={() => void saveAndClose()}
-          onDiscardAndClose={discardAndClose}
-          onCancel={() => {
-            setClosePrompt(false);
-            setCloseError(null);
-          }}
+          busy={closeGuard.busy}
+          error={closeGuard.error}
+          onSaveAndClose={() => void closeGuard.saveAndClose()}
+          onDiscardAndClose={closeGuard.discardAndClose}
+          onCancel={closeGuard.cancel}
         />
       )}
       {showSettings && <SettingsDialog settings={settings} desktop={desktop} onChange={setSettings} onClose={() => setShowSettings(false)} />}

@@ -1,5 +1,34 @@
 # Status
 
+## Unreleased (branch feature/launch-readiness-2, PR #53): pre-submission check + maintenance
+- **Yayın öncesi denetim** (`src/preflight/`, `PreflightView`, Derle panel summary, palette): six steps in order — build (`xtool dev build`), tests (`swift test`, NOT_VERIFIED without `Tests/`), policy (engine), secrets (catalog category `Secrets`), manifest (xtool.yml / Info.plist usage keys / PrivacyInfo.xcprivacy), icon (1024×1024 PNG, no alpha via `read_png_header`). Verdict green/red bound to a SHA-256 fingerprint of the scanned files; report written to `.open-ios-studio/preflight/latest.{json,md}` and reloaded on workspace open. **Gate (owner decision):** red, not run or stale blocks "Derle ve Yükle", `run-device` and `launch` with the reason; `build`/`new` stay available. "Raporu Claude Code'a ver" starts Claude Code with one extra context sentence naming the report (validated ≤ 2000 chars, no control characters).
+- Tests: Vitest 396 (preflight 44 + gate precedence), Rust 122 (swift-test spec, PNG header, extra context), Playwright 58 incl. the end-to-end scenario against the mocked IPC (run → six steps → gate reopens on save → hand-off). NOT VERIFIED: a real `xtool dev build` / `swift test` through the check, a real red → fix → green loop with Claude Code, the icon reader on a real project.
+- Maintenance: `auto-tag.yml` + `scripts/release-tag-check.sh` (release on `chore(release): X.Y.Z` merges), `ai.rs` split into modules (117 → 117 tests at the time), `docs/VERIFICATION_TOUR.md`.
+- **Tabs and palette (VS Code parity, step 2)**: App Store Hazırlığı, Güvenlik Merkezi and Yayın öncesi denetim open as editor tabs next to files (singletons, Ctrl+W closes the one in front, welcome only with no tabs); the command palette lists every panel and action (`src/app/commands.ts`, unit-tested). `App.tsx` 1118 → 870 lines after extracting `usePreflight`, `useCloseGuard`, `useXtool`; further splitting deferred. Verified by Vitest 405 and Playwright 59; NOT VERIFIED on a real desktop.
+- **Swift language support** (`src-tauri/src/lsp.rs`, `src/lsp/`, `src/app/useSwiftLsp.ts`): one `sourcekit-lsp` per open workspace, spawned by Rust with stdio pipes (no shell, allow-listed environment, `Content-Length` frames relayed over a Tauri channel, 16 MiB frame limit, one `Exit` event on EOF). The webview drives `initialize`, full-text document sync (300 ms debounce, only `.swift` files), completion and hover as Monaco providers, inline markers, server rows in Sorunlar (`N LSP` badge, build counts untouched) and a status-bar segment (`Swift LSP: çalışıyor | Linux hedefi | yok | başlatılıyor | durdu | kapalı`; click or palette "Swift LSP'yi yeniden başlat" restarts). `Linux hedefi` means the workspace has no `.bsp/xtool.json`; the Studio writes no config file. Verified: Rust 127 (frame parser, encoder, a session against `tests/fake_lsp.py`), Vitest 431 (jsonrpc, diagnostics, status, client debounce/stale guard, Monaco mapping), Playwright 61 (fake server: start, didOpen only for Swift, diagnostic row). **NOT VERIFIED with a real `sourcekit-lsp`** (none on the dev host or in CI): completion quality, hover, the `.bsp/xtool.json` build-server hand-off and the first-request latency are tour item T13.
+- **Terminal button fix** (owner report 2026-11-04): pressing Terminal while Claude Code ran replaced the session with a plain shell (new PTY key → panel remount → `pty_close`). `src/app/terminalOpen.ts` (`nextTerminal`, unit-tested) now keeps the running session for a `user-shell` request and reports a Claude Code replacement so `openTerminal` asks first; the explicit restart button bypasses the question. Playwright scenario: open Claude Code → hide panel → Terminal → same session, no new `pty_open`/`pty_close`. NOT VERIFIED on the owner's desktop yet.
+- Known: the preflight runs at the workspace root (the Derle panel's advanced "Proje klasörü" field is not used by it yet); views still replace the editor region (tabs come with sub-project 2); PR #41's own `src/release/preflight.ts` should fold into `src/preflight/` on rebase.
+
+## Verification tour (owner, real desktop + iPhone)
+Checklist: `docs/VERIFICATION_TOUR.md`. Every row stays `NOT VERIFIED` until the owner records a run.
+
+| # | What | Result | Date | Note |
+|---|---|---|---|---|
+| T1 | DEB installs, window opens | NOT VERIFIED | | |
+| T2 | Ortam denetimi all PASS | NOT VERIFIED | | |
+| T3 | New project from the app | NOT VERIFIED | | |
+| T4 | Yalnızca derle succeeds | NOT VERIFIED | | |
+| T5 | iPhone listed | NOT VERIFIED | | |
+| T6 | Derle ve Yükle installs and launches | NOT VERIFIED | | |
+| T7 | Claude Code opens with bundled skills | NOT VERIFIED | | |
+| T8 | Turkish letters in the terminal | NOT VERIFIED | | owner reported "halloldu" on 0.1.11 in chat; record it here with the date |
+| T9 | Updates check says up to date | NOT VERIFIED | | |
+| T10 | App Store readiness on a real project | NOT VERIFIED | | |
+| T11 | Terminal copy/paste | NOT VERIFIED | | after PR #52 |
+| T12 | Pre-submission check green on a new project | NOT VERIFIED | | PR #53 |
+| T13 | Swift completion and diagnostics | NOT VERIFIED | | PR #53; needs `sourcekit-lsp` on PATH (swiftly toolchain) |
+| T14 | Terminal button keeps the Claude Code session | NOT VERIFIED | | PR #53; owner report 2026-11-04 |
+
 ## v0.1.10 (pre-release candidate, PR #42): launch-readiness slice 1
 - **Environment check**: Rust `doctor.rs` + Derle panel section "Ortam denetimi" (Swift, Darwin SDK, xtool version vs tested 1.24.0, SDK status, Apple account, iPhone, usbmuxd, git) with Turkish fix hints; `scripts/doctor.sh` for terminals (`npm run doctor`), self-tested and shellchecked in CI. Classification is unit-tested against the 1.24.0 fixture strings; a real machine run is NOT VERIFIED here (no Swift/xtool in the dev container).
 - **Bundled agent skills** (ADR-0015): `skills/` vendored (`find-skills` from vercel-labs/skills, `mobile-ios-design` from wshobson/agents, both MIT, pinned commits + SHA-256 in `SOURCE.md`) plus our `ios-app-xtool`; embedded at compile time and copied into `<project>/.claude/skills/` when Claude Code is opened (edited files kept). Rust tests cover install/keep/report; that Claude Code actually loads them on the owner's machine is NOT VERIFIED.

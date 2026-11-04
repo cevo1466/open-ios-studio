@@ -1,0 +1,11 @@
+.pf-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pf-step { border: 1px solid var(--border); border-radius: 6px; background: var(--bg); padding: 8px 10px; }
+.pf-step-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pf-name { font-weight: 600; min-width: 120px; }
+.pf-summary { flex: 1; min-width: 200px; color: var(--muted); }
+.pf-pending, .pf-running { display: flex; gap: 8px; align-items: center; }
+.pf-running { border-color: var(--accent); }
+.pf-FAIL { border-color: var(--danger-fg); }
+.pf-details { margin: 8px 0 0 0; padding-left: 20px; font-size: 12px; line-height: 1.5; }
+.pf-green { border: 1px solid var(--accent); border-radius: 6px; padding: 8px 12px; font-weight: 600; color: var(--accent); }
+.pf-foot-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }

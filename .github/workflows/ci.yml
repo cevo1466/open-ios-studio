@@ -124,6 +124,8 @@ jobs:
         run: |
           bash scripts/doctor.sh --self-test
           if NO_COLOR=1 bash scripts/doctor.sh; then echo "doctor unexpectedly passed on a runner without Swift/xtool"; exit 1; fi
+      - name: release tag rules self-test (used by auto-tag.yml)
+        run: bash scripts/release-tag-check.sh --self-test
 
   cargo-audit:
     # Advisory job: failures are visible in the run but do not block merging yet

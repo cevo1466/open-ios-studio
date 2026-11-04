@@ -1,0 +1,55 @@
+name: Auto tag release
+
+# When a `chore(release): X.Y.Z` commit lands on main (the merged release pull request), create the
+# tag vX.Y.Z and start the Release workflow. Merging that pull request is the owner's approval
+# (docs/RELEASING.md). Any other push to main is skipped. The rules live in
+# scripts/release-tag-check.sh (self-tested in CI) so this file stays a thin caller.
+#
+# A tag pushed with GITHUB_TOKEN does not trigger `on: push: tags`, so the Release workflow is
+# started explicitly with `gh workflow run`, which accepts an existing tag.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: auto-tag
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Decide
+        id: decide
+        run: |
+          set -eu
+          SUBJECT="$(git log -1 --format=%s)"
+          VERSION="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          EXISTS=0
+          if git ls-remote --tags origin "refs/tags/v${VERSION}" | grep -q .; then EXISTS=1; fi
+          RESULT="$(bash scripts/release-tag-check.sh "$SUBJECT" . --tag-exists "$EXISTS")" || { echo "$RESULT"; exit 1; }
+          echo "$RESULT"
+          case "$RESULT" in
+            "TAG "*) echo "tag=${RESULT#TAG }" >> "$GITHUB_OUTPUT" ;;
+            *) echo "tag=" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - name: Create and push the tag
+        if: steps.decide.outputs.tag != ''
+        run: |
+          set -eu
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.decide.outputs.tag }}" -m "Open iOS Studio ${{ steps.decide.outputs.tag }}"
+          git push origin "${{ steps.decide.outputs.tag }}"
+      - name: Start the Release workflow for the tag
+        if: steps.decide.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run release.yml --repo "$GITHUB_REPOSITORY" -f tag="${{ steps.decide.outputs.tag }}"

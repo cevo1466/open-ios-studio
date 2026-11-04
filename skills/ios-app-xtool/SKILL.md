@@ -52,6 +52,7 @@ Never run `xtool auth login` or `xtool setup` for the user; those need Apple cre
 
 ## Before App Store submission
 
+0. Run **Yayın öncesi denetim** (Derle panel). Its report is at `.open-ios-studio/preflight/latest.md`; when you were started with a sentence naming it, read it first and fix the red steps in this order: build errors, manifest/icon, policy. Installing on the phone and releasing stay locked until it is green and re-run.
 1. In the IDE, run **App Store hazırlığı** and **Güvenlik merkezi**; fix every FAIL and explain each NOT_VERIFIED item the user must check by hand.
 2. `xtool.yml`: bundle id, version and build number bumped, display name, category, privacy usage strings, `PrivacyInfo.xcprivacy` listing required-reason APIs and tracking.
 3. App icon (1024x1024, no alpha) and launch experience present.

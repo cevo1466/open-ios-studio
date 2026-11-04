@@ -43,6 +43,7 @@ export async function installFakeTauri(page: Page): Promise<void> {
 
     const callbacks = new Map<number, (v: unknown) => void>();
     let nextId = 1;
+    let lspChannel: { onmessage: (e: unknown) => void } | null = null;
 
     const handlers: Record<string, (a: Record<string, unknown>) => Json> = {
       pick_workspace: () => '/work/demo',
@@ -76,6 +77,16 @@ export async function installFakeTauri(page: Page): Promise<void> {
         skipped: 0,
       }),
       xtool_detect: () => ({ found: false, path: null, versionOutput: null, swiftVersionOutput: null, error: null }),
+      // Build and test runs succeed instantly; the channel is the `onEvent` argument itself.
+      xtool_run: (a) => {
+        const ch = a.onEvent as { onmessage: (e: unknown) => void };
+        const op = String(a.op);
+        const lines = op === 'build' ? ['Building Demo…', 'Build complete'] : op === 'swift-test' ? ['Test Suite passed'] : [];
+        for (const text of lines) ch.onmessage({ kind: 'line', stream: 'stdout', text });
+        ch.onmessage({ kind: 'exit', code: 0, cancelled: false, timedOut: false, droppedLines: 0 });
+        return null;
+      },
+      read_png_header: (a) => (String(a.path).endsWith('icon.png') ? { width: 1024, height: 1024, colorType: 2 } : null),
       'plugin:event|listen': (a) => {
         if (a.event === 'tauri://close-requested') w.__closeHandler = a.handler;
         return nextId++;
@@ -130,6 +141,32 @@ export async function installFakeTauri(page: Page): Promise<void> {
       update_apply_appimage: () => '/home/demo/Open.AppImage',
       update_reveal: () => null,
       skills_install_bundled: () => ({ installed: ['.claude/skills/ios-app-xtool/SKILL.md'], unchanged: [], kept: [] }),
+      // A fake sourcekit-lsp: answers initialize, reports one diagnostic for every opened document.
+      lsp_start: (a) => {
+        lspChannel = a.onEvent as { onmessage: (e: unknown) => void };
+        return { id: 1, program: '/usr/bin/sourcekit-lsp', bsp: true };
+      },
+      lsp_send: (a) => {
+        const msg = JSON.parse(String(a.json)) as { id?: number; method?: string; params?: { textDocument?: { uri?: string } } };
+        const reply = (payload: unknown) => setTimeout(() => lspChannel?.onmessage({ kind: 'message', json: JSON.stringify(payload) }), 0);
+        if (msg.method === 'initialize') reply({ jsonrpc: '2.0', id: msg.id, result: { capabilities: {} } });
+        else if (msg.method === 'textDocument/didOpen')
+          reply({
+            jsonrpc: '2.0',
+            method: 'textDocument/publishDiagnostics',
+            params: {
+              uri: msg.params?.textDocument?.uri,
+              diagnostics: [{ range: { start: { line: 2, character: 4 }, end: { line: 2, character: 9 } }, severity: 2, message: 'unused variable' }],
+            },
+          });
+        else if (msg.id !== undefined) reply({ jsonrpc: '2.0', id: msg.id, result: null });
+        return null;
+      },
+      lsp_stop: () => {
+        setTimeout(() => lspChannel?.onmessage({ kind: 'exit', code: 0 }), 0);
+        lspChannel = null;
+        return null;
+      },
       pty_open: () => 1,
       pty_write: () => null,
       pty_resize: () => null,
