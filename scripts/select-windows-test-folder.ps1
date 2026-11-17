@@ -3,6 +3,24 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
 Add-Type -AssemblyName System.Windows.Forms
+Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public static class PickerControls {
+    public delegate bool EnumProc(IntPtr hwnd, IntPtr state);
+    [DllImport("user32.dll")] public static extern bool EnumChildWindows(IntPtr parent, EnumProc callback, IntPtr state);
+    [DllImport("user32.dll")] public static extern int GetDlgCtrlID(IntPtr hwnd);
+    [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hwnd, uint message, IntPtr wparam, IntPtr lparam);
+    public static bool ClickAccept(IntPtr parent) {
+        IntPtr accept = IntPtr.Zero;
+        EnumChildWindows(parent, (hwnd, state) => {
+            if (GetDlgCtrlID(hwnd) == 1) { accept = hwnd; return false; }
+            return true;
+        }, IntPtr.Zero);
+        return accept != IntPtr.Zero && PostMessage(accept, 0x00F5, IntPtr.Zero, IntPtr.Zero);
+    }
+}
+'@
 $shell = New-Object -ComObject WScript.Shell
 $condition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ProcessIdProperty, $AppPid)
 $deadline = (Get-Date).AddSeconds(30)
@@ -29,15 +47,19 @@ foreach ($window in $windows) {
 # Enter in the address field can also accept a valid folder. The browser test
 # independently verifies the selected workspace and Counter.swift afterwards.
 if (-not $dialog) { exit 0 }
-$buttons = $dialog.FindAll([System.Windows.Automation.TreeScope]::Descendants,
-    (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Button)))
+# The common dialog's accept control can be a SplitButton instead of Button.
+# Prefer its native IDOK handle; it is independent of localized UIA names/types.
+if ([PickerControls]::ClickAccept([IntPtr]$dialog.Current.NativeWindowHandle)) { exit 0 }
+$buttons = $dialog.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition)
 $labels = @()
 foreach ($button in $buttons) {
     $labels += "$($button.Current.AutomationId):$($button.Current.Name)"
     if ($button.Current.IsEnabled -and ($button.Current.AutomationId -eq '1' -or $button.Current.Name.Replace('&', '') -match '^(Select Folder|Open|Choose Folder|Select)$')) {
-        $pattern = $button.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
-        $pattern.Invoke()
-        exit 0
+        $pattern = $null
+        if ($button.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern, [ref]$pattern)) {
+            $pattern.Invoke()
+            exit 0
+        }
     }
 }
 Write-Output "Picker buttons: $($labels -join ', ')"

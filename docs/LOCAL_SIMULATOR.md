@@ -1,6 +1,6 @@
 # Local Swift simulator — experimental source subset
 
-This branch executes supported Swift application source on Linux with an independently implemented module named `SwiftUI`. The application runs as a native child process. Its actual callbacks emit UI trees; the IDE draws those locally and sends pointer/keyboard input back to Swift. There is no phone, AirPlay, screen streaming, Apple runtime, Darwin SDK or remote Mac dependency.
+Open iOS Studio executes supported Swift application source on Linux and has a native Windows implementation with an independently implemented module named `SwiftUI`. The application runs as a native child process. Its actual callbacks emit UI trees; the IDE draws those locally and sends pointer/keyboard input back to Swift. There is no phone, AirPlay, screen streaming, Apple runtime, Darwin SDK or remote Mac dependency.
 
 ## Start from the IDE
 
@@ -72,7 +72,7 @@ All Apple reference comparisons are **Implemented but not verified against refer
 | Observable models, persistence, virtual keyboard, iOS services | Unsupported |
 | Native wgpu/Skia renderer, incremental builds, state-preserving reload | Deferred |
 | Arbitrary Swift projects, .ipa/.app binaries | Unsupported |
-| Windows 11 | Not verified; native engine start returns an explicit unsupported message. WSLg is a future candidate, untested |
+| Native Windows x64 / Windows 11 | Native Swift DLL/EXE implementation and NSIS installer; Windows Swift and installed-package self-test verified. Desktop/terminal results are tracked in [the Windows guide](WINDOWS_SIMULATOR.md) and PR #59. Windows 11 owner-desktop certification is separate from Windows Server CI |
 | Apple Simulator behavior / pixel parity | UNKNOWN; no authorized macOS reference was available |
 
 Applications execute under the user's OS account; this is process isolation from IDE crashes, not an OS security sandbox. Use trusted development source. Resource limits, evidence provenance and architectural alternatives are in [the feasibility report](research/LOCAL_SIMULATOR_FEASIBILITY.md).

@@ -27,7 +27,8 @@ Every release is published as a GitHub pre-release. It stays a pre-release until
 
 1. `verify`: typecheck, lint, tests, policy catalog validation, frontend build, `cargo fmt --check`, `clippy`, `cargo test`.
 2. `bundle`: fails if the tag version differs from `src-tauri/tauri.conf.json`; builds DEB and AppImage; renames them to `Open-iOS-Studio_<version>_amd64.deb` and `Open-iOS-Studio_<version>_amd64.AppImage`; writes and checks `SHA256SUMS.txt`; checks the DEB contains `usr/bin/open-ios-studio` and that the AppImage starts with the ELF magic; extracts both packages, checks bundled simulator resource hashes and runs their executable’s real Swift callback self-test; uploads packages and `SIMULATOR_VERIFICATION.json`. This check requires the runner-provided Swift compiler and does not verify a desktop window.
-3. `publish`: the only job with `contents: write`. Builds `RELEASE_NOTES.md` from the matching `CHANGELOG.md` section plus a fixed honesty block, then runs `gh release create ... --prerelease`.
+3. `windows`: calls the native Windows package workflow for the same tag/ref, including installed Swift callback and WebView2 checks; uploads the NSIS installer and verification/checksum files.
+4. `publish`: waits for both platform jobs; includes their installers and verification JSON and rechecks a combined SHA256SUMS. The only job with `contents: write`. Builds `RELEASE_NOTES.md` from the matching `CHANGELOG.md` section plus a fixed honesty block, then runs `gh release create ... --prerelease`.
 
 ## Verifying a download
 
