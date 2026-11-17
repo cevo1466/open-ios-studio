@@ -1,5 +1,11 @@
 # Status
 
+## Windows native simulator implementation (verification in PR #59)
+- Linux simulator PR #57 is merged; frontend/native CI and release-mode DEB/AppImage resource/compiled-callback checks passed.
+- Windows candidate adds Swift DLL/EXE compilation, executable lookup, SDK environment, Job Object cleanup, PowerShell terminal and NSIS packaging. Linux regressions and Windows MSVC harness target check passed locally.
+- Windows CI installs official Swift 6.4.2 and must verify native Swift interactions, installed-package self-test and actual WebView2 editor/device interaction before this is marked ready. Windows 11 owner-desktop verification remains separate from Windows Server CI.
+- See [Windows guide](WINDOWS_SIMULATOR.md). No public release tag created.
+
 ## 2026-11-17 — bundled local Swift simulator (0.2.0 integration)
 - Independent SwiftUI source subset executes compiled native Swift callbacks; the IDE draws its UI locally. No Apple binaries, phone, mirroring or remote Mac.
 - Rebased onto current main (`bc72cc1`), preserving preflight, editor tabs, Swift LSP, terminal, signing and AI. Simulator compiler diagnostics join Problems with a separate Monaco marker owner.
