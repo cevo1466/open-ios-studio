@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant};
 
 const SHIM: &str = super::SWIFT_UI_SOURCE;
 const MAX_LINE: u64 = 1024 * 1024;
@@ -20,12 +20,6 @@ pub struct BuildResult {
     pub output: Vec<String>,
 }
 
-struct BuildDir(PathBuf);
-impl Drop for BuildDir {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
-    }
-}
 struct Session {
     child: Arc<Mutex<Child>>,
     input: mpsc::SyncSender<String>,
@@ -140,15 +134,14 @@ impl Engine {
             let files = sources(ws, selected)?;
             let compiler = xtool::find_in_path("swiftc", path)
                 .ok_or("swiftc was not found. Install the Swift toolchain for your platform.")?;
-            let nonce = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map_err(|e| e.to_string())?
-                .as_nanos();
-            let dir = BuildDir(
-                std::env::temp_dir().join(format!("ois-simulator-{}-{nonce}", std::process::id())),
-            );
-            std::fs::create_dir(&dir.0).map_err(|e| e.to_string())?;
-            let shim = dir.0.join("SwiftUI.swift");
+            // Atomic random creation owns only this build's directory. A clock-based
+            // name can collide across parallel engines on Windows, and a failed
+            // creation must never delete another build's directory.
+            let dir = tempfile::Builder::new()
+                .prefix("ois-simulator-")
+                .tempdir()
+                .map_err(|e| e.to_string())?;
+            let shim = dir.path().join("SwiftUI.swift");
             std::fs::write(&shim, SHIM).map_err(|e| e.to_string())?;
             let library = if cfg!(windows) {
                 "SwiftUI.dll"
@@ -157,8 +150,8 @@ impl Engine {
             } else {
                 "libSwiftUI.so"
             };
-            let module = dir.0.join("SwiftUI.swiftmodule");
-            let executable = dir.0.join(if cfg!(windows) {
+            let module = dir.path().join("SwiftUI.swiftmodule");
+            let executable = dir.path().join(if cfg!(windows) {
                 "application.exe"
             } else {
                 "application"
@@ -184,7 +177,7 @@ impl Engine {
                     "SwiftUI".into(),
                     s(&shim),
                     "-o".into(),
-                    s(&dir.0.join(library)),
+                    s(&dir.path().join(library)),
                     "-emit-module-path".into(),
                     s(&module),
                 ],
@@ -194,9 +187,9 @@ impl Engine {
                         "5".into(),
                         "-parse-as-library".into(),
                         "-I".into(),
-                        s(&dir.0),
+                        s(dir.path()),
                         "-L".into(),
-                        s(&dir.0),
+                        s(dir.path()),
                         "-lSwiftUI".into(),
                     ];
                     if !cfg!(windows) {
@@ -204,7 +197,7 @@ impl Engine {
                             "-Xlinker".into(),
                             "-rpath".into(),
                             "-Xlinker".into(),
-                            s(&dir.0),
+                            s(dir.path()),
                         ]);
                     }
                     args.extend(files.iter().map(|p| s(p)));
