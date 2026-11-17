@@ -154,25 +154,6 @@ fn spawn_with_retry(command: &mut Command) -> std::io::Result<Child> {
     }
 }
 
-#[cfg(unix)]
-fn terminate(child: &mut Child, hard: bool) {
-    let signal = if hard { libc::SIGKILL } else { libc::SIGTERM };
-    if let Ok(pid) = i32::try_from(child.id()) {
-        // The child leads its own process group (process_group(0)), so -pid reaches its children.
-        // SAFETY: plain syscall with integer arguments.
-        unsafe {
-            libc::kill(-pid, signal);
-        }
-    }
-}
-
-#[cfg(not(unix))]
-fn terminate(child: &mut Child, hard: bool) {
-    if hard {
-        let _ = child.kill();
-    }
-}
-
 /// Run `spec`, passing each output line to `on_line`. Blocks until the process has exited.
 pub fn run(
     spec: &Spec,
@@ -192,16 +173,15 @@ pub fn run(
             command.env(key, value);
         }
     }
+    for (key, value) in crate::process_env::platform_pairs() {
+        command.env(key, value);
+    }
     for (key, value) in &spec.env {
         command.env(key, value);
     }
-    #[cfg(unix)]
-    {
-        use std::os::unix::process::CommandExt;
-        command.process_group(0);
-    }
-
+    crate::process_tree::prepare(&mut command);
     let mut child = spawn_with_retry(&mut command)?;
+    let tree = crate::process_tree::ProcessTree::attach(&mut child)?;
     let (tx, rx) = mpsc::sync_channel::<Line>(1024);
     if let Some(out) = child.stdout.take() {
         spawn_reader(out, Stream::Stdout, tx.clone());
@@ -244,11 +224,11 @@ pub fn run(
                 timed_out = true;
             }
             if cancelled || timed_out {
-                terminate(&mut child, false);
+                tree.terminate(&mut child, false);
                 term_sent_at = Some(Instant::now());
             }
         } else if !killed && term_sent_at.is_some_and(|t| t.elapsed() >= KILL_GRACE) {
-            terminate(&mut child, true);
+            tree.terminate(&mut child, true);
             killed = true;
         }
     };

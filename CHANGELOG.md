@@ -12,6 +12,8 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 - Package CI extracts both package layouts and verifies simulator resource hashes and actual Swift execution before accepting artifacts.
 
 ### Changed
+- Native Windows x64 simulator, per-user NSIS installer and Windows verification/release workflow; Windows Swift/C++/SDK prerequisites remain external.
+- Windows executable lookup, SDK environment, Job Object cleanup, source/SourceKit paths, PowerShell terminal startup and exit handling.
 - Integrates with the current editor tabs, preflight, Swift LSP, terminal and AI features. Simulator compiler diagnostics join Problems while keeping LSP markers separate.
 - Removed UxPlay/screen-mirroring recommendations. The local simulator requires an installed Linux Swift toolchain, no iPhone or Mac.
 

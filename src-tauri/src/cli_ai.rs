@@ -104,7 +104,7 @@ pub struct CliStatus {
 /// npm/local bin directories.
 fn extra_bin_dirs() -> Vec<PathBuf> {
     let mut dirs = Vec::new();
-    if let Some(home) = std::env::var_os("HOME") {
+    if let Some(home) = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")) {
         let home = PathBuf::from(home);
         dirs.push(home.join(".local/bin"));
         // swiftly (the Swift toolchain installer) keeps its proxies here; a desktop-launched app
@@ -114,7 +114,32 @@ fn extra_bin_dirs() -> Vec<PathBuf> {
         dirs.push(home.join(".npm-global/bin"));
         dirs.push(home.join(".claude/local"));
     }
+    #[cfg(unix)]
     dirs.push(PathBuf::from("/usr/local/bin"));
+    #[cfg(windows)]
+    for base in [
+        std::env::var_os("LOCALAPPDATA").map(|p| PathBuf::from(p).join("Programs")),
+        std::env::var_os("PROGRAMFILES").map(PathBuf::from),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        let swift = base.join("Swift");
+        for kind in ["Toolchains", "Runtimes"] {
+            if let Ok(entries) = std::fs::read_dir(swift.join(kind)) {
+                let mut versions: Vec<_> = entries
+                    .flatten()
+                    .filter(|e| e.path().is_dir())
+                    .map(|e| e.path())
+                    .collect();
+                versions.sort();
+                versions.reverse();
+                for version in versions {
+                    dirs.push(version.join("usr/bin"));
+                }
+            }
+        }
+    }
     dirs
 }
 
@@ -130,18 +155,8 @@ fn search_dirs() -> Vec<PathBuf> {
     dirs
 }
 
-fn is_executable_file(path: &Path) -> bool {
-    use std::os::unix::fs::PermissionsExt;
-    std::fs::metadata(path)
-        .map(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
-        .unwrap_or(false)
-}
-
 pub fn find_program(name: &str) -> Option<PathBuf> {
-    search_dirs()
-        .into_iter()
-        .map(|d| d.join(name))
-        .find(|p| is_executable_file(p))
+    crate::xtool::find_in_path(name, &child_path()?)
 }
 
 /// `PATH` widened with the usual per-user tool directories.
@@ -157,6 +172,7 @@ pub fn env_pairs() -> Vec<(&'static str, OsString)> {
             pairs.push((name, value));
         }
     }
+    pairs.extend(crate::process_env::platform_pairs());
     if let Some(path) = child_path() {
         pairs.push(("PATH", path));
     }

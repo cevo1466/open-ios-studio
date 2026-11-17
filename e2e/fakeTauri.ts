@@ -46,7 +46,7 @@ export async function installFakeTauri(page: Page): Promise<void> {
     let lspChannel: { onmessage: (e: unknown) => void } | null = null;
 
     const handlers: Record<string, (a: Record<string, unknown>) => Json> = {
-      simulator_info: () => ({ bundleId: 'open-ios-studio.local-swift.v1', runtimeBytes: 1, exampleBytes: 1, platformSupported: true, compilerPath: '/usr/bin/swiftc' }),
+      simulator_info: () => ({ bundleId: 'open-ios-studio.local-swift.v1', runtimeBytes: 1, exampleBytes: 1, platformSupported: true, platform: 'linux', compilerPath: '/usr/bin/swiftc' }),
       pick_workspace: () => '/work/demo',
       list_dir: (a) => listDir(String(a.path ?? '')),
       read_file: (a) => {

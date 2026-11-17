@@ -26,8 +26,8 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
-      - name: Dependency audit (high and critical fail the job)
-        run: npm audit --audit-level=high
+      - name: Dependency audit (high/critical gate, assessed development-only exception)
+        run: npm run audit:dependencies
 
   policy:
     runs-on: ubuntu-22.04

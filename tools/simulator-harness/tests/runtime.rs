@@ -62,7 +62,10 @@ fn kind(frame: &Value, kind: &str) -> String {
 
 #[test]
 fn compiled_swift_callbacks_binding_navigation_modals_rebuild_and_failure_retention() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = tempfile::Builder::new()
+        .prefix("ois space ü ")
+        .tempdir()
+        .unwrap();
     let source = include_str!("../../../examples/LocalSimulator/Counter.swift");
     std::fs::write(dir.path().join("Counter.swift"), source).unwrap();
     let engine = Engine::default();
@@ -183,7 +186,10 @@ fn compiled_swift_callbacks_binding_navigation_modals_rebuild_and_failure_retent
 
 #[test]
 fn child_binding_secure_input_and_tab_selection_execute_in_swift() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = tempfile::Builder::new()
+        .prefix("ois space ü ")
+        .tempdir()
+        .unwrap();
     std::fs::write(
         dir.path().join("Demo.swift"),
         include_str!("../../../examples/BindingAndTabs/Demo.swift"),

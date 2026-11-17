@@ -2,16 +2,9 @@
 use super::{Engine, BUNDLE_ID, EXAMPLE_SOURCE};
 use crate::fs_engine::Workspace;
 use serde_json::{json, Value};
-use std::path::PathBuf;
 use std::sync::{mpsc, Arc};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
-struct DemoDir(PathBuf);
-impl Drop for DemoDir {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
-    }
-}
 fn frame(rx: &mpsc::Receiver<Value>) -> Result<Value, String> {
     loop {
         let event = rx
@@ -39,20 +32,15 @@ fn button_id(node: &Value, text: &str) -> Option<String> {
 }
 
 pub fn smoke_test(path: &std::ffi::OsStr) -> Result<Value, String> {
-    let nonce = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|e| e.to_string())?
-        .as_nanos();
-    let dir = DemoDir(std::env::temp_dir().join(format!(
-        "ois-installed-check-{}-{nonce}",
-        std::process::id()
-    )));
-    std::fs::create_dir(&dir.0).map_err(|e| e.to_string())?;
-    std::fs::write(dir.0.join("Counter.swift"), EXAMPLE_SOURCE).map_err(|e| e.to_string())?;
+    let dir = tempfile::Builder::new()
+        .prefix("ois-installed-check-")
+        .tempdir()
+        .map_err(|e| e.to_string())?;
+    std::fs::write(dir.path().join("Counter.swift"), EXAMPLE_SOURCE).map_err(|e| e.to_string())?;
     let engine = Engine::default();
     let (tx, rx) = mpsc::channel();
     let build = engine.start(
-        Workspace::open(&dir.0).map_err(|e| e.to_string())?,
+        Workspace::open(dir.path()).map_err(|e| e.to_string())?,
         "Counter.swift".into(),
         path,
         Arc::new(move |event| {

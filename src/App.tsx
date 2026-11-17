@@ -579,7 +579,7 @@ export function App() {
               {state.workspace ? (
                 <div className="files-project" title={state.workspace}>
                   <span className="files-project-caption">Açık proje klasörü</span>
-                  <strong>{state.workspace.split('/').pop()}</strong>
+                  <strong>{state.workspace.split(/[\\/]/).pop()}</strong>
                   <span className="files-project-path">{state.workspace}</span>
                 </div>
               ) : (

@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant};
 
 const SHIM: &str = super::SWIFT_UI_SOURCE;
 const MAX_LINE: u64 = 1024 * 1024;
@@ -20,20 +20,15 @@ pub struct BuildResult {
     pub output: Vec<String>,
 }
 
-struct BuildDir(PathBuf);
-impl Drop for BuildDir {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
-    }
-}
 struct Session {
     child: Arc<Mutex<Child>>,
     input: mpsc::SyncSender<String>,
+    tree: Arc<crate::process_tree::ProcessTree>,
 }
 impl Drop for Session {
     fn drop(&mut self) {
         if let Ok(mut child) = self.child.lock() {
-            kill(&mut child);
+            kill(&mut child, &self.tree);
         }
     }
 }
@@ -47,15 +42,11 @@ pub struct Engine {
     inner: Mutex<Inner>,
 }
 
-fn kill(child: &mut Child) {
-    // A reaped child's PID may be reused; never signal it again from Session::drop.
+fn kill(child: &mut Child, tree: &crate::process_tree::ProcessTree) {
     if matches!(child.try_wait(), Ok(Some(_))) {
         return;
     }
-    #[cfg(unix)]
-    unsafe {
-        libc::kill(-(child.id() as i32), libc::SIGKILL);
-    }
+    tree.terminate(child, true);
     let _ = child.kill();
     let _ = child.wait();
 }
@@ -139,34 +130,42 @@ impl Engine {
         cancel: &runner::CancelToken,
         emit: Emit,
     ) -> Result<BuildResult, String> {
-        #[cfg(target_os = "windows")]
-        {
-            let _ = (ws, selected, path, cancel, emit);
-            return Err("Native Windows runtime is not verified or enabled yet. Use the Linux build under WSLg.".into());
-        }
-        #[cfg(not(target_os = "windows"))]
         {
             let files = sources(ws, selected)?;
             let compiler = xtool::find_in_path("swiftc", path)
-                .ok_or("swiftc was not found. Install the Swift Linux toolchain.")?;
-            let nonce = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map_err(|e| e.to_string())?
-                .as_nanos();
-            let dir = BuildDir(
-                std::env::temp_dir().join(format!("ois-simulator-{}-{nonce}", std::process::id())),
-            );
-            std::fs::create_dir(&dir.0).map_err(|e| e.to_string())?;
-            let shim = dir.0.join("SwiftUI.swift");
+                .ok_or("swiftc was not found. Install the Swift toolchain for your platform.")?;
+            // Atomic random creation owns only this build's directory. A clock-based
+            // name can collide across parallel engines on Windows, and a failed
+            // creation must never delete another build's directory.
+            let dir = tempfile::Builder::new()
+                .prefix("ois-simulator-")
+                .tempdir()
+                .map_err(|e| e.to_string())?;
+            let shim = dir.path().join("SwiftUI.swift");
             std::fs::write(&shim, SHIM).map_err(|e| e.to_string())?;
-            let library = if cfg!(target_os = "macos") {
+            let library = if cfg!(windows) {
+                "SwiftUI.dll"
+            } else if cfg!(target_os = "macos") {
                 "libSwiftUI.dylib"
             } else {
                 "libSwiftUI.so"
             };
-            let module = dir.0.join("SwiftUI.swiftmodule");
-            let executable = dir.0.join("application");
-            let s = |p: &Path| p.to_string_lossy().into_owned();
+            let module = dir.path().join("SwiftUI.swiftmodule");
+            let executable = dir.path().join(if cfg!(windows) {
+                "application.exe"
+            } else {
+                "application"
+            });
+            let s = |p: &Path| {
+                let value = p.to_string_lossy().into_owned();
+                #[cfg(windows)]
+                let value = if let Some(unc) = value.strip_prefix(r"\\?\UNC\") {
+                    format!(r"\\{unc}")
+                } else {
+                    value.strip_prefix(r"\\?\").unwrap_or(&value).to_owned()
+                };
+                value
+            };
             let mut output = Vec::new();
             let commands = [
                 vec![
@@ -178,7 +177,7 @@ impl Engine {
                     "SwiftUI".into(),
                     s(&shim),
                     "-o".into(),
-                    s(&dir.0.join(library)),
+                    s(&dir.path().join(library)),
                     "-emit-module-path".into(),
                     s(&module),
                 ],
@@ -188,15 +187,19 @@ impl Engine {
                         "5".into(),
                         "-parse-as-library".into(),
                         "-I".into(),
-                        s(&dir.0),
+                        s(dir.path()),
                         "-L".into(),
-                        s(&dir.0),
+                        s(dir.path()),
                         "-lSwiftUI".into(),
-                        "-Xlinker".into(),
-                        "-rpath".into(),
-                        "-Xlinker".into(),
-                        s(&dir.0),
                     ];
+                    if !cfg!(windows) {
+                        args.extend([
+                            "-Xlinker".into(),
+                            "-rpath".into(),
+                            "-Xlinker".into(),
+                            s(dir.path()),
+                        ]);
+                    }
                     args.extend(files.iter().map(|p| s(p)));
                     args.extend(["-o".into(), s(&executable)]);
                     args
@@ -247,12 +250,14 @@ impl Engine {
                     command.env(key, value);
                 }
             }
-            #[cfg(unix)]
-            {
-                use std::os::unix::process::CommandExt;
-                command.process_group(0);
+            for (key, value) in crate::process_env::platform_pairs() {
+                command.env(key, value);
             }
+            crate::process_tree::prepare(&mut command);
             let mut child = command.spawn().map_err(|e| e.to_string())?;
+            let tree = Arc::new(
+                crate::process_tree::ProcessTree::attach(&mut child).map_err(|e| e.to_string())?,
+            );
             let stdout = child.stdout.take().ok_or("Missing runtime stdout")?;
             let stderr = child.stderr.take().ok_or("Missing runtime stderr")?;
             let mut stdin = child.stdin.take().ok_or("Missing runtime stdin")?;
@@ -269,6 +274,7 @@ impl Engine {
             let (ready_tx, ready_rx) = mpsc::sync_channel(1);
             let frame_emit = emit.clone();
             let reader_child = child.clone();
+            let reader_tree = tree.clone();
             thread::spawn(move || {
                 let mut reader = BufReader::new(stdout);
                 let mut total = 0;
@@ -289,7 +295,7 @@ impl Engine {
                             json!({"kind":"log","text":"Runtime output limit exceeded; session terminated."}),
                         );
                         if let Ok(mut c) = reader_child.lock() {
-                            kill(&mut c);
+                            kill(&mut c, &reader_tree);
                         }
                         break;
                     }
@@ -332,7 +338,7 @@ impl Engine {
             });
             if ready_rx.recv_timeout(Duration::from_secs(10)).is_err() {
                 if let Ok(mut c) = child.lock() {
-                    kill(&mut c);
+                    kill(&mut c, &tree);
                 }
                 return Err("Application did not produce a UI frame within 10 seconds. Last session retained.".into());
             }
@@ -340,13 +346,14 @@ impl Engine {
                 let mut inner = self.inner.lock().map_err(|e| e.to_string())?;
                 if cancel.is_cancelled() {
                     if let Ok(mut c) = child.lock() {
-                        kill(&mut c);
+                        kill(&mut c, &tree);
                     }
                     return Err("Simulator build cancelled.".into());
                 }
                 inner.session = Some(Session {
                     child: child.clone(),
                     input: tx,
+                    tree: tree.clone(),
                 });
             }
             thread::spawn(move || {
@@ -358,7 +365,7 @@ impl Engine {
                         return;
                     };
                     if started.elapsed() > Duration::from_secs(3600) {
-                        kill(&mut c);
+                        kill(&mut c, &tree);
                     }
                     match c.try_wait() {
                         Ok(Some(status)) => {

@@ -4,9 +4,9 @@ Open iOS Studio includes an original SwiftUI compatibility module and a runnable
 
 Open the Studio, choose a workspace, click **Simülatör**, then **Örneği aç** and **Simülatörü başlat**.
 
-The native Linux Swift toolchain (`swiftc`) must be installed separately. No iPhone, Mac, Apple SDK or screen mirroring is required for the documented subset. Compiler installation: https://www.swift.org/install/linux/
+The native Swift toolchain (`swiftc`) must be installed separately on Linux or Windows. Windows additionally needs the C++ build tools and Windows SDK listed in the official Swift guide. No iPhone, Mac, Apple SDK or screen mirroring is required for the documented subset. Compiler installation: https://www.swift.org/install/
 
-This is an experimental independent source-compatible subset, not Apple's Simulator or an iOS binary loader. Complete compatibility boundaries are documented in the repository's `docs/LOCAL_SIMULATOR.md`. Windows execution is not supported yet.
+This is an experimental independent source-compatible subset, not Apple's Simulator or an iOS binary loader. Complete compatibility boundaries are documented in the repository's `docs/LOCAL_SIMULATOR.md`. Windows-native verification and installation details are in `docs/WINDOWS_SIMULATOR.md`; do not infer real Windows 11 desktop certification from CI.
 
 Package checks, without opening a window:
 

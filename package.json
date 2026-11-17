@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
+    "audit:dependencies": "node --test scripts/audit-dependencies-check.mjs && node scripts/audit-dependencies.mjs",
     "tauri": "tauri",
     "e2e": "playwright test",
     "validate:policies": "node scripts/validate-policies.mjs && node scripts/policy-gate.mjs --self-test",

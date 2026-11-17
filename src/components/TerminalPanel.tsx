@@ -96,7 +96,16 @@ export function TerminalPanel({ kind, options, runKey, theme, onExit, onClose, o
     let id: number | null = null;
     let disposed = false;
     // One keystroke must reach the PTY as one small write (see terminalInput.ts).
-    const send = createOrderedWriter((piece) => (id === null ? Promise.resolve() : ipc.ptyWrite(id, piece)));
+    const pendingInput: string[] = [];
+    const send = createOrderedWriter((piece) => {
+      if (id === null) {
+        // ConPTY can ask xterm for its cursor position before ptyOpen has returned its id.
+        // Retain that response instead of losing the startup handshake.
+        if (!disposed) pendingInput.push(piece);
+        return Promise.resolve();
+      }
+      return ipc.ptyWrite(id, piece);
+    });
     const input = term.onData(send);
     // Copy: xterm keeps its selection outside the DOM, so write it to the clipboard ourselves.
     // Paste: returning false stops xterm from sending ^V to the PTY, and not calling
@@ -138,12 +147,14 @@ export function TerminalPanel({ kind, options, runKey, theme, onExit, onClose, o
           return;
         }
         id = newId;
+        for (const piece of pendingInput.splice(0)) send(piece);
         setPhase('running');
         void ipc.ptyResize(newId, term.rows, term.cols).catch(() => undefined);
         term.focus();
       })
       .catch((e: unknown) => {
         if (disposed) return;
+        pendingInput.length = 0;
         setPhase('error');
         setError(String(e));
       });
@@ -160,6 +171,7 @@ export function TerminalPanel({ kind, options, runKey, theme, onExit, onClose, o
 
     return () => {
       disposed = true;
+      pendingInput.length = 0;
       observer.disconnect();
       input.dispose();
       ta?.removeEventListener('compositionend', clearTa);

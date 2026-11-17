@@ -97,3 +97,15 @@ describe("uri helpers", () => {
     expect(pathToUri("/ws/a b.swift")).toBe("file:///ws/a%20b.swift");
   });
 });
+
+ describe("Windows URI helpers", () => {
+  it("encodes a drive path and removes the canonical prefix", () => {
+    expect(pathToUri("C:\\Work\\a b.swift")).toBe("file:///C:/Work/a%20b.swift");
+    expect(uriToPath("file:///c:/Work/a%20b.swift")).toBe("c:/Work/a b.swift");
+    expect(pathToUri("\\\\?\\C:\\Work\\A.swift")).toBe("file:///C:/Work/A.swift");
+  });
+  it("round trips UNC paths and Unicode", () => {
+    expect(pathToUri("\\\\host\\share\\İçerik.swift")).toBe("file://host/share/%C4%B0%C3%A7erik.swift");
+    expect(uriToPath("file://host/share/%C4%B0%C3%A7erik.swift")).toBe("//host/share/İçerik.swift");
+  });
+});

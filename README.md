@@ -22,6 +22,10 @@ Verify downloads with `sha256sum -c --ignore-missing SHA256SUMS.txt`. Release as
 
 Runtime needs WebKitGTK 4.1 (Linux Mint 21+ / Ubuntu 22.04+).
 
+## Windows x64 simulator
+
+The native Windows NSIS installer bundles Studio, the experimental local Swift simulator and its example. Install the official Windows Swift toolchain and Visual Studio/Windows SDK prerequisites separately; see [Windows setup and verification](docs/WINDOWS_SIMULATOR.md). CI installers are available under the [Windows workflow artifacts](https://github.com/cevo1466/open-ios-studio/actions/workflows/build-windows.yml); this integration does not create a public release. Windows Server CI evidence and a Windows 11 desktop check are recorded separately. General Xcode/SwiftPM applications and iOS framework/binary compatibility remain outside the simulator subset.
+
 ## Update
 In the app: **Ayarlar → Güncellemeler → Güncellemeleri denetle**. It compares the installed version with the newest GitHub release, downloads the DEB or AppImage into your Downloads folder, verifies it against the release's `SHA256SUMS.txt`, and then shows the `sudo apt install ./…deb` command (DEB) or replaces the running AppImage in place after you confirm. Nothing is installed silently. From a terminal the same thing is:
 ```bash
