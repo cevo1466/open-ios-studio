@@ -6,10 +6,10 @@ Design: use the same independently implemented SwiftUI module and JSON protocol.
 
 - [x] Add platform process/environment support, Windows compiler arguments and executable discovery; check Windows target locally and Linux regression tests.
 - [x] Add official Swift Windows setup and a native Windows CI lane; run real compiled Swift interaction tests there.
-- [ ] Build/install a Windows NSIS package and verify embedded/runtime resources and compiled callback.
-- [ ] Verify actual WebView2 editor/device interaction on Windows CI; report exactly what remains unverified on a real Windows 11 desktop.
-- [ ] Update compatibility/install documentation and integrate after green checks. No release tag/public release without owner approval.
+- [x] Build/install a Windows NSIS package and verify embedded/runtime resources and compiled callback.
+- [x] Verify actual WebView2 editor/device interaction on Windows CI; report exactly what remains unverified on a real Windows 11 desktop.
+- [x] Update compatibility/install documentation and submit integration PR #59. Merge after green checks; no release tag/public release without owner approval.
 
 Primary references: https://www.swift.org/install/windows/manual/, https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects. Toolchain version pinned to official Swift 6.4.2 for reproducible CI. No Apple SDK/framework binaries are included.
 
-Native Windows Swift integration tests and Job Object timeout/descendant test passed in run 44050715836. Its first package build then stopped at the missing Windows ICO, now generated from the existing app icon. Run 44052829418 verifies that fix. Frontend: 439 Vitest; Linux full Tauri: 129 tests, full clippy and browser simulator regression passed. Installer/UI results are not yet claimed.
+Native Windows Swift integration tests and Job Object timeout/descendant test passed in run 44050715836. Its first package build then stopped at the missing Windows ICO, now generated from the existing app icon. Run 44052829418 verifies that fix. Frontend: 439 Vitest; Linux full Tauri: 129 tests, full clippy and browser simulator regression passed. Run 44147603682 passed installed NSIS resource/hash/compiled callback checks and actual installed WebView2 editor, Unicode, save/recompile and terminal interactions at commit 5706eac627d59895dc2c9f683bf9a684f46a0125. Final revision integration/checks are tracked in PR #59. Windows 11 owner-desktop testing remains separate.

@@ -7,4 +7,6 @@ Decision: Add an original source-compatible SwiftUI module and native Swift comp
 
 Consequences: The first milestone is useful for explicitly supported source and state transitions. It is not Apple's Simulator, an ARM emulator, an iOS binary loader or a complete SwiftUI implementation. Root-held State and explicit Binding are supported; nested state identity, Observable models and native iOS layout/animations remain incomplete. Each reload starts fresh state. Native Windows execution stays disabled until implemented and tested.
 
+Update 2026-11-17: the Windows restriction above is superseded by [ADR-0017](ADR-0017-native-windows-simulator.md); all source/framework/binary compatibility limits remain.
+
 Verification policy: this extends ADR-0002 for source/runtime development on the now available Linux Mint Swift/Rust host. Record local checks explicitly; CI and package/desktop verification remain separate, and no existing decisions are deleted. GTK/WebKit/D-Bus development dependencies prevent a full local desktop build in this session. Never turn standalone runtime or browser success into package/Apple equivalence claims.

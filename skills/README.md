@@ -4,7 +4,7 @@ Open iOS Studio copies these skills into `<project>/.claude/skills/` every time 
 
 | Skill | Purpose | Origin |
 |---|---|---|
-| `ios-app-xtool` | How an iOS app is built, tested and prepared for App Store review inside Open iOS Studio (xtool, no Xcode, no simulator, policy checks). | This repository. |
+| `ios-app-xtool` | Linux xtool build/test/App Store workflow, experimental local Swift subset simulator scope, no Xcode, policy checks. | This repository. |
 | `mobile-ios-design` | Apple Human Interface Guidelines and SwiftUI layout, navigation, typography, colour and accessibility patterns. | [wshobson/agents](https://github.com/wshobson/agents), MIT, pinned in `SOURCE.md`. |
 | `find-skills` | Lets Claude Code search and install further skills from skills.sh (`npx skills find`, `npx skills add`). | [vercel-labs/skills](https://github.com/vercel-labs/skills), MIT, pinned in `SOURCE.md`. |
 

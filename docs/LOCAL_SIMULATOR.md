@@ -4,7 +4,7 @@ Open iOS Studio executes supported Swift application source on Linux and has a n
 
 ## Start from the IDE
 
-Installed DEB/AppImage packages include the simulator, example and compatibility source. Running supported source requires an installed Linux Swift compiler (`swiftc`); the panel reports whether it is available. You do not need Node, Rust, Tauri development libraries, an iPhone or an Apple SDK to use the installed simulator. Development builds additionally need Node >=22, Rust and Tauri Linux development libraries.
+Installed Linux DEB/AppImage and Windows NSIS packages include the simulator, example and compatibility source. See the [Windows installation and verification guide](WINDOWS_SIMULATOR.md) for its Swift/SDK prerequisites. Running supported source requires an installed host Swift compiler (`swiftc`); the panel reports whether it is available. You do not need Node, Rust, Tauri development libraries, an iPhone or an Apple SDK to use the installed simulator. Development builds additionally need Node >=22, Rust and Tauri Linux development libraries.
 
 The actual Tauri desktop window was built and launched on Linux Mint 22.3 on 2026-11-17. The example ran in its device panel: click changed 0 → 1, editing/saving the initial value in Monaco and rebuilding produced 40, then click produced 41. The local debug DEB was extracted and its executable separately passed the resource/hash/compiled-callback checks. System-wide DEB installation, AppImage desktop launch and other distributions remain separate checks; see [desktop evidence](SIMULATOR_DESKTOP_VERIFICATION.md).
 

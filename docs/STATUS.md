@@ -1,10 +1,11 @@
 # Status
 
-## Windows native simulator implementation (verification in PR #59)
+## Windows native simulator integration (PR #59)
 - Linux simulator PR #57 is merged; frontend/native CI and release-mode DEB/AppImage resource/compiled-callback checks passed.
 - Windows candidate adds Swift DLL/EXE compilation, executable lookup, SDK environment, Job Object cleanup, PowerShell terminal and NSIS packaging. Linux regressions and Windows MSVC harness target check passed locally.
-- Windows CI installs official Swift 6.4.2 and must verify native Swift interactions, installed-package self-test and actual WebView2 editor/device interaction before this is marked ready. Windows 11 owner-desktop verification remains separate from Windows Server CI.
-- See [Windows guide](WINDOWS_SIMULATOR.md). No public release tag created.
+- Windows Server 2022 x64 CI with official Swift 6.4.2 passed native Swift interactions, installed NSIS resource/callback checks and actual installed WebView2 editor/device interaction (0 → 1, Unicode, Monaco save/recompile → 40 → 41). PowerShell terminal executed and exited through ConPTY. Evidence: [run 44147603682](https://github.com/cevo1466/open-ios-studio/actions/runs/44147603682); final revision checks are tracked in PR #59. Windows 11 owner-desktop verification remains separate.
+- Embedded agent context and the first-party project skill now describe the simulator subset instead of claiming no preview exists. See [Windows guide](WINDOWS_SIMULATOR.md). No public release tag created.
+- npm audit reports the unpatched development-only picomatch advisory updated today. A version/node/advisory-scoped assessment expires on 2026-12-01; production, unknown and critical findings still block CI. See [audit assessment](DEPENDENCY_AUDIT.md).
 
 ## 2026-11-17 — bundled local Swift simulator (0.2.0 integration)
 - Independent SwiftUI source subset executes compiled native Swift callbacks; the IDE draws its UI locally. No Apple binaries, phone, mirroring or remote Mac.
@@ -14,8 +15,8 @@
 - Local checks: 435 Vitest, 129 full Tauri Rust, 36 harness unit + 3 real-Swift integration tests; frontend verification, full-crate clippy `-D warnings`, rustfmt; 62 browser tests plus the folder-switch regression. Simulator browser case uses actual production Rust/Swift; other IDE services are mocked.
 - Native test found stale explorer entries after workspace switch; root listing now resets with the workspace.
 - SourceKit starts on this host but without a simulator build-server configuration can report missing Apple SwiftUI even when the local subset compiles. Diagnostics remain labelled LSP; no simulator-specific SourceKit configuration yet.
-- Windows, arbitrary SwiftPM/Xcode projects, UIKit/GoogleSignIn/AVFoundation/StoreKit/Observable models, iOS binaries and Apple pixel/behavior parity remain unsupported or unknown. Vorbino is not runnable in this subset.
-- Owner priority: native Windows 11 support comes immediately after Linux integration. The current simulator engine explicitly rejects Windows; this is not a Windows-ready release.
+- Arbitrary SwiftPM/Xcode projects, UIKit/GoogleSignIn/AVFoundation/StoreKit/Observable models, iOS binaries and Apple pixel/behavior parity remain unsupported or unknown. Vorbino is not runnable in this subset.
+- Native Windows compiler/runtime and NSIS packaging are implemented in PR #59; its verification status is recorded above. Windows 11 owner-desktop verification remains separate.
 - CI and integration state are recorded in the feature PR. Version 0.2.0 is prepared; no public release tag is created by this feature integration. See `LOCAL_SIMULATOR.md`, `SIMULATOR_REPORT_TR.md` and ADR-0016.
 
 ## v0.1.12 (pre-release, PRs #53 + #52): pre-submission check, tabs/palette, Swift LSP, terminal fixes

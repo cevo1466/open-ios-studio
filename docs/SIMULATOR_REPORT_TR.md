@@ -60,7 +60,7 @@ Tam bileşen/sınır tablosu: [kullanım ve uyumluluk kılavuzu](LOCAL_SIMULATOR
 | Tarayıcı regresyon paketi | PASS | 62 Playwright testi; masaüstünde bulunan klasör geçişi düzeltmesi ayrıca kontrol edildi. Simülatör vakasında gerçek Rust/Swift, diğer IDE servislerinde mock |
 | `scripts/doctor.sh --self-test` | PASS | Yansıtma tavsiyesi kaldırıldıktan sonraki script kontrolü |
 | Tam Tauri Rust testi/masaüstü derlemesi | PASS | 129 test, tam debug masaüstü derlemesi, Mint’te gerçek pencere ve editör → derleme → etkileşim |
-| Windows 11 | NOT_VERIFIED | Windows native start açık bir desteklenmiyor hatası döndürür; WSLg de bu oturumda denenmedi |
+| Windows 11 | NOT_VERIFIED | Native Windows Swift/NSIS uygulaması PR #59 kapsamında; Windows Server CI kanıtı gerçek Windows 11 masaüstü kontrolünün yerine geçmez |
 | Apple Simulator karşılaştırması | UNKNOWN | Yetkili macOS referansı yok |
 | Yerel DEB / paket kontrolü | PASS | Debug DEB kaynak/örnek/lisans hash’leri, çıkarılan uygulamanın `--simulator-info` ve gerçek Swift callback smoke testi |
 | GitHub CI / dağıtım | PR üzerinden izleniyor | Release etiketi veya herkese açık sürüm bu çalışma tarafından oluşturulmadı |
@@ -75,13 +75,13 @@ Makine: Linux Mint 22.3 x86_64, Swift 6.4.2, Rust 1.99.1. Sistem Node 18 proje g
 
 Linux Swift yürütme, üretim Rust Engine’i, tarayıcı renderer bağlantısı ve gerçek Tauri masaüstü penceresi test edildi. Monaco’da başlangıç değeri 40 yapılıp kaydedildi; yeniden derleme 40, tıklama 41 üretti. Yerel debug DEB’in çıkarılan uygulaması da test edildi. Yöneticiyle sistem kurulumu, AppImage masaüstü açılışı ve tüm Linux dağıtımları doğrulanmadı. Sistem paketleri değiştirilmedi.
 
-Windows için Swift araç zinciri vardır; bu, Apple UI framework'leri veya mevcut implementasyonumuzun Windows desteği anlamına gelmez. Native Windows derleme/linkleme/DLL yükleme, süreç grubu temizliği, WebView2 ve paketleme ayrı aşamalardır. Bu sürüm native Windows çalıştırmasını bilinçli olarak etkinleştirmez.
+Native Windows derleme/linkleme/DLL yükleme, Job Object süreç temizliği ve NSIS paketleme eklendi. Windows CI gerçek Swift etkileşimlerini ve kurulan paketin kaynak hash/callback testini çalıştırır; kurulu WebView2 arayüzü de ayrı uçtan uca test edilir. Güncel sonuçlar PR #59 ve [Windows kılavuzunda](WINDOWS_SIMULATOR.md) izlenir. Gerçek Windows 11 kullanıcı masaüstü doğrulaması ayrıdır. Swift araç zinciri, Visual Studio ve Windows SDK ayrıca kurulur; Apple framework desteği eklenmiş değildir.
 
 ## Kaynak ve ikili uyumluluk
 
 **Kaynak:** belgelenmiş dar SwiftUI alt kümesi için gerçek native Swift derleme/yürütme mevcut. UIKit, tam SwiftUI, üçüncü taraf paketler ve genel Xcode projeleri desteklenmez; eksik API'ler derleyici hatası üretir.
 
-**İkili:** Mach-O/ARM64/iOS ABI, dynamic linker, Objective-C runtime, Darwin syscall ve Apple framework bağımlılıklarını karşılayan bir yükleyici yoktur. `.ipa` veya `.app` çalıştırma desteği iddia edilmez. Derleyici çıktısı bu Linux host'u için native yürütülebilirdir.
+**İkili:** Mach-O/ARM64/iOS ABI, dynamic linker, Objective-C runtime, Darwin syscall ve Apple framework bağımlılıklarını karşılayan bir yükleyici yoktur. `.ipa` veya `.app` çalıştırma desteği iddia edilmez. Derleyici çıktısı çalışılan Linux veya Windows host’u için native yürütülebilirdir.
 
 ## Değiştirilen dosyalar
 

@@ -1,11 +1,11 @@
 ---
 name: ios-app-xtool
-description: How to build, run, test and prepare an iOS app for App Store review inside Open iOS Studio on Linux (xtool, SwiftPM layout, no Xcode, no simulator). Use for any work in an Open iOS Studio project - creating screens, fixing build errors, adding permissions, or getting ready to submit.
+description: How to build, run, test and prepare an iOS app for App Store review inside Open iOS Studio (Linux xtool workflow, SwiftPM layout, experimental local Swift subset simulator, no Xcode). Use for any work in an Open iOS Studio project - creating screens, fixing build errors, adding permissions, or getting ready to submit.
 ---
 
 # iOS apps in Open iOS Studio (xtool on Linux)
 
-You are working inside a project created for Open iOS Studio. There is no Xcode and no iOS Simulator on this machine; the only way to see the app is a real iPhone connected by USB. Say that plainly whenever the user asks for a preview.
+You are working inside a project created for Open iOS Studio. There is no Xcode or Apple Simulator on this machine. Studio bundles an independently implemented experimental SwiftUI source subset simulator on Linux and Windows; its Simulator panel can run the bundled example with an installed Swift compiler. It does not run arbitrary Xcode/SwiftPM projects, UIKit, Observable models, GoogleSignIn, StoreKit, AVFoundation or iOS binaries. Full iOS application testing still needs a real iPhone. The xtool/device instructions below describe the Linux workflow; physical-device build/deploy on Windows is not verified.
 
 ## Project layout (xtool)
 
