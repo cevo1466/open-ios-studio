@@ -2,7 +2,7 @@
 
 Open-source desktop IDE that helps developers **without a Mac** build iOS apps, using [xtool](https://github.com/xtool-org/xtool) as the build backend and (planned) AI assistants for code generation.
 
-> **Status: pre-release (0.1.x).** Working today: open a folder, browse and edit files (Monaco), embedded terminal, build/run through xtool, device list, AI chat with Claude/Codex subscriptions (official CLIs) or API keys/Ollama, policy checks. **Not verified yet:** a complete real build and install on an iPhone, and the desktop UI on every Linux distro. There is no iOS simulator and no live SwiftUI preview.
+> **Status: pre-release (0.x).** Working today: open a folder, browse and edit files (Monaco), embedded terminal, build/run through xtool, device list, AI chat with Claude/Codex subscriptions (official CLIs) or API keys/Ollama, policy checks. **Not verified yet:** a complete real build and install on an iPhone, and the desktop UI on every Linux distro. The bundled experimental local compiled SwiftUI subset was launched and tested from the editor on Linux Mint 22.3; it is independently implemented and has no Apple Simulator compatibility certification. See [the simulator guide](docs/LOCAL_SIMULATOR.md).
 
 ## Install on Linux Mint (x86_64)
 Download the files from the latest [GitHub Release](https://github.com/cevo1466/open-ios-studio/releases) (pre-release). In the terminal, first go to the folder you downloaded them to (usually `~/Downloads`); `apt` reports "unsupported file" when the path is wrong.
@@ -32,7 +32,7 @@ sudo apt install ./Open-iOS-Studio_<version>_amd64.deb
 ## Check your machine
 Derle panel → **Ortam denetimi** → "Ortamı denetle" lists every prerequisite below with a fix hint, or run `npm run doctor` (`scripts/doctor.sh`) from a clone of this repository. Details and troubleshooting: `docs/ENVIRONMENT.md`.
 
-## What you must install first
+## For physical iPhone builds: what to install first
 Open iOS Studio only drives the real tools; it bundles none of them. Check each step before the next. The versions below follow the xtool installation guide at the time of writing; the [guide](https://github.com/xtool-org/xtool) is the source of truth.
 
 1. **Swift toolchain** from <https://swift.org/install/linux> (on Ubuntu/Mint, `swiftly` works). Check: `swift --version`.
@@ -55,7 +55,8 @@ Open iOS Studio depends on xtool (MIT-licensed, community project) for signing, 
 ```bash
 npm ci
 npm run verify         # typecheck, lint, unit tests, build, policy catalogs
-npm run e2e            # Playwright against a mocked Tauri IPC
+npm run e2e            # real Swift simulator + other IDE services via mocked Tauri IPC
+npm run test:simulator # production runtime tests without GTK/WebKit (needs Swift + Rust)
 npm run tauri dev      # needs Rust and Tauri's Linux libraries
 ```
 CI (GitHub Actions) is the reference build: see `.github/workflows/`.

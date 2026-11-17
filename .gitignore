@@ -7,3 +7,5 @@ src-tauri/gen/
 playwright-report/
 test-results/
 .superpowers/
+tools/simulator-harness/target/
+simulator-evidence/

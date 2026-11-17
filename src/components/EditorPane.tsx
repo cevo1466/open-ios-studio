@@ -1,3 +1,4 @@
+import type { Diagnostic } from '../xtool/types';
 import { useEffect, useRef, type ReactNode } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
 import type { Tab, ViewId } from '../state/store';
@@ -38,14 +39,16 @@ interface Props {
   onCloseView: (id: ViewId) => void;
   onChange: (path: string, content: string) => void;
   onSave: () => void;
+  diagnostics?: Diagnostic[];
   /** Called once per editor mount with the Monaco instance (language providers register here). */
   onEditorMount?: (editor: Parameters<OnMount>[0], monaco: Parameters<OnMount>[1]) => void;
 }
 
-export function EditorPane({ tabs, active, views, activeView, viewContent, theme, fontSize, onActivate, onClose, onActivateView, onCloseView, onChange, onSave, onEditorMount }: Props) {
+export function EditorPane({ tabs, active, views, activeView, viewContent, theme, fontSize, onActivate, onClose, onActivateView, onCloseView, onChange, onSave, onEditorMount, diagnostics = [] }: Props) {
   const themeDef = useThemeDef(theme);
   const current = activeView === null ? tabs.find((t) => t.path === active) : undefined;
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+  const monacoRef = useRef<Parameters<OnMount>[1] | null>(null);
   const appliedRev = useRef(new Map<string, number>());
   const path = current?.path;
   const rev = current?.rev;
@@ -64,6 +67,17 @@ export function EditorPane({ tabs, active, views, activeView, viewContent, theme
     // `content` is intentionally not a dependency: it changes on every keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, rev]);
+  useEffect(() => {
+    const monaco = monacoRef.current;
+    const model = editorRef.current?.getModel();
+    if (!monaco || !model) return;
+    monaco.editor.setModelMarkers(model, 'local-simulator', diagnostics.filter((d) => d.file === path).map((d) => ({
+      startLineNumber: d.line ?? 1, startColumn: d.column ?? 1,
+      endLineNumber: d.line ?? 1, endColumn: (d.column ?? 1) + 1,
+      severity: d.severity === 'error' ? monaco.MarkerSeverity.Error : d.severity === 'warning' ? monaco.MarkerSeverity.Warning : monaco.MarkerSeverity.Info,
+      message: d.message,
+    })));
+  }, [diagnostics, path]);
   return (
     <section className="editor-pane" aria-label="Düzenleyici">
       <div className="tabs" role="tablist">
@@ -101,6 +115,7 @@ export function EditorPane({ tabs, active, views, activeView, viewContent, theme
           onChange={(value) => onChange(current.path, value ?? '')}
           onMount={(editor, monaco) => {
             editorRef.current = editor;
+            monacoRef.current = monaco;
             editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, onSave);
             onEditorMount?.(editor, monaco);
           }}

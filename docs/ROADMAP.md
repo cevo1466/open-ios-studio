@@ -49,3 +49,10 @@ Goal: a developer who installs the DEB/AppImage can go from an empty folder to a
 - ☑ Release automation: `auto-tag.yml` tags `chore(release): X.Y.Z` merges and starts the Release workflow (rules in `scripts/release-tag-check.sh`).
 - ☐ Turkish text in the embedded Claude Code terminal: 0.1.11 (#49) ships the fix; the owner reported it works; tour item T8 records it.
 - ◐ Swift language support (PR #53): sourcekit-lsp session from Rust, Monaco completion/hover/markers, Sorunlar rows and a status-bar segment. Tested against a fake server; a real `sourcekit-lsp` on the owner's machine is tour item T13.
+
+## M7 — Independent local Swift simulator ◐ (2026-11-17)
+- ☑ First executable source-compatible subset: native Swift callbacks, state/bindings, basic controls, navigation, tabs, modal presentation, IDE renderer and failure retention; local tests documented in `LOCAL_SIMULATOR.md`.
+- ☐ Full Tauri launch/package and CI verification for this branch (local GTK/WebKit/D-Bus development packages missing).
+- ☐ Authorized Apple reference captures and behavioral/layout comparisons; all equivalence claims remain UNKNOWN.
+- ☐ Nested state identity, Observable models, project dependency analysis, native renderer, incremental/state-preserving reload.
+- ☐ Windows native toolchain/graphics/process lifecycle/package verification. Binary iOS compatibility remains a separate research milestone.

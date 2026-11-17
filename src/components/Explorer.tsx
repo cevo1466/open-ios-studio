@@ -19,7 +19,7 @@ interface Props {
 export function Explorer({ root, refreshKey, activePath, revealArtifacts, collapseKey, onOpen, onError }: Props) {
   return (
     <ul className="tree" role="tree" aria-label={`${root} içindeki dosyalar`}>
-      <Level dir="" depth={0} refreshKey={refreshKey} activePath={activePath} revealArtifacts={revealArtifacts} collapseKey={collapseKey} onOpen={onOpen} onError={onError} />
+      <Level key={root} dir="" depth={0} refreshKey={refreshKey} activePath={activePath} revealArtifacts={revealArtifacts} collapseKey={collapseKey} onOpen={onOpen} onError={onError} />
     </ul>
   );
 }

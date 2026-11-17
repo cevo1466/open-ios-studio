@@ -1,3 +1,4 @@
+import { SimulatorPanel } from './simulator/SimulatorPanel';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from 'react';
 import { CommandPalette, type Command } from './components/CommandPalette';
 import { EditorPane } from './components/EditorPane';
@@ -72,6 +73,8 @@ export function App() {
   /** Output and Problems tabs are shown once something ran or the user asked for the output. */
   const [buildOpen, setBuildOpen] = useState(false);
   const [deviceLogOpen, setDeviceLogOpen] = useState(false);
+  const [simulatorOpen, setSimulatorOpen] = useState(false);
+  const [simulatorDiagnostics, setSimulatorDiagnostics] = useState<import('./xtool/types').Diagnostic[]>([]);
   const [view, setView] = useState<SidebarView>('files');
   const [binary, setBinary] = useState<{ path: string; kind: Exclude<FileKind, 'text'>; error: string | null } | null>(null);
   const [revealArtifacts, setRevealArtifacts] = useState(0);
@@ -159,6 +162,7 @@ export function App() {
     try {
       const root = await ipc.pickWorkspace();
       if (root) {
+        setSimulatorDiagnostics([]);
         dispatch({ type: 'workspace', root });
         setNotice(null);
       }
@@ -332,7 +336,7 @@ export function App() {
   const hasWorkspace = state.workspace !== null;
   const commands: Command[] = useMemo(
     () =>
-      buildCommands({
+      [...buildCommands({
         desktop,
         hasWorkspace,
         chatOpen,
@@ -362,14 +366,15 @@ export function App() {
           bottom: (tab) => showBottom(tab),
           redetect: () => void detectXtool(),
         },
-      }),
+      }), { id: 'local-simulator', title: 'Yerel Swift simülatörünü aç/kapat', enabled: desktop, run: () => setSimulatorOpen((open) => !open) }],
     // openTerminal/openClaudeCode are plain functions of the render; the list is rebuilt on these inputs only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [desktop, hasWorkspace, chatOpen, terminal, openFolder, theme, openBuild, openDevices, pf.run, runDoctor, showBottom, detectXtool, swift.restart],
   );
 
-  const errorCount = diagnostics.filter((d) => d.severity === 'error').length;
-  const warningCount = diagnostics.filter((d) => d.severity === 'warning').length;
+  const buildDiagnostics = useMemo(() => [...diagnostics, ...simulatorDiagnostics], [diagnostics, simulatorDiagnostics]);
+  const errorCount = buildDiagnostics.filter((d) => d.severity === 'error').length;
+  const warningCount = buildDiagnostics.filter((d) => d.severity === 'warning').length;
   const anyRunning = build.running || deviceRun.running;
   const selectedDevice = devices?.find((d) => d.udid === selectedUdid) ?? (devices && devices.length === 1 ? devices[0] : null);
   const gate = pf.gate;
@@ -389,7 +394,7 @@ export function App() {
   // Bottom panel tabs, in a fixed order: Çıktı, Sorunlar, Terminal, Cihaz günlükleri.
   // Server (sourcekit-lsp) rows join the build rows in Sorunlar; they never change the build counts.
   const lspCount = swift.diagnostics.length;
-  const allDiagnostics = lspCount === 0 ? diagnostics : [...diagnostics, ...swift.diagnostics];
+  const allDiagnostics = lspCount === 0 ? buildDiagnostics : [...buildDiagnostics, ...swift.diagnostics];
   const problemsBadge =
     [errorCount > 0 ? `${errorCount} hata` : warningCount > 0 ? `${warningCount} uyarı` : null, lspCount > 0 ? `${lspCount} LSP` : null].filter(Boolean).join(' · ') || undefined;
   const bottomTabs: BottomTab[] = [];
@@ -547,6 +552,8 @@ export function App() {
               setChatOpen(true);
             } else setView('files');
           }}
+          simulatorOpen={simulatorOpen}
+          onSimulator={() => setSimulatorOpen((open) => !open)}
           onTerminal={() => openTerminal('user-shell')}
           onStore={() => dispatch({ type: 'openView', id: 'appstore' })}
           onSecurity={() => dispatch({ type: 'openView', id: 'security' })}
@@ -719,6 +726,7 @@ export function App() {
               </button>
             </div>
           )}
+          <div className="editor-with-simulator">
           {binary ? (
             <BinaryCard
               path={binary.path}
@@ -762,10 +770,13 @@ export function App() {
               dispatch({ type: 'edit', path, content });
               swift.notifyChange(path, content);
             }}
+            diagnostics={simulatorDiagnostics}
             onSave={() => void saveRef.current()}
             onEditorMount={swift.attach}
           />
           )}
+          {simulatorOpen && <SimulatorPanel key={state.workspace} workspace={state.workspace} selected={state.active} savedRevision={state.tabs.map((tab) => tab.path + ':' + tab.saved).join('\n')} onOpen={(path) => void openFile(path)} onDiagnostics={setSimulatorDiagnostics} onClose={() => setSimulatorOpen(false)} />}
+          </div>
           </div>
           {buildOpen && ai.repairAvailable && (
             <div className="notice" role="status">

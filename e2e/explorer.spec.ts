@@ -57,6 +57,23 @@ test.describe('Dosyalar panel', () => {
       .poll(async () => (await page.evaluate(() => (window as unknown as { __ipcCalls: { cmd: string }[] }).__ipcCalls)).filter((c) => c.cmd === 'list_dir').length)
       .toBeGreaterThan(before);
   });
+
+  test('switching projects replaces the previous folder listing', async ({ page }) => {
+    await openWorkspace(page);
+    await expect(page.getByRole('tree').getByText('Package.swift', { exact: true })).toBeVisible();
+    await page.evaluate(() => {
+      const w = window as unknown as { __TAURI_INTERNALS__: { invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown> } };
+      const original = w.__TAURI_INTERNALS__.invoke;
+      w.__TAURI_INTERNALS__.invoke = async (cmd, args) => {
+        if (cmd === 'pick_workspace') return '/work/second';
+        if (cmd === 'list_dir') return [{ name: 'Counter.swift', path: 'Counter.swift', isDir: false }];
+        return original(cmd, args);
+      };
+    });
+    await page.getByRole('button', { name: 'Klasör aç', exact: true }).first().click();
+    await expect(page.getByRole('tree').getByText('Counter.swift', { exact: true })).toBeVisible();
+    await expect(page.getByRole('tree').getByText('Package.swift', { exact: true })).toHaveCount(0);
+  });
 });
 
 test.describe('colour themes', () => {

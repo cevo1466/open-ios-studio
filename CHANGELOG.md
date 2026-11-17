@@ -4,6 +4,18 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-17
+
+### Added
+- Bundled independent local SwiftUI source simulator: native Swift callbacks/state, basic controls, input, navigation, tabs and modals in an IDE device panel. Experimental subset; no Apple Simulator equivalence or iOS binary support.
+- Counter example, compatibility source, license and usage guide included in DEB/AppImage resources. `--simulator-info` reports embedded runtime/compiler readiness; `--simulator-smoke-test` compiles the bundled app and invokes a real counter callback.
+- Package CI extracts both package layouts and verifies simulator resource hashes and actual Swift execution before accepting artifacts.
+
+### Changed
+- Integrates with the current editor tabs, preflight, Swift LSP, terminal and AI features. Simulator compiler diagnostics join Problems while keeping LSP markers separate.
+- Removed UxPlay/screen-mirroring recommendations. The local simulator requires an installed Linux Swift toolchain, no iPhone or Mac.
+
+
 ## [0.1.12] - 2026-11-04
 
 ### Added
@@ -134,13 +146,13 @@ First pre-release.
 ### Known limitations
 - No iOS simulator and no live SwiftUI preview.
 - Real iOS builds, signing and device runs are not verified in CI (they need the Apple SDK, an Apple account and a device).
-- Desktop launch on a real Linux desktop is not verified.
+- The local simulator desktop/editor path was verified on Linux Mint 22.3; other distributions and every distributed artifact still require desktop verification.
 - Real AI provider calls and the OS keyring on a desktop session are not verified in CI.
 - 17 of 50 policy rules have detectors, all partial and source-level. The rest always show `NOT_VERIFIED`. No compliance score is computed, and App Store approval is never guaranteed.
 - Packages are not code-signed.
-- No Apple SDK is bundled; xtool, a Swift toolchain and an Apple account are required on the user's side.
+- No Apple SDK is bundled. The local subset requires a Linux Swift compiler; physical-device builds additionally need xtool/Apple setup.
 
-[Unreleased]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.10...HEAD
+[Unreleased]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.12...HEAD
 [0.1.10]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/cevo1466/open-ios-studio/compare/v0.1.7...v0.1.8
