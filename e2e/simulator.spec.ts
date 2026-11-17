@@ -11,10 +11,10 @@ test.setTimeout(90_000);
 test.use({ viewport: { width: 1500, height: 1000 } });
 
 test('real Swift callbacks render in the IDE and source errors retain the live session', async ({ page }, testInfo) => {
-  const build = spawnSync('cargo', ['build', '--locked', '--manifest-path', 'tools/simulator-harness/Cargo.toml'], { encoding: 'utf8' });
+  const build = spawnSync('cargo', ['build', '--locked', '--manifest-path', 'tools/simulator-harness/Cargo.toml', '--bin', 'ois-simulator-harness'], { encoding: 'utf8' });
   expect(build.status, build.stderr).toBe(0);
   const root = mkdtempSync(join(tmpdir(), 'ois-browser-runtime-'));
-  const child: ChildProcessWithoutNullStreams = spawn('tools/simulator-harness/target/debug/ois-simulator-harness', [root]);
+  const child: ChildProcessWithoutNullStreams = spawn(`tools/simulator-harness/target/debug/ois-simulator-harness${process.platform === 'win32' ? '.exe' : ''}`, [root]);
   let sequence = 0;
   const pending = new Map<number, { resolve(value: unknown): void; reject(reason: unknown): void }>();
   const lines = createInterface({ input: child.stdout });

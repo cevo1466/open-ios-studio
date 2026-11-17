@@ -46,3 +46,6 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-uti
 lto = true
 codegen-units = 1
 strip = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading"] }

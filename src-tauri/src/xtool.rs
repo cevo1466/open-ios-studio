@@ -52,7 +52,17 @@ fn is_executable(path: &Path) -> bool {
 /// First executable called `name` in the given PATH-style variable.
 pub fn find_in_path(name: &str, path_var: &OsStr) -> Option<PathBuf> {
     std::env::split_paths(path_var)
-        .map(|dir| dir.join(name))
+        .flat_map(|dir| {
+            #[cfg(windows)]
+            let candidates = if Path::new(name).extension().is_none() {
+                vec![dir.join(format!("{name}.exe")), dir.join(name)]
+            } else {
+                vec![dir.join(name)]
+            };
+            #[cfg(not(windows))]
+            let candidates = vec![dir.join(name)];
+            candidates
+        })
         .find(|candidate| is_executable(candidate))
 }
 

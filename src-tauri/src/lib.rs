@@ -4,6 +4,8 @@ mod doctor;
 mod fs_engine;
 mod lsp;
 mod png;
+mod process_env;
+mod process_tree;
 mod pty;
 mod reveal;
 mod runner;

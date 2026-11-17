@@ -27,8 +27,14 @@ pub fn reveal_target(abs: &Path, parent: bool) -> Result<PathBuf, String> {
 /// Opens `dir` with `xdg-open`. The environment is inherited on purpose: the desktop session
 /// variables (`DISPLAY`, `DBUS_SESSION_BUS_ADDRESS`, ...) are what make the file manager open.
 pub fn open_in_file_manager(dir: &Path) -> Result<(), String> {
-    let program = find_program("xdg-open")
-        .ok_or_else(|| "`xdg-open` is not installed, so the folder cannot be opened.".to_owned())?;
+    #[cfg(windows)]
+    let name = "explorer";
+    #[cfg(target_os = "macos")]
+    let name = "open";
+    #[cfg(not(any(windows, target_os = "macos")))]
+    let name = "xdg-open";
+    let program = find_program(name)
+        .ok_or_else(|| format!("`{name}` is not installed, so the folder cannot be opened."))?;
     let mut child = Command::new(program)
         .arg(dir)
         .stdin(Stdio::null())

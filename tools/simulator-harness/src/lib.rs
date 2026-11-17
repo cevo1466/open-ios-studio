@@ -8,3 +8,8 @@ pub mod runner;
 pub mod simulator;
 #[path = "../../../src-tauri/src/xtool.rs"]
 pub mod xtool;
+
+#[path = "../../../src-tauri/src/process_env.rs"]
+pub mod process_env;
+#[path = "../../../src-tauri/src/process_tree.rs"]
+pub mod process_tree;

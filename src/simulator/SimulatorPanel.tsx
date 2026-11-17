@@ -6,6 +6,7 @@ import sample from '../../examples/LocalSimulator/Counter.swift?raw';
 import { SimulatorCanvas } from './SimulatorCanvas';
 import type { Frame, SimulatorEvent, SimulatorInfo } from './types';
 import './simulator.css';
+import { sourcePath } from './sourcePath';
 
 interface Props {
   workspace: string | null;
@@ -72,7 +73,7 @@ export function SimulatorPanel({ workspace, selected, savedRevision, onOpen, onD
     try {
       const result = await ipc.simulatorStart(source, onEvent);
       if (buildGeneration !== generation.current) return;
-      const diagnostics = parseDiagnostics(result.output).map((d) => ({ ...d, file: d.file?.startsWith(workspace + '/') ? d.file.slice(workspace.length + 1) : d.file }));
+      const diagnostics = parseDiagnostics(result.output).map((d) => ({ ...d, file: sourcePath(workspace, d.file) }));
       onDiagnostics(diagnostics);
       result.output.forEach(log);
       if (result.ok) {
@@ -136,7 +137,7 @@ export function SimulatorPanel({ workspace, selected, savedRevision, onOpen, onD
   const height = landscape ? chosen.width : chosen.height;
   return <section className="sim-panel" aria-label="Yerel Swift simülatörü" ref={panelRef}>
     <header className="sim-header"><div><strong>Yerel Swift simülatörü</strong><small>{building ? 'Derleniyor…' : running ? `Çalışıyor · kare ${frame?.revision ?? 0}` : 'Durduruldu'} · bağımsız uyumluluk ortamı</small></div><button type="button" onClick={onClose} aria-label="Simülatörü kapat">×</button></header>
-    {info && <p className="sim-explanation" role="status">Paketle birlikte kurulu · {info.platformSupported ? info.compilerPath ? 'Swift derleyicisi hazır' : 'Çalıştırmak için Linux Swift araç zincirini (swiftc) kurun: swift.org/install/linux' : 'Bu platformda çalıştırma henüz desteklenmiyor.'}</p>}
+    {info && <p className="sim-explanation" role="status">Paketle birlikte kurulu · {info.platformSupported ? info.compilerPath ? 'Swift derleyicisi hazır' : `Çalıştırmak için Swift araç zincirini (swiftc) kurun: swift.org/install/${info.platform === 'windows' ? 'windows' : 'linux'}` : 'Bu platformda çalıştırma henüz desteklenmiyor.'}</p>}
     <div className="sim-toolbar">
       <label>Kaynak <input aria-label="Simülatör kaynak dosyası" value={source} onChange={(e) => setSource(e.target.value)} /></label>
       <button type="button" disabled={!workspace || building || (info !== null && (!info.platformSupported || !info.compilerPath))} onClick={() => void start()}>{running ? 'Yeniden derle / başlat' : 'Simülatörü başlat'}</button>

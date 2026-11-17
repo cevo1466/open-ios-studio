@@ -244,6 +244,19 @@ pub fn take_valid_utf8(buf: &mut Vec<u8>) -> String {
     }
 }
 
+#[cfg(windows)]
+fn user_shell() -> PathBuf {
+    find_program("pwsh")
+        .or_else(|| find_program("powershell"))
+        .or_else(|| {
+            std::env::var_os("SYSTEMROOT").map(|root| {
+                PathBuf::from(root).join("System32/WindowsPowerShell/v1.0/powershell.exe")
+            })
+        })
+        .unwrap_or_else(|| PathBuf::from("powershell.exe"))
+}
+
+#[cfg(not(windows))]
 fn user_shell() -> PathBuf {
     if let Some(shell) = std::env::var_os("SHELL") {
         let p = PathBuf::from(shell);
@@ -631,7 +644,12 @@ mod tests {
                 },
             )
             .expect("open");
-        state.write(id, "echo ois-pty-ok\nexit\n").expect("write");
+        let input = if cfg!(windows) {
+            "echo ois-pty-ok\rexit\r"
+        } else {
+            "echo ois-pty-ok\nexit\n"
+        };
+        state.write(id, input).expect("write");
         let mut text = String::new();
         let mut exited = false;
         while let Ok(ev) = rx.recv_timeout(Duration::from_secs(10)) {

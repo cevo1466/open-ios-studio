@@ -15,6 +15,7 @@ pub struct BundleInfo {
     pub runtime_bytes: usize,
     pub example_bytes: usize,
     pub platform_supported: bool,
+    pub platform: &'static str,
     pub compiler_path: Option<String>,
 }
 
@@ -23,7 +24,8 @@ pub fn info(path: &std::ffi::OsStr) -> BundleInfo {
         bundle_id: BUNDLE_ID,
         runtime_bytes: SWIFT_UI_SOURCE.len(),
         example_bytes: EXAMPLE_SOURCE.len(),
-        platform_supported: cfg!(target_os = "linux"),
+        platform_supported: cfg!(any(target_os = "linux", windows)),
+        platform: std::env::consts::OS,
         compiler_path: crate::xtool::find_in_path("swiftc", path)
             .map(|p| p.to_string_lossy().into_owned()),
     }
