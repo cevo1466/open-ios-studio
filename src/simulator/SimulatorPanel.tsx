@@ -6,7 +6,7 @@ import sample from '../../examples/LocalSimulator/Counter.swift?raw';
 import { SimulatorCanvas } from './SimulatorCanvas';
 import type { Frame, SimulatorEvent, SimulatorInfo } from './types';
 import './simulator.css';
-import { sourcePath } from './sourcePath';
+import { sourcePath } from '../files/paths';
 
 interface Props {
   workspace: string | null;

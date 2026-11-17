@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sourcePath } from './sourcePath';
+import { sourcePath } from './paths';
 describe('simulator diagnostic paths', () => {
   it('maps Windows compiler drive, case, separators and canonical prefix to the editor', () => {
     expect(sourcePath('\\\\?\\C:\\Users\\Ada\\Demo', 'c:\\users\\ada\\demo\\Sources\\Counter.swift')).toBe('Sources/Counter.swift');

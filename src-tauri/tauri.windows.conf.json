@@ -1,9 +1,19 @@
 {
   "bundle": {
-    "targets": ["nsis"],
+    "targets": [
+      "nsis"
+    ],
     "windows": {
-      "nsis": { "installMode": "currentUser" },
-      "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true }
-    }
+      "nsis": {
+        "installMode": "currentUser"
+      },
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      }
+    },
+    "icon": [
+      "icons/icon.ico"
+    ]
   }
 }

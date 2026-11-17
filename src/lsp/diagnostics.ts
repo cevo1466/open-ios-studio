@@ -1,3 +1,4 @@
+import { normalizeSourcePath } from "../files/paths";
 /**
  * LSP diagnostics → the Problems-list shape used for xtool build output. Lines and columns become
  * 1-based; the source is appended to the text so a user can tell server rows from build rows.
@@ -44,12 +45,20 @@ export function lspToDiagnostics(
 }
 
 export function pathToUri(path: string): string {
-  return `file://${path.split("/").map(encodeURIComponent).join("/")}`;
+  const normalized = normalizeSourcePath(path);
+  if (/^[A-Za-z]:\//.test(normalized)) {
+    return `file:///${normalized.slice(0, 2)}${normalized.slice(2).split("/").map(encodeURIComponent).join("/")}`;
+  }
+  if (normalized.startsWith("//")) {
+    return `file://${normalized.slice(2).split("/").map(encodeURIComponent).join("/")}`;
+  }
+  return `file://${normalized.split("/").map(encodeURIComponent).join("/")}`;
 }
 
 export function uriToPath(uri: string): string {
-  const withoutScheme = uri.startsWith("file://")
-    ? uri.slice("file://".length)
-    : uri;
-  return withoutScheme.split("/").map(decodeURIComponent).join("/");
+  if (!uri.startsWith("file://")) return uri;
+  let path = uri.slice("file://".length).split("/").map(decodeURIComponent).join("/");
+  if (/^\/[A-Za-z]:\//.test(path)) path = path.slice(1);
+  else if (!path.startsWith("/")) path = `//${path}`;
+  return path;
 }

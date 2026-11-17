@@ -1,3 +1,4 @@
+import { sourcePath } from '../files/paths';
 /**
  * One sourcekit-lsp session per open workspace. Starts the server through the Rust backend,
  * drives `initialize`, forwards document events from the editor, keeps the server's diagnostics
@@ -96,8 +97,7 @@ export function useSwiftLsp({
     [],
   );
   const rel = useCallback((path: string) => {
-    const root = `${workspaceRef.current ?? ""}/`;
-    return path.startsWith(root) ? path.slice(root.length) : path;
+    return sourcePath(workspaceRef.current ?? "", path) ?? path;
   }, []);
   /** Monaco model URIs are `file:///<workspace-relative path>` (the editor's `path` prop). */
   const resolvePath = useCallback(

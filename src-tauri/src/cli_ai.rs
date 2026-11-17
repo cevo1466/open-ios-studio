@@ -104,7 +104,7 @@ pub struct CliStatus {
 /// npm/local bin directories.
 fn extra_bin_dirs() -> Vec<PathBuf> {
     let mut dirs = Vec::new();
-    if let Some(home) = std::env::var_os("HOME") {
+    if let Some(home) = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")) {
         let home = PathBuf::from(home);
         dirs.push(home.join(".local/bin"));
         // swiftly (the Swift toolchain installer) keeps its proxies here; a desktop-launched app

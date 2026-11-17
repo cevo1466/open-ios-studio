@@ -7,8 +7,10 @@ import { join, resolve } from 'node:path';
 
 if (process.platform !== 'win32') throw new Error('This check requires native Windows');
 const work = mkdtempSync(join(tmpdir(), 'ois-desktop-check-'));
+const project = join(work, 'project');
+mkdirSync(project);
 const source = readFileSync('examples/LocalSimulator/Counter.swift', 'utf8');
-writeFileSync(join(work, 'Counter.swift'), source);
+writeFileSync(join(project, 'Counter.swift'), source);
 const binary = join(process.env.OIS_INSTALLED_DIR, 'open-ios-studio.exe');
 const app = spawn(binary, [], { env: { ...process.env,
   WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: '--remote-debugging-port=9222 --remote-debugging-address=127.0.0.1',
@@ -26,7 +28,7 @@ try {
   await expect(page.getByRole('heading', { name: 'Open iOS Studio', exact: true })).toBeVisible();
   observations.steps.push('installed Tauri window and WebView2 loaded');
   // Start native picker handling before clicking: the Rust command awaits the real dialog.
-  const chooser = spawn('powershell.exe', ['-NoProfile', '-STA', '-File', resolve('scripts/select-windows-test-folder.ps1'), '-AppPid', String(app.pid), '-Folder', work], { stdio: 'pipe' });
+  const chooser = spawn('powershell.exe', ['-NoProfile', '-STA', '-File', resolve('scripts/select-windows-test-folder.ps1'), '-AppPid', String(app.pid), '-Folder', project], { stdio: 'pipe' });
   const chooserResult = new Promise((resolveResult, reject) => {
     let output = '';
     chooser.stdout.on('data', (chunk) => { output += chunk; });
@@ -60,7 +62,7 @@ try {
   await page.keyboard.press('Backspace');
   await page.keyboard.type('40');
   await page.keyboard.press('Control+s');
-  await expect.poll(() => readFileSync(join(work, 'Counter.swift'), 'utf8')).toContain('count = 40');
+  await expect.poll(() => readFileSync(join(project, 'Counter.swift'), 'utf8')).toContain('count = 40');
   await page.getByRole('button', { name: 'Yeniden derle / başlat', exact: true }).click();
   await expect(device.getByText('Count: 40', { exact: true })).toBeVisible({ timeout: 120_000 });
   await device.getByRole('button', { name: 'Increase', exact: true }).click();
