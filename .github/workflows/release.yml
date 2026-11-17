@@ -98,11 +98,14 @@ jobs:
           echo "VERSION=$TAG_VERSION" >> "$GITHUB_ENV"
       - name: Build DEB and AppImage
         run: npx tauri build --bundles deb,appimage
+      - name: Verify bundled simulator from both installed package layouts
+        run: python3 scripts/verify-simulator-package.py --deb src-tauri/target/release/bundle/deb/*.deb --appimage src-tauri/target/release/bundle/appimage/*.AppImage --output src-tauri/target/release/bundle/SIMULATOR_VERIFICATION.json
       - name: Collect artifacts under space-free names
         run: |
           set -eu
           B=src-tauri/target/release/bundle
           mkdir -p dist-release
+          cp "$B/SIMULATOR_VERIFICATION.json" dist-release/SIMULATOR_VERIFICATION.json
           set -- "$B"/deb/*.deb
           [ "$#" -eq 1 ] && [ -f "$1" ] || { echo "expected exactly one .deb"; exit 1; }
           cp "$1" "dist-release/Open-iOS-Studio_${VERSION}_amd64.deb"
@@ -172,7 +175,8 @@ jobs:
           - This is a pre-release.
           - Desktop launch on a real Linux desktop is NOT verified in CI. The packages were built and inspected (checksums, DEB contents, AppImage ELF header) but never started on a desktop by this workflow.
           - No Apple SDK is included or redistributed.
-          - Building iOS apps requires xtool, a Swift toolchain and an Apple account on your side.
+          - The local simulator and example are bundled. Running supported Swift source requires an installed Linux Swift toolchain; no iPhone or Apple SDK is needed for the local subset.
+          - Building physical-device iOS apps requires xtool, a Swift toolchain and an Apple account on your side.
           - AI features need your own API key or a local Ollama instance.
 
           Verify downloads with: `sha256sum -c SHA256SUMS.txt`

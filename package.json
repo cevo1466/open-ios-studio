@@ -1,7 +1,7 @@
 {
   "name": "open-ios-studio",
   "private": true,
-  "version": "0.1.12",
+  "version": "0.2.0",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -14,7 +14,9 @@
     "e2e": "playwright test",
     "validate:policies": "node scripts/validate-policies.mjs && node scripts/policy-gate.mjs --self-test",
     "doctor": "bash scripts/doctor.sh",
-    "verify": "npm run typecheck && npm run lint && npm test && npm run build && npm run validate:policies"
+    "verify": "npm run typecheck && npm run lint && npm test && npm run build && npm run validate:policies",
+    "test:simulator": "cargo test --locked --manifest-path tools/simulator-harness/Cargo.toml",
+    "e2e:simulator": "playwright test e2e/simulator.spec.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -29,6 +31,7 @@
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.64.1",
     "@tauri-apps/cli": "^2.12.4",
+    "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",

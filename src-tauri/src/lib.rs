@@ -8,6 +8,7 @@ mod pty;
 mod reveal;
 mod runner;
 mod secrets;
+mod simulator;
 mod skills;
 mod update;
 mod xtool;
@@ -30,6 +31,7 @@ struct AppState {
     ai_run: Mutex<Option<runner::CancelToken>>,
     /// Embedded terminal sessions (ADR-0009).
     pty: pty::PtyState,
+    simulator: std::sync::Arc<simulator::Engine>,
     /// The sourcekit-lsp session of the open workspace, if any.
     lsp: lsp::LspState,
 }
@@ -84,6 +86,7 @@ async fn pick_workspace(
     };
     let path = picked.into_path().map_err(|e| e.to_string())?;
     let ws = Workspace::open(&path).map_err(|e| e.to_string())?;
+    state.simulator.stop()?;
     let root = ws.root().to_string_lossy().into_owned();
     *state
         .workspace
@@ -535,11 +538,75 @@ fn pty_close(state: State<'_, AppState>, id: u32) -> Result<(), String> {
     state.pty.close(id)
 }
 
+#[tauri::command]
+fn simulator_info() -> simulator::BundleInfo {
+    simulator::info(&tool_path())
+}
+
+#[tauri::command]
+async fn simulator_start(
+    state: State<'_, AppState>,
+    path: String,
+    on_event: Channel<serde_json::Value>,
+) -> Result<simulator::BuildResult, String> {
+    let root = with_workspace(&state, |ws| Ok(ws.root().to_path_buf()))?;
+    let engine = state.simulator.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let ws = Workspace::open(&root).map_err(|e| e.to_string())?;
+        engine.start(
+            ws,
+            path,
+            &tool_path(),
+            std::sync::Arc::new(move |event| {
+                let _ = on_event.send(event);
+            }),
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn simulator_input(state: State<'_, AppState>, event: serde_json::Value) -> Result<(), String> {
+    state.simulator.input(event)
+}
+
+#[tauri::command]
+fn simulator_stop(state: State<'_, AppState>) -> Result<(), String> {
+    state.simulator.stop()
+}
+
 pub fn run() {
+    match std::env::args().nth(1).as_deref() {
+        Some("--simulator-info") => {
+            println!(
+                "{}",
+                serde_json::to_string(&simulator::info(&tool_path()))
+                    .expect("serialize simulator info")
+            );
+            return;
+        }
+        Some("--simulator-smoke-test") => {
+            match simulator::smoke_test(&tool_path()) {
+                Ok(result) => println!("{result}"),
+                Err(error) => {
+                    eprintln!("{error}");
+                    std::process::exit(1);
+                }
+            }
+            return;
+        }
+        _ => {}
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
+            simulator_info,
+            simulator_start,
+            simulator_input,
+            simulator_stop,
             pick_workspace,
             list_dir,
             read_file,

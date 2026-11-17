@@ -1,5 +1,17 @@
 # Status
 
+## 2026-11-17 — bundled local Swift simulator (0.2.0 integration)
+- Independent SwiftUI source subset executes compiled native Swift callbacks; the IDE draws its UI locally. No Apple binaries, phone, mirroring or remote Mac.
+- Rebased onto current main (`bc72cc1`), preserving preflight, editor tabs, Swift LSP, terminal, signing and AI. Simulator compiler diagnostics join Problems with a separate Monaco marker owner.
+- **Mint desktop verified:** actual Tauri window opened on Linux Mint 22.3. Counter clicked 0 → 1; edited/saved its initial value in Monaco, rebuilt to 40 and clicked to 41. Screenshots and scope: [desktop verification](SIMULATOR_DESKTOP_VERIFICATION.md).
+- **Local debug DEB verified:** embedded/runtime resource hashes and extracted application `--simulator-info` / `--simulator-smoke-test`; actual Swift callback compiled and ran. System-wide installation and AppImage desktop launch remain unverified. Swift compiler is an external prerequisite; source/example/license/guide are bundled. Package workflows verify both DEB and AppImage layouts before upload.
+- Local checks: 435 Vitest, 129 full Tauri Rust, 36 harness unit + 3 real-Swift integration tests; frontend verification, full-crate clippy `-D warnings`, rustfmt; 62 browser tests plus the folder-switch regression. Simulator browser case uses actual production Rust/Swift; other IDE services are mocked.
+- Native test found stale explorer entries after workspace switch; root listing now resets with the workspace.
+- SourceKit starts on this host but without a simulator build-server configuration can report missing Apple SwiftUI even when the local subset compiles. Diagnostics remain labelled LSP; no simulator-specific SourceKit configuration yet.
+- Windows, arbitrary SwiftPM/Xcode projects, UIKit/GoogleSignIn/AVFoundation/StoreKit/Observable models, iOS binaries and Apple pixel/behavior parity remain unsupported or unknown. Vorbino is not runnable in this subset.
+- Owner priority: native Windows 11 support comes immediately after Linux integration. The current simulator engine explicitly rejects Windows; this is not a Windows-ready release.
+- CI and integration state are recorded in the feature PR. Version 0.2.0 is prepared; no public release tag is created by this feature integration. See `LOCAL_SIMULATOR.md`, `SIMULATOR_REPORT_TR.md` and ADR-0016.
+
 ## v0.1.12 (pre-release, PRs #53 + #52): pre-submission check, tabs/palette, Swift LSP, terminal fixes
 - Release mechanics: PR #53 was squash-merged to `main` on 2026-11-04 (`cc4f258`); PR #52 (`fix/terminal-copy-paste`, version bump + `chore(release): 0.1.12` title) merges after it and is the first real use of `auto-tag.yml`. Until the tag `v0.1.12` and the Release workflow's DEB/AppImage exist, the release is NOT VERIFIED; desktop launch stays NOT VERIFIED until the owner runs tour item T1.
 - From PR #52: terminal copy/paste (Ctrl+Shift+C / Ctrl+Insert copy, Ctrl+V / Ctrl+Shift+V / Shift+Insert paste; verified under Xvfb/WebKitGTK in the session, NOT VERIFIED on the owner's desktop, tour T11); optional `screen-mirror` (uxplay) doctor item; update check falls back to the release feed on a GitHub API 403.

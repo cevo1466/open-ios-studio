@@ -1,0 +1,28 @@
+.editor-with-simulator{display:flex;flex:1;min-height:0;min-width:0;overflow:hidden}
+.editor-with-simulator>.editor-pane,.editor-with-simulator>.empty{flex:1;min-width:220px}
+.sim-panel{display:flex;flex-direction:column;flex:0 0 470px;min-width:350px;max-width:60%;height:100%;min-height:0;border-left:1px solid var(--border,#333);background:var(--bg,#18191c);overflow:hidden;font-size:12px}
+.sim-panel:fullscreen{max-width:none;width:100%;background:#18191c;color:#eee}
+.sim-header{padding:12px;display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--border,#333)}
+.sim-header small{display:block;margin-top:4px;opacity:.7}
+.sim-toolbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--border,#333)}
+.sim-toolbar label{display:flex;align-items:center;gap:5px}.sim-toolbar input:not([type=checkbox]){width:230px;max-width:100%}
+.sim-toolbar button,.sim-toolbar select,.sim-toolbar input{font-size:11px}.sim-toolbar button{padding:6px 8px}
+.sim-stage{flex:1;min-height:120px;overflow:auto;display:flex;justify-content:center;align-items:flex-start;padding:18px 12px;background:repeating-linear-gradient(0deg,transparent,transparent 23px,#ffffff04 24px)}
+.sim-device{padding:10px;border-radius:49px;background:#252830;box-sizing:border-box;box-shadow:0 8px 28px #0005}
+.sim-screen{height:100%;display:flex;flex-direction:column;border-radius:40px;overflow:hidden;background:#f8f9fc;color:#181b22;font:17px system-ui,sans-serif;position:relative}
+.sim-dark .sim-screen{background:#17191f;color:#f8f9fc}.sim-status{height:50px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:12px;font-weight:600}
+.sim-viewport{flex:1;min-height:0;overflow:hidden;position:relative;display:flex;flex-direction:column}.sim-viewport>*{flex-shrink:0}
+.sim-home{height:5px;width:120px;margin:15px auto 10px;border-radius:4px;background:currentColor;flex-shrink:0}
+.sim-viewport>.sim-modified{flex:1;display:flex;flex-direction:column;min-height:0}.sim-viewport>.sim-vstack,.sim-viewport>.sim-modified>.sim-vstack{flex:1;min-height:0}
+.sim-node{box-sizing:border-box;min-width:0}.sim-vstack,.sim-list,.sim-navigation{display:flex;flex-direction:column;align-items:stretch}.sim-vstack{text-align:center}
+.sim-hstack{display:flex;align-items:center;justify-content:center}.sim-zstack{display:grid}.sim-zstack>*{grid-area:1/1}
+.sim-scroll,.sim-list{overflow:auto;max-height:100%;min-height:0}.sim-scroll{flex:1}.sim-navigation{height:100%;min-height:0}.sim-presentation{height:100%;position:relative;min-height:0}
+.sim-modified{box-sizing:border-box;min-height:0}.sim-navigation>.sim-modified{flex:1;display:flex;flex-direction:column}.sim-text{white-space:pre-wrap}.sim-spacer{flex:1;min-height:12px}
+.sim-screen button.sim-button{border:0;border-radius:10px;background:#007aff;color:white;padding:12px 16px;font:inherit;cursor:pointer;line-height:1.2}
+.sim-screen .sim-input{border:1px solid #8b93a266;border-radius:9px;background:transparent;color:inherit;padding:12px;font:inherit;box-sizing:border-box;width:100%}
+.sim-screen input[type=range]{width:100%;accent-color:#007aff}.sim-screen input[type=checkbox]{accent-color:#007aff;width:22px;height:22px}.sim-toggle{display:flex;align-items:center;justify-content:space-between;text-align:left;gap:12px}
+.sim-nav-title{font:700 28px system-ui;margin:10px 20px}.sim-placeholder{padding:32px;text-align:center;margin:auto;font-size:16px;line-height:1.5}
+.sim-overlay{position:absolute;inset:0;background:#0005;z-index:2;display:flex;align-items:center;justify-content:center}.sim-sheet,.sim-alert{display:flex;flex-direction:column;gap:18px;background:#f8f9fc;color:#181b22;padding:24px;border-radius:20px;width:85%;box-sizing:border-box}.sim-sheet{align-self:flex-end;min-height:45%;width:100%;border-radius:20px 20px 0 0}
+.sim-tabs{display:flex;flex:1;flex-direction:column;height:100%;min-height:0}.sim-tab-content{flex:1;overflow:auto;min-height:0}.sim-tabs>[role=tablist]{display:flex;flex-shrink:0}.sim-tabs [role=tab]{flex:1;padding:12px;background:transparent;color:inherit;border:0}.sim-tabs [aria-selected=true]{color:#007aff}
+.sim-logs{padding:8px 12px;border-top:1px solid var(--border,#333);max-height:180px;overflow:auto;flex-shrink:0}.sim-logs pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;user-select:text}
+.sim-explanation{font-size:11px;line-height:1.4;opacity:.7;margin:8px 12px}.sim-error{color:#ef9b91;margin:8px 12px;font-size:12px;user-select:text}

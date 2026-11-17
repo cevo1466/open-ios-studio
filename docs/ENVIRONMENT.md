@@ -9,7 +9,8 @@ What a developer needs on a Linux PC to build, run and ship an iOS app with Open
 | Write SwiftUI code with AI help | Yes | Swift toolchain, Claude Code / Codex / API key / Ollama |
 | Compile for iOS (`xtool dev build`) | Yes | Swift toolchain + Darwin SDK (built by `xtool setup` from Xcode.xip) |
 | Run on a real iPhone (`xtool dev`) | Yes | usbmuxd, USB cable, Developer Mode on the phone, an Apple ID (free works for personal devices, re-signed every 7 days) |
-| iOS Simulator, SwiftUI live preview | **No** | macOS only; the app never claims it |
+| Apple iOS Simulator / full SwiftUI preview | **No** | Requires Apple development environment |
+| Independent local SwiftUI subset | **Experimental** | Native Linux Swift toolchain; no iPhone, Darwin SDK or xtool required; see `LOCAL_SIMULATOR.md` |
 | XCUITest UI tests, Instruments profiling | **No** | Xcode only; logic tests run with `swift test` on the host |
 | Static App Store / security checks | Yes | the IDE's App Store hazırlığı and Güvenlik merkezi (source level, no score) |
 | Submit to App Store review | Partly | a **paid Apple Developer Program membership** (yearly fee) and App Store Connect; the upload pipeline is being added in a separate pull request and is not verified yet |
@@ -35,7 +36,6 @@ Both run only read-only commands (`--version`, `sdk status`, `auth status`, `dev
 
 1. **Swift toolchain**: <https://swift.org/install/linux>, `swiftly` on Ubuntu/Linux Mint. Put its `bin` directory on `PATH` in `~/.profile` (not only `~/.bashrc`), otherwise an app started from the desktop menu does not see it. Check: `swift --version`.
 2. **usbmuxd** and, optionally, **libimobiledevice-utils** for diagnosing USB problems: `sudo apt install usbmuxd libimobiledevice-utils`. Check: `idevice_id -l` lists the connected iPhone.
-   Optional: **uxplay** (`sudo apt install -y uxplay`) mirrors the iPhone screen to a desktop window, so a change can be checked without holding the phone. Run `uxplay`, then on the iPhone choose Control Centre > Screen Mirroring > uxplay (both on the same Wi-Fi). The environment check lists it as `screen-mirror` (WARN when missing); Open iOS Studio never installs it for you.
 3. **Xcode.xip**: download with a free Apple ID from <https://developer.apple.com/download/all/?q=Xcode> in a browser. Apple's licence applies; the file is never bundled or redistributed.
 4. **xtool**: AppImage from <https://github.com/xtool-org/xtool/releases/latest>, renamed to `xtool`, `chmod +x`, placed on `PATH`. The tested version is `1.24.0` (`fixtures/xtool-1.24.0/`); other versions show `WARN` in the environment check. If the AppImage does not start, install FUSE (`sudo apt install libfuse2`) or set `APPIMAGE_EXTRACT_AND_RUN=1`.
 5. **`xtool setup`**: in your own terminal. Logs in to Apple and builds the Darwin SDK from `Xcode.xip`. Check: `swift sdk list` shows `darwin` and `xtool sdk status` is not "Not installed".
@@ -79,7 +79,8 @@ Ayarlar → Güncellemeler → "Güncellemeleri denetle". The app asks the GitHu
 ```bash
 npm ci
 npm run verify          # typecheck, lint, unit tests, build, policy catalogs
-npm run e2e             # Playwright against a mocked Tauri IPC
+npm run e2e             # real native Swift simulator + mocked other IDE services
+npm run test:simulator  # production simulator and core tests without GTK/WebKit
 cargo fmt --manifest-path src-tauri/Cargo.toml --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 cargo test --manifest-path src-tauri/Cargo.toml

@@ -1,3 +1,4 @@
+import type { BuildResult, SimulatorEvent, SimulatorInfo } from './simulator/types';
 import { Channel, invoke } from '@tauri-apps/api/core';
 import type { AiEvent, ChatRequest, CliProviderId, CliStatus, ModelInfo, ProviderId, PtyEvent, PtyKind, PtyOptions } from './ai/types';
 import type { LspEvent, LspStarted } from './lsp/types';
@@ -49,6 +50,14 @@ export interface UpdateDownload {
 export const inDesktopApp = (): boolean => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
 export const ipc = {
+  simulatorInfo: () => invoke<SimulatorInfo>('simulator_info'),
+  simulatorStart: (path: string, onEvent: (event: SimulatorEvent) => void) => {
+    const channel = new Channel<SimulatorEvent>();
+    channel.onmessage = onEvent;
+    return invoke<BuildResult>('simulator_start', { path, onEvent: channel });
+  },
+  simulatorInput: (id: string, value?: string | boolean | number) => invoke<void>('simulator_input', { event: { id, value } }),
+  simulatorStop: () => invoke<void>('simulator_stop'),
   pickWorkspace: () => invoke<string | null>('pick_workspace'),
   listDir: (path: string) => invoke<Entry[]>('list_dir', { path }),
   readFile: (path: string) => invoke<string>('read_file', { path }),
