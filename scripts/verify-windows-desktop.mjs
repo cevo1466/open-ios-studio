@@ -36,8 +36,7 @@ try {
     chooser.on('error', reject);
     chooser.on('exit', (code) => code === 0 ? resolveResult() : reject(new Error(output)));
   });
-  await page.getByRole('button', { name: 'Klasör aç', exact: true }).first().click();
-  await chooserResult;
+  await Promise.all([page.getByRole('button', { name: 'Klasör aç', exact: true }).first().click(), chooserResult]);
   await page.getByRole('tree').getByRole('button', { name: /Counter.swift/ }).click();
   await page.getByRole('button', { name: 'Simülatör', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Paketle birlikte kurulu' })).toContainText('derleyicisi hazır');
@@ -71,6 +70,7 @@ try {
   await page.getByRole('button', { name: 'Durdur', exact: true }).click();
   await expect(page.locator('.sim-header')).toContainText('Durduruldu');
   await page.getByRole('button', { name: 'Terminal', exact: true }).click();
+  await expect(page.locator('.term-state')).toContainText('çalışıyor');
   const terminal = page.locator('.xterm-helper-textarea');
   await terminal.focus();
   await page.keyboard.type("[Console]::WriteLine(('ois-win-'+'terminal-ok'))");
