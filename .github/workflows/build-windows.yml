@@ -83,7 +83,7 @@ jobs:
           if (Test-Path windows-verification/desktop.json) { Copy-Item windows-verification/desktop.json dist-windows/WINDOWS_DESKTOP_VERIFICATION.json }
           New-Item -ItemType Directory -Force dist-windows/logs | Out-Null
           Get-ChildItem "$env:RUNNER_TEMP/swift-install*.log" -ErrorAction SilentlyContinue | Copy-Item -Destination dist-windows/logs
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: open-ios-studio-windows-x86_64
