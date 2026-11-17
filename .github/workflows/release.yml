@@ -138,8 +138,16 @@ jobs:
           path: dist-release/*
           if-no-files-found: error
 
+  windows:
+    needs: verify
+    uses: ./.github/workflows/build-windows.yml
+    with:
+      ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
+    permissions:
+      contents: read
+
   publish:
-    needs: bundle
+    needs: [bundle, windows]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -154,6 +162,18 @@ jobs:
       - name: Re-verify checksums
         working-directory: dist-release
         run: sha256sum -c SHA256SUMS.txt
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: open-ios-studio-windows-x86_64
+          path: windows-release-artifact
+      - name: Include verified Windows installer
+        run: |
+          set -eu
+          cp windows-release-artifact/*.exe dist-release/
+          cp windows-release-artifact/WINDOWS_*_VERIFICATION.json dist-release/
+          tr -d '\r' < windows-release-artifact/SHA256SUMS-Windows.txt >> dist-release/SHA256SUMS.txt
+          cd dist-release
+          sha256sum -c SHA256SUMS.txt
       - name: Generate RELEASE_NOTES.md
         run: |
           set -eu
@@ -173,9 +193,10 @@ jobs:
             cat <<'HONESTY'
           ### Read before installing
           - This is a pre-release.
-          - Desktop launch on a real Linux desktop is NOT verified in CI. The packages were built and inspected (checksums, DEB contents, AppImage ELF header) but never started on a desktop by this workflow.
+          - Linux desktop launch is NOT verified in CI. The Linux packages and their compiled Swift callbacks were checked without opening a Linux desktop window in this workflow.
           - No Apple SDK is included or redistributed.
           - The local simulator and example are bundled. Running supported Swift source requires an installed Linux Swift toolchain; no iPhone or Apple SDK is needed for the local subset.
+          - The Windows installer bundles the same local subset. Native Windows Swift plus the C++ tools/Windows SDK from swift.org are required separately. Windows Server CI checks the installed simulator and WebView2; a Windows 11 user's desktop check remains separate.
           - Building physical-device iOS apps requires xtool, a Swift toolchain and an Apple account on your side.
           - AI features need your own API key or a local Ollama instance.
 

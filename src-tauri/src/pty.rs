@@ -8,8 +8,9 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use portable_pty::{native_pty_system, ChildKiller, CommandBuilder, MasterPty, PtySize};
 use serde::{Deserialize, Serialize};
@@ -197,14 +198,23 @@ pub enum PtyEvent {
 }
 
 struct Session {
-    master: Box<dyn MasterPty + Send>,
+    // Close the input pipe before the pseudoconsole while the reader still drains its output.
     writer: Box<dyn Write + Send>,
+    master: Box<dyn MasterPty + Send>,
     killer: Box<dyn ChildKiller + Send + Sync>,
+    finished: Arc<AtomicBool>,
+}
+impl Drop for Session {
+    fn drop(&mut self) {
+        if !self.finished.load(Ordering::SeqCst) {
+            let _ = self.killer.kill();
+        }
+    }
 }
 
 #[derive(Default)]
 pub struct PtyState {
-    sessions: Mutex<HashMap<u32, Session>>,
+    sessions: Arc<Mutex<HashMap<u32, Session>>>,
     next: AtomicU32,
 }
 
@@ -322,7 +332,7 @@ impl PtyState {
         rows: u16,
         cols: u16,
         cwd: PathBuf,
-        sink: impl Fn(PtyEvent) + Send + 'static,
+        sink: impl Fn(PtyEvent) + Send + Sync + 'static,
     ) -> Result<u32, String> {
         if self
             .sessions
@@ -366,6 +376,7 @@ impl PtyState {
         let mut reader = pair.master.try_clone_reader().map_err(|e| e.to_string())?;
         let writer = pair.master.take_writer().map_err(|e| e.to_string())?;
         let killer = child.clone_killer();
+        let finished = Arc::new(AtomicBool::new(false));
 
         let id = self.next.fetch_add(1, Ordering::SeqCst) + 1;
         self.sessions
@@ -377,9 +388,13 @@ impl PtyState {
                     master: pair.master,
                     writer,
                     killer,
+                    finished: finished.clone(),
                 },
             );
 
+        let sink = Arc::new(sink);
+        let data_sink = sink.clone();
+        let (drained_tx, drained_rx) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
             let mut buf = [0u8; 4096];
             let mut pending: Vec<u8> = Vec::new();
@@ -390,12 +405,27 @@ impl PtyState {
                         pending.extend_from_slice(&buf[..n]);
                         let text = take_valid_utf8(&mut pending);
                         if !text.is_empty() {
-                            sink(PtyEvent::Data { text });
+                            data_sink(PtyEvent::Data { text });
                         }
                     }
                 }
             }
+            let _ = drained_tx.send(());
+        });
+        // ConPTY keeps its output pipe open until the master is closed. Waiting for EOF
+        // before observing child exit would therefore keep both sides alive indefinitely.
+        let sessions = Arc::downgrade(&self.sessions);
+        std::thread::spawn(move || {
             let code = child.wait().ok().map(|s| s.exit_code());
+            finished.store(true, Ordering::SeqCst);
+            if let Some(sessions) = sessions.upgrade() {
+                let removed = sessions
+                    .lock()
+                    .ok()
+                    .and_then(|mut sessions| sessions.remove(&id));
+                drop(removed);
+            }
+            let _ = drained_rx.recv_timeout(std::time::Duration::from_secs(1));
             sink(PtyEvent::Exit { code });
         });
         Ok(id)
@@ -432,9 +462,7 @@ impl PtyState {
             .lock()
             .map_err(|_| "internal state error".to_owned())?
             .remove(&id);
-        if let Some(mut s) = removed {
-            let _ = s.killer.kill();
-        }
+        drop(removed);
         Ok(())
     }
 }
@@ -644,26 +672,45 @@ mod tests {
                 },
             )
             .expect("open");
-        let input = if cfg!(windows) {
-            "echo ois-pty-ok\rexit\r"
-        } else {
-            "echo ois-pty-ok\nexit\n"
-        };
-        state.write(id, input).expect("write");
         let mut text = String::new();
         let mut exited = false;
-        while let Ok(ev) = rx.recv_timeout(Duration::from_secs(10)) {
+        let mut code = None;
+        let mut sent = !cfg!(windows);
+        let mut cursor_offset = 0;
+        if sent {
+            state.write(id, "echo ois-pty-ok\nexit\n").expect("write");
+        }
+        let deadline = std::time::Instant::now() + Duration::from_secs(20);
+        while let Some(remaining) = deadline.checked_duration_since(std::time::Instant::now()) {
+            let Ok(ev) = rx.recv_timeout(remaining) else {
+                break;
+            };
             match ev {
-                PtyEvent::Data { text: t } => text.push_str(&t),
-                PtyEvent::Exit { .. } => {
+                PtyEvent::Data { text: t } => {
+                    text.push_str(&t);
+                    // Simulate xterm's cursor-position reply, including a query split across chunks.
+                    while let Some(index) = text[cursor_offset..].find("\x1b[6n") {
+                        cursor_offset += index + 4;
+                        let _ = state.write(id, "\x1b[1;1R");
+                    }
+                    if !sent && text.contains('>') {
+                        state.write(id, "echo ois-pty-ok\rexit\r").expect("write");
+                        sent = true;
+                    }
+                }
+                PtyEvent::Exit { code: value } => {
                     exited = true;
+                    code = value;
                     break;
                 }
             }
         }
-        assert!(exited, "shell did not exit; output: {text}");
-        assert!(text.contains("ois-pty-ok"), "output: {text}");
+        // Always tear down before asserting, so a failed interactive test cannot leak a session.
+        let _ = state.write(id, "\x1b[1;1R");
         state.close(id).expect("close");
+        assert!(exited, "shell did not exit within 20s; output: {text:?}");
+        assert_eq!(code, Some(0), "output: {text:?}");
+        assert!(text.contains("ois-pty-ok"), "output: {text:?}");
         assert!(state.write(id, "x").is_err());
     }
 

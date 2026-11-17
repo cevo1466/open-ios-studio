@@ -69,6 +69,17 @@ try {
   await expect(device.getByText('Count: 41', { exact: true })).toBeVisible();
   observations.steps.push('Monaco edit/save -> native recompile -> 40 -> 41');
   await page.getByRole('button', { name: 'Durdur', exact: true }).click();
+  await expect(page.locator('.sim-header')).toContainText('Durduruldu');
+  await page.getByRole('button', { name: 'Terminal', exact: true }).click();
+  const terminal = page.locator('.xterm-helper-textarea');
+  await terminal.focus();
+  await page.keyboard.type("[Console]::WriteLine(('ois-win-'+'terminal-ok'))");
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.xterm-screen')).toContainText('ois-win-terminal-ok');
+  await page.keyboard.type('exit');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.xterm-screen')).toContainText('[İşlem bitti (kod 0)]');
+  observations.steps.push('PowerShell terminal executes and exits through ConPTY');
   observations.passed = true;
 } catch (error) {
   observations.passed = false;

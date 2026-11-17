@@ -10,3 +10,4 @@ test-results/
 tools/simulator-harness/target/
 simulator-evidence/
 windows-verification/
+dist-windows/
